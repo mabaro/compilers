@@ -9,13 +9,13 @@ Result<void> compile(const char *source) {
     int line = -1;
     for(;;)
     {
-        Result<Token> tokenResult = sScanner.scanToken();
+        Result<TokenHolder> tokenResult = sScanner.scanToken();
         if (!tokenResult.isOk())
         {
             LOG_ERROR("Invalid token: %s\n", tokenResult.error().message);
             break;
         }
-        const Token& token = tokenResult.value();
+        const TokenHolder& token = tokenResult.value();
         if (token.line != line)
         {
             printf("%4d ", token.line);
@@ -25,7 +25,10 @@ Result<void> compile(const char *source) {
         }
         printf("%2d '%.*s'\n", token.type, token.length, token.start);
 
-        if (token.type == TokenType::Eof)
+        if (token.type == Token::Exit) {
+            exit(0);//kk
+        }
+        if (token.type == Token::Eof)
         {
             break;
         }
