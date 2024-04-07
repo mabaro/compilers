@@ -38,20 +38,30 @@ struct TokenHolder
 
 struct Scanner
 {
+	enum class ErrorCode {
+		SyntaxError,
+		Undefined
+	};
+	using error_t = Error<ErrorCode>;
+	template<typename T = void>
+	using result_base_t = Result<T, error_t>;
+	using result_t = result_base_t<void>;
+	using TokenResult_t = result_base_t<TokenHolder>;
+
 	const char* start = 0;
 	const char* current = 0;
 	int line = -1;
 
-	Result<void> initScanner(const char* source)
+	result_t initScanner(const char* source)
 	{
 		start = source;
 		current = source;
-		line = 0;
+		line = 1;
 
-		return makeResult();
+		return makeResult<result_t>();
 	}
 
-	Result<TokenHolder> scanToken()
+	TokenResult_t scanToken()
 	{
 		TokenHolder token;
 		
@@ -102,7 +112,7 @@ struct Scanner
 			break;
 		}
 
-		return makeResult<TokenHolder>(Error("Unexpected character."));
+		return makeError<TokenResult_t>("Unexpected character.");
 	}
 
 protected:
@@ -115,22 +125,38 @@ protected:
 		token.line = line;
 		return token;
 	}
-	TokenHolder errorToken(Token type, const char* message) {
-		TokenHolder token;
-		token.type = Token::Error;
-		token.start = message;
-		token.length = (int)strlen(message);
-		token.line = line;
-		return token;
+	TokenResult_t makeTokenError(Token type, const char* msg, int tokenLength = -1) {
+		char message[1024];
+		const size_t pos = current - start;
+		if (tokenLength > 0)
+		{
+			sprintf(message, "%s at '%.*s' pos:%d in line %d\n", msg, tokenLength, start, pos, line);
+		}
+		else {
+			tokenLength = 0;
+			const char* found = strchr(start, '\n');
+			if (found != nullptr)
+			{
+				tokenLength = found - start - 1;
+			}
+			sprintf(message, "%s at '%.*s' pos:%d in line %d\n", msg, tokenLength, start, pos, line);
+		}
+		return makeError<TokenResult_t>(TokenResult_t::error_t::code_t::SyntaxError, message);
 	}
 
-	TokenHolder string() {
+	TokenResult_t string() {
 		while (peek() != '"' && !isAtEnd()) {
 			if (peek() == '\n') {
 				++line;
 			}
 			advance();
 		}
+		if (isAtEnd())
+		{
+			return makeTokenError(Token::String, "Unterminated string");
+		}
+
+		advance();
 		return makeToken(Token::String);
 	}
 	TokenHolder number() {
@@ -148,11 +174,12 @@ protected:
 		return makeToken(Token::Number);
 	}
 	TokenHolder identifier() {
+		while (isAlpha(peek()) || isDigit(peek())) advance();
 		return makeToken(identifierType());
 	}
 	bool checkKeyword(int start, int length,
 		const char* rest) {
-		if (((int)(this->current - this->start) == start) &&
+		if (((int)(this->current - this->start) == (start + length)) &&
 			memcmp(this->start + start, rest, length) == 0) {
 			return true;
 		}
@@ -167,7 +194,6 @@ protected:
 			return type;
 		}
 
-		current += length;
 		return Token::Identifier;
 	}
 	Token identifierType() {
