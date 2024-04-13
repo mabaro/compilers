@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cstdint>
+#include <cstdarg>
 #include <string>
 #include <cassert>
 
@@ -15,6 +16,16 @@ enum class LogLevel
 	All = 0xFF
 };
 LogLevel sLogLevel = LogLevel::All;
+
+static std::string buildMessage(const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	char buff[1000];
+	int len = vsnprintf(buff, 1000, fmt, args);
+	va_end(args);
+	return std::string(buff);
+}
 
 #define LOG_BASE(level, fmt, ...)             \
     while (1)            \
@@ -46,6 +57,8 @@ LogLevel sLogLevel = LogLevel::All;
 #define LOG_INFO(fmt, ...) LOG_BASE(LogLevel::Info, "INFO: " #fmt, ##__VA_ARGS__)
 #define LOG_DEBUG(fmt, ...) LOG_BASE(LogLevel::Debug, "DEBUG: " #fmt,  ##__VA_ARGS__)
 
+#define DEBUGPRINT(fmt, ...) LOG_BASE(LogLevel::Debug, "DEBUG(line_%d): " #fmt, __LINE__, ##__VA_ARGS__)
+
 enum class ErrorCode
 {
 	Undefined = 0
@@ -55,64 +68,76 @@ struct Error
 {
 	using code_t = ErrCodeT;
 
-	Error(const char* msg) : message(msg) {}
-	Error(const std::string& msg) : message(msg) {}
-	Error(code_t e) : code(e) {}
-	Error(code_t e, const std::string& msg) : code(e), message(msg) {}
-	
-	Error(const Error& e) : code(e.code), message(e.message) {}
-	Error(Error&& e) : code(e.code), message(std::move(e.message)) {}
-	Error& operator=(Error&& e) = delete;
-	Error& operator=(const Error& e) = delete;
+	Error() {}
+	Error(const char* msg) : _message(msg) {}
+	Error(const std::string& msg) : _message(msg) {}
+	Error(code_t e) : _code(e) {}
+	Error(code_t e, const std::string& msg) : _code(e), _message(msg) {}
+	Error(code_t e, const char* msg) : _code(e), _message(msg) {}
 
-	const code_t code = code_t::Undefined;
-	const std::string message = "Undefined";
+	Error(const Error& e) : _code(e._code), _message(e._message) {}
+	Error(Error&& e) : _code(e._code), _message(std::move(e._message)) {}
+	Error& operator=(const Error& e) { _code = e; _message = e.msg; }
+	Error& operator=(Error&& e) { 
+		_code = std::move(e);
+		_message = std::move(e.msg); 
+	}
+	
+	bool operator==(const Error& e) const { return e._code == _code && !strcmp(e._message.c_str(), _message.c_str()); }
+	
+	code_t code() const { return _code; }
+	const std::string& message() const { return _message; }
+
+protected:
+	const code_t _code = code_t::Undefined;
+	const std::string _message = "Undefined";
 };
 template<typename T>
 struct Optional
 {
 	Optional() {}
-	Optional(const std::remove_const_t<T>& t) : _value(new T(t)), _hasValue(true) {}
-	Optional(T&& t) : _value(new T(std::move(t))), _hasValue(true) {}
-	Optional(const Optional& o) : _value(new T(*o._value)), _hasValue(o._hasValue) { assert(!hasValue() || _value); }
-	Optional& operator=(const Optional& o) = delete;
-	Optional& operator=(Optional&& o) = delete;
+	Optional(const T& t) : _value(new T(t)) {}
+	Optional(T&& t) : _value(new T(std::move(t))) {}
+	Optional(const Optional& o) : _value(o._value ? new T(*o._value) : nullptr) { assert(!hasValue() || _value); }
+	Optional& operator=(const Optional& o) {
+		reset();
+		_value = o._value ? new T(*o._value) : nullptr;
+		return *this;
+	}
+	Optional& operator=(Optional&& o) {
+		reset();
+		std::swap(_value, o._value);
+		return *this;
+	}
 	~Optional() {
-		delete _value;
-		_value = nullptr;
+		reset();
 	}
 
 	const T& value() const { assert(hasValue()); return *_value; }
 	T& value() { return *_value; }
-	bool hasValue() const { return _hasValue; }
-	T&& extract() { auto result = std::move(_value); _value = nullptr; return std::move(result); }
-
+	bool hasValue() const { return _value != nullptr; }
+	T&& extract() {
+		assert(hasValue());
+		auto extracted = std::move(*_value);
+		reset();
+		return std::move(extracted);
+	}
+	void reset() {
+		delete _value;
+		_value = nullptr;
+	}
 protected:
 	T* _value = nullptr;
-	bool _hasValue = false;
 };
-namespace common
-{
-	namespace unit_tests
-	{
-		void run()
-		{
-			Optional<int> opt(1);
-			Optional<int> opt2(opt);
-			assert(opt.hasValue());
-			//assert(opt2.hasValue());
 
-		}
-	}
-}
 template <typename T, typename ErrorT = Error<>>
 struct Result
 {
 	using value_t = T;
 	using error_t = ErrorT;
 
-	Result(T&& t) : _value(std::move(t)) {}
 	Result(const T& t) : _value(t) {}
+	Result(T&& t) : _value(std::move(t)) {}
 	Result(const ErrorT& e) : _error(e) {}
 	Result(typename ErrorT::code_t e) : _error(error_t(e)) {}
 	Result(const Result& r) : _value(r._value), _error(r._error) {}
@@ -120,10 +145,17 @@ struct Result
 	Result& operator=(const Result&) = delete;
 	Result& operator=(Result&&) = delete;
 
-	bool isOk() const { return !_error.hasValue(); }
+	bool isOk() const { return !_error.hasValue() && _value.hasValue(); }
 	ErrorT error() const { assert(_error.hasValue()); return _error.value(); }
+
 	const T& value() const { assert(_value.hasValue()); return _value.value(); }
 	T& value() { assert(_value.hasValue()); return _value.value(); }
+	T&& extract() {
+		assert(isOk());
+		auto extracted = _value.extract();
+		_error.reset();
+		return std::move(extracted);
+	}
 
 protected:
 	Optional<T> _value;
@@ -133,6 +165,7 @@ protected:
 template <typename ErrorT>
 struct Result<void, ErrorT>
 {
+	using value_t = void;
 	using error_t = ErrorT;
 	using error_code_t = typename ErrorT::code_t;
 
@@ -158,25 +191,67 @@ namespace detail
 	struct ResultHelper
 	{
 		static Result<T, E> make(const T& t) { return Result<T, E>(t); }
-		static Result<T, E> make(T&& t) { return Result<T, E>(std::move(t)); }
+		static Result<T, E> make(T&& t) {
+			return Result<T, E>(std::forward<T>(t));
+		}
 	};
-	template<typename E>
-	struct ResultHelper<void, typename E>
+}
+
+template <typename T, typename E> static Result<T, E> makeResult(T t) {
+	return detail::ResultHelper<T, E>::make(t);
+}
+template <typename T> static Result<T, Error<>> makeResult(T t) {
+	return detail::ResultHelper<T, Error<>>::make(std::forward<T>(t));
+}
+
+template <typename R> static R makeResult(typename R::value_t t) {
+	return detail::ResultHelper<typename R::value_t, typename R::error_t>::make(std::forward<typename R::value_t>(t));
+}
+
+
+template <typename ResultT> static ResultT makeResultError() { return ResultT(ResultT::error_t()); }
+template <typename ResultT> static ResultT makeResultError(typename ResultT::error_t::code_t e, const char* msg) { return ResultT(ResultT::error_t(e, msg)); }
+template <typename ResultT> static ResultT makeResultError(typename ResultT::error_t::code_t e, const std::string& msg) { return ResultT(ResultT::error_t(e, msg)); }
+template <typename ResultT> static ResultT makeResultError(typename ResultT::error_t e) { return ResultT(e); }
+template <typename ResultT> static ResultT makeResultError(const char* msg) { return ResultT(ResultT::error_t(msg)); }
+template <typename ResultT> static ResultT makeResultError(const std::string& msg) { return ResultT(ResultT::error_t(msg)); }
+template <typename ResultT> static ResultT makeResultError(std::string&& msg) { return ResultT(ResultT::error_t(std::move(msg))); }
+
+
+namespace unit_tests
+{
+	namespace common
 	{
-		static Result<void, E> make(void) { return Result<void, E>(); }
-	};
-}
+		struct Dummy { int a=-1; bool b=false; };
+		void test_result() {
+			int a = 0;
+			Result<int> res = makeResult<int>(a);
+			assert(res.value() == a);
+			Result<Dummy> res2 = makeResult(Dummy{});
+			assert(res2.value().a == -1);
+			Result<Dummy> res3 = makeResult(res2.value());
+			assert(res3.value().a == res2.value().a);
+			Result<Dummy> res4 = makeResult(res3.extract());
+			assert(res4.value().a == res2.value().a && !res3.isOk());
+			Result<Dummy> res5 = makeResultError<Result<Dummy>>();
+			assert(!res5.isOk() && res5.error() == Error<>{});
+		}
+		void test_optional()
+		{
+			Optional<int> opt(1);
+			Optional<int> opt2(opt);
+			assert(opt.hasValue());
+			//assert(opt2.hasValue());
+		}
+		void run()
+		{
+			test_result();
+			test_optional();
+			char* message = "hola: ";
+			char* errorMsg = "adios";
+			auto msg = buildMessage("[line %d] Error %s: %s\n", 3, message, errorMsg);
+			printf("Error: %s\n", msg.c_str());
 
-template <typename R> R makeResult(const typename R::value_t& t) {
-	return detail::ResultHelper<R::value_t, R::error_t>::make(t);
+		}
+	}
 }
-template <typename R> R makeResult() {
-	return detail::ResultHelper<void, R::error_t>::make();
-}
-
-template <typename ResultT> ResultT makeError() { return ResultT(e); }
-template <typename ResultT> ResultT makeError(typename ResultT::error_t::code_t e, const char* msg) { return ResultT(ResultT::error_t(e, msg)); }
-template <typename ResultT> ResultT makeError(typename ResultT::error_t::code_t e, const std::string& msg) { return ResultT(ResultT::error_t(e, msg)); }
-template <typename ResultT> ResultT makeError(typename ResultT::error_t e) { return ResultT(e); }
-template <typename ResultT> ResultT makeError(const char* msg) { return ResultT(ResultT::error_t(msg)); }
-template <typename ResultT> ResultT makeError(const std::string& msg) { return ResultT(ResultT::error_t(msg)); }

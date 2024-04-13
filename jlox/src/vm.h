@@ -2,118 +2,125 @@
 
 #include "common.h"
 #include "compiler.h"
+#include "debug.h"
 
 #include <cstring>
 #include <cstdlib>
 
-extern Compiler sCompiler;
-
 
 struct VirtualMachine
 {
-    enum class ErrorCode
-    {
-        CompileError,
-        RuntimeError,
-        Undefined = 0x255
-    };
-    using Error = Error<ErrorCode>;
-    using result_t = Result<void, Error>;
+	enum class ErrorCode
+	{
+		CompileError,
+		RuntimeError,
+		Undefined = 0x255
+	};
+	using Error = Error<ErrorCode>;
+	using result_t = Result<void, Error>;
 
-    result_t init() { return makeResult<result_t>(); }
-    result_t finish() { return makeResult<result_t>(); }
+	result_t init() { return makeResultError<result_t>(); }
+	result_t finish() { return makeResultError<result_t>(); }
 
-    VirtualMachine() {}
-    ~VirtualMachine() {}
+	VirtualMachine() {}
+	~VirtualMachine() {}
 
-    result_t interpret(const char* source) {
-        Compiler::result_t result = sCompiler.compile(source);
-        if (!result.isOk()) {
-            return makeError<result_t>(ErrorCode::CompileError, result.error().message);
-        }
-        Chunk chunk;
+	result_t run() {
+		disassemble(*_currentChunk, "test chunk");
+		return makeResultError<result_t>();
+	}
 
-        this->chunk = &chunk;
-        this->ip = chunk.code;
+	result_t interpret(const char* source) {
+		Compiler::result_t result = _compiler.compile(source);
+		if (!result.isOk()) {
+			return makeResultError<result_t>(ErrorCode::CompileError, result.error().message());
+		}
+		const Chunk* currentChunk = result.value();
+		_currentChunk = currentChunk;
+		_currentIP = currentChunk->getCode();
 
-        return makeResult<result_t>();
-    }
+		result_t runResult = run();
 
-    Result<char*> readFile(const char* path)
-    {
-        FILE* file = fopen(path, "rb");
-        if (file == nullptr)
-        {
-            LOG_ERROR("Couldn't open file '%s'\n", path);
-            return makeError<Result<char*>>(Result<char*>::error_t::code_t::Undefined);
-        }
+		return runResult;
+	}
 
-        fseek(file, 0L, SEEK_END);
-        const size_t fileSize = ftell(file);
-        rewind(file);
+	Result<char*> readFile(const char* path)
+	{
+		FILE* file = fopen(path, "rb");
+		if (file == nullptr)
+		{
+			LOG_ERROR("Couldn't open file '%s'\n", path);
+			return makeResultError<Result<char*>>(Result<char*>::error_t::code_t::Undefined);
+		}
 
-        char* buffer = (char*)malloc(fileSize) + 1;
-        if (buffer == nullptr)
-        {
-            char message[1024];
-			sprintf(message, "Couldn't allocate memory for reading the file '%s' with size %l byte(s)\n", path, fileSize);
-            LOG_ERROR(message);
-            fclose(file);
-            return makeError<Result<char*>>(Result<char*>::error_t::code_t::Undefined, message);
-        }
-        const size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
-        if (bytesRead < fileSize)
-        {
-            LOG_ERROR("Couldn't read the file '%s'\n", path);
-            fclose(file);
-            return makeError<Result<char*>>(Result<char*>::error_t::code_t::Undefined);
-        }
-        buffer[bytesRead] = '\0';
+		fseek(file, 0L, SEEK_END);
+		const size_t fileSize = ftell(file);
+		rewind(file);
 
-        fclose(file);
-        return makeResult<Result<char*>>(buffer);
-    }
+		char* buffer = (char*)malloc(fileSize) + 1;
+		if (buffer == nullptr)
+		{
+			char message[1024];
+			sprintf_s(message, "Couldn't allocate memory for reading the file '%s' with size %l byte(s)\n", path, fileSize);
+			LOG_ERROR(message);
+			fclose(file);
+			return makeResultError<Result<char*>>(Result<char*>::error_t::code_t::Undefined, message);
+		}
+		const size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
+		if (bytesRead < fileSize)
+		{
+			LOG_ERROR("Couldn't read the file '%s'\n", path);
+			fclose(file);
+			return makeResultError<Result<char*>>(Result<char*>::error_t::code_t::Undefined);
+		}
+		buffer[bytesRead] = '\0';
 
-    result_t runFile(const char* path)
-    {
-        Result<char*> source = readFile(path);
-        if (!source.isOk())
-        {
-            return makeError<result_t>(source.error().message);
-        }
-        result_t result = interpret(source.value());
-        free(source.value());
+		fclose(file);
+		return makeResult<Result<char*>>(buffer);
+	}
 
-        return result;
-    }
+	result_t runFile(const char* path)
+	{
+		Result<char*> source = readFile(path);
+		if (!source.isOk())
+		{
+			return makeResultError<result_t>(source.error().message());
+		}
+		result_t result = interpret(source.value());
+		free(source.value());
 
-    result_t repl()
-    {
-        char line[1024];
-        for (;;)
-        {
-            printf("> ");
+		return result;
+	}
 
-            if (!fgets(line, sizeof(line), stdin))
-            {
-                printf("\n");
-                break;
-            }
+	result_t repl()
+	{
+		char line[1024];
+		for (;;)
+		{
+			printf("> ");
 
-            result_t result = interpret(line);
-            if (!result.isOk())
-            {
-                char message[1024];
-                sprintf(message, "INTERPRETER: %s", result.error().message.c_str());
-				return makeError<result_t>(result_t::error_t::code_t::CompileError, message);
-            }
-        }
+			if (!fgets(line, sizeof(line), stdin))
+			{
+				printf("\n");
+				break;
+			}
 
-        return makeResult<result_t>();
-    }
+			result_t result = interpret(line);
+			if (!result.isOk())
+			{
+				char message[1024];
+				sprintf_s(message, "INTERPRETER: %s", result.error().message().c_str());
+				return makeResultError<result_t>(result_t::error_t::code_t::CompileError, message);
+			}
+		}
 
-    Chunk* chunk = nullptr;
-    char * ip = nullptr;
+		return makeResultError<result_t>();
+	}
+
+protected:
+	const Chunk* _currentChunk = nullptr;
+	const uint8_t* _currentIP = nullptr;
+
+	Compiler _compiler;
 };
-VirtualMachine sVM;
 

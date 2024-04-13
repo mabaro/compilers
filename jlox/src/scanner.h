@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-enum class Token
+enum class TokenType
 {
 	LeftParen, RightParen,
 	LeftBrace, RightBrace,
@@ -13,10 +13,10 @@ enum class Token
 	Less, LessEqual,
 	Greater, GreaterEqual,
 
-    Not, And, Or,
-    Class, Else, If, Nil,
-    Print, Return,
-    While, For,
+	Not, And, Or,
+	Class, Else, If, Nil,
+	Print, Return,
+	While, For,
 	True, False,
 	Exit,
 
@@ -26,14 +26,16 @@ enum class Token
 	Comment,
 
 	Error,
-	Eof = 0xff
+	Eof,
+
+	COUNT
 };
-struct TokenHolder
+struct Token
 {
 	int line = -1;
 	int length = 0;
 	const char* start = nullptr;
-	Token type = Token::Eof;
+	TokenType type = TokenType::Eof;
 };
 
 struct Scanner
@@ -46,59 +48,59 @@ struct Scanner
 	template<typename T = void>
 	using result_base_t = Result<T, error_t>;
 	using result_t = result_base_t<void>;
-	using TokenResult_t = result_base_t<TokenHolder>;
+	using TokenResult_t = result_base_t<Token>;
 
 	const char* start = 0;
 	const char* current = 0;
 	int line = -1;
 
-	result_t initScanner(const char* source)
+	result_t init(const char* source)
 	{
 		start = source;
 		current = source;
 		line = 1;
 
-		return makeResult<result_t>();
+		return makeResultError<result_t>();
 	}
 
 	TokenResult_t scanToken()
 	{
-		TokenHolder token;
-		
+		Token token;
+
 		skipWhitespace();
-		
+
 		start = current;
 
 		if (isAtEnd())
 		{
-			return makeToken(Token::Eof);
+			return makeToken(TokenType::Eof);
 		}
 
 		const char c = advance();
 		switch (c) {
-		case '(': return makeToken(Token::LeftParen);
-		case ')': return makeToken(Token::RightParen);
-		case '{': return makeToken(Token::LeftBrace);
-		case '}': return makeToken(Token::RightBrace);
-		case '-': return makeToken(Token::Minus);
-		case '+': return makeToken(Token::Plus);
+		case '(': return makeToken(TokenType::LeftParen);
+		case ')': return makeToken(TokenType::RightParen);
+		case '{': return makeToken(TokenType::LeftBrace);
+		case '}': return makeToken(TokenType::RightBrace);
+		case '-': return makeToken(TokenType::Minus);
+		case '+': return makeToken(TokenType::Plus);
 		case '/':
 			if (match('/')) {// comment
 				while (peek() != '\n' && !isAtEnd()) { advance(); }
-				return makeToken(Token::Comment);
+				return makeToken(TokenType::Comment);
 			}
 			else if (match('*')) {// comment
 				while (!(match('*') && match('/')) && !isAtEnd()) { advance(); }
-				return makeToken(Token::Comment);
+				return makeToken(TokenType::Comment);
 			}
 			else {
-				return makeToken(Token::Slash);
+				return makeToken(TokenType::Slash);
 			}
-		case '*': return makeToken(Token::Star);
-		case '!': return makeToken(match('=') ? Token::BangEqual : Token::Bang);
-		case '=': return makeToken(match('=') ? Token::EqualEqual : Token::Equal);
-		case '<': return makeToken(match('=') ? Token::LessEqual : Token::Less);
-		case '>': return makeToken(match('=') ? Token::GreaterEqual : Token::Greater);
+		case '*': return makeToken(TokenType::Star);
+		case '!': return makeToken(match('=') ? TokenType::BangEqual : TokenType::Bang);
+		case '=': return makeToken(match('=') ? TokenType::EqualEqual : TokenType::Equal);
+		case '<': return makeToken(match('=') ? TokenType::LessEqual : TokenType::Less);
+		case '>': return makeToken(match('=') ? TokenType::GreaterEqual : TokenType::Greater);
 		case '"': return string();
 		default:
 			if (isDigit(c))
@@ -112,36 +114,33 @@ struct Scanner
 			break;
 		}
 
-		return makeError<TokenResult_t>("Unexpected character.");
+		return makeResultError<TokenResult_t>("Unexpected character.");
 	}
 
 protected:
-	TokenHolder makeToken(Token type) const
+	Token makeToken(TokenType type) const
 	{
-		TokenHolder token;
+		Token token;
 		token.type = type;
 		token.start = start;
 		token.length = static_cast<int>(current - start);
 		token.line = line;
 		return token;
 	}
-	TokenResult_t makeTokenError(Token type, const char* msg, int tokenLength = -1) {
+	TokenResult_t makeTokenError(TokenType type, const char* msg, int tokenLength = -1) {
 		char message[1024];
-		const size_t pos = current - start;
-		if (tokenLength > 0)
+		const int pos = current - start;
+		if (tokenLength == 0)
 		{
-			sprintf(message, "%s at '%.*s' pos:%d in line %d\n", msg, tokenLength, start, pos, line);
-		}
-		else {
 			tokenLength = 0;
 			const char* found = strchr(start, '\n');
 			if (found != nullptr)
 			{
 				tokenLength = found - start - 1;
 			}
-			sprintf(message, "%s at '%.*s' pos:%d in line %d\n", msg, tokenLength, start, pos, line);
 		}
-		return makeError<TokenResult_t>(TokenResult_t::error_t::code_t::SyntaxError, message);
+		sprintf_s(message, "%s at '%.*s' pos:%d in line %d\n", msg, tokenLength, start, pos, line);
+		return makeResultError<TokenResult_t>(TokenResult_t::error_t::code_t::SyntaxError, message);
 	}
 
 	TokenResult_t string() {
@@ -153,13 +152,13 @@ protected:
 		}
 		if (isAtEnd())
 		{
-			return makeTokenError(Token::String, "Unterminated string");
+			return makeTokenError(TokenType::String, "Unterminated string");
 		}
 
 		advance();
-		return makeToken(Token::String);
+		return makeToken(TokenType::String);
 	}
-	TokenHolder number() {
+	Token number() {
 		while (isDigit(peek())) {
 			advance();
 		}
@@ -169,11 +168,11 @@ protected:
 			while (isDigit(peek())) {
 				advance();
 			}
-			return makeToken(Token::NumberFloat);
+			return makeToken(TokenType::NumberFloat);
 		}
-		return makeToken(Token::Number);
+		return makeToken(TokenType::Number);
 	}
-	TokenHolder identifier() {
+	Token identifier() {
 		while (isAlpha(peek()) || isDigit(peek())) advance();
 		return makeToken(identifierType());
 	}
@@ -186,38 +185,38 @@ protected:
 
 		return false;
 	}
-	Token checkKeyword(int start, int length,
-		const char* rest, Token type) {
+	TokenType checkKeyword(int start, int length,
+		const char* rest, TokenType type) {
 		if (checkKeyword(start, length, rest))
 		{
 			current += length;
 			return type;
 		}
 
-		return Token::Identifier;
+		return TokenType::Identifier;
 	}
-	Token identifierType() {
+	TokenType identifierType() {
 		switch (start[0]) {
-		case '&': return checkKeyword(1, 1, "&", Token::And);
-		case '|': return checkKeyword(1, 1, "|", Token::Or);
-		case '~': return Token::Not;
-		case 'c': return checkKeyword(1, 4, "lass", Token::Class);
+		case '&': return checkKeyword(1, 1, "&", TokenType::And);
+		case '|': return checkKeyword(1, 1, "|", TokenType::Or);
+		case '~': return TokenType::Not;
+		case 'c': return checkKeyword(1, 4, "lass", TokenType::Class);
 		case 'e':
-			if (checkKeyword(1, 3, "lse")) return Token::Else;
-			else if (checkKeyword(1, 3, "xit")) return Token::Exit;
+			if (checkKeyword(1, 3, "lse")) return TokenType::Else;
+			else if (checkKeyword(1, 3, "xit")) return TokenType::Exit;
 			break;
 		case 'f':
-			if (checkKeyword(1, 2, "or")) return Token::For;
-			else if (checkKeyword(1, 4, "alse")) return Token::False;
-				break;
-		case 'i': return checkKeyword(1, 1, "f", Token::If);
-		case 'n': return checkKeyword(1, 2, "il", Token::Nil);
-		case 'p': return checkKeyword(1, 4, "rint", Token::Print);
-		case 'r': return checkKeyword(1, 5, "eturn", Token::Return);
-		case 't': return checkKeyword(1, 3, "rue", Token::True);
-		case 'w': return checkKeyword(1, 4, "hile", Token::While);
+			if (checkKeyword(1, 2, "or")) return TokenType::For;
+			else if (checkKeyword(1, 4, "alse")) return TokenType::False;
+			break;
+		case 'i': return checkKeyword(1, 1, "f", TokenType::If);
+		case 'n': return checkKeyword(1, 2, "il", TokenType::Nil);
+		case 'p': return checkKeyword(1, 4, "rint", TokenType::Print);
+		case 'r': return checkKeyword(1, 5, "eturn", TokenType::Return);
+		case 't': return checkKeyword(1, 3, "rue", TokenType::True);
+		case 'w': return checkKeyword(1, 4, "hile", TokenType::While);
 		}
-		return Token::Identifier;
+		return TokenType::Identifier;
 	}
 	bool isDigit(const char c) const {
 		return c >= '0' && c <= '9';
@@ -264,4 +263,16 @@ protected:
 		return *current == '\0';
 	}
 };
-Scanner sScanner;
+
+namespace unit_tests {
+	namespace scanner {
+		void run() {
+			Token t1{};
+			t1.line = 15;
+			Token t2;
+			auto tokenResult = makeResult<Token>(t1);
+			assert(tokenResult.value().line == t1.line);
+
+		}
+	}
+}
