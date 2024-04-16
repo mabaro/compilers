@@ -9,12 +9,6 @@
 
 int main(int argc, char **argv)
 {
-#define LOG_INFO(fmt, ...) LOG_BASE(LogLevel::Info, "INFO: " fmt, ##__VA_ARGS__)
-
-    LOG_INFO("> Quick test: 's'...\n");
-    LOG_INFO("> Quick test: 's'...\n");
-
-    exit(0);
 #if UNIT_TESTS_ENABLED
     printf(">>>>>> Unit tests\n");
     unit_tests::common::run();
@@ -32,17 +26,16 @@ int main(int argc, char **argv)
         auto result = VM.interpret(codeStr);
         if (!result.isOk())
         {
-            LOG_ERROR("'%s'\n", result.error().message().c_str());
+            LOG_ERROR("%s\n", result.error().message().c_str());
         }
         LOG_INFO("< Quick test\n");
     }
-
-    if (argc == 1)
+	else if (argc == 1)
     {
         auto result = VM.repl();
         if (!result.isOk())
         {
-            LOG_ERROR("'%s'\n", result.error().message().c_str());
+            LOG_ERROR("%s\n", result.error().message().c_str());
         }
     }
     else if (argc == 2)

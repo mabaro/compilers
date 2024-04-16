@@ -6,6 +6,11 @@
 #include <string>
 #include <cassert>
 
+#define DEBUG_PRINT_CODE 1
+#define DEBUG_TRACE_EXECUTION 1
+
+////////////////////////////////////////////////////////////////////////////////
+
 enum class LogLevel
 {
 	Error = 1 << 0,
@@ -28,22 +33,26 @@ static std::string buildMessage(const char* fmt, ...)
 }
 
 #define LOG_BASE(level, fmt, ...)             \
-    while (1)            \
+    while (1)                                 \
     {                                         \
-        FILE *outFile = nullptr;               \
+        FILE *outFile = nullptr;              \
         switch (level)                        \
         {                                     \
         case LogLevel::Error:                 \
             outFile = stderr;                 \
+            fprintf(outFile, "Error: ");      \
             break;                            \
         case LogLevel::Warning:               \
             outFile = stderr;                 \
+            fprintf(outFile, "Warning: ");    \
             break;                            \
         case LogLevel::Info:                  \
             outFile = stdout;                 \
+            fprintf(outFile, "Info: ");       \
             break;                            \
         case LogLevel::Debug:                 \
             outFile = stdout;                 \
+            fprintf(outFile, "Warning: ");    \
             break;                            \
         default:                              \
             break;                            \
@@ -52,10 +61,10 @@ static std::string buildMessage(const char* fmt, ...)
         break;                                \
     }
 
-#define LOG_ERROR(fmt, ...) LOG_BASE(LogLevel::Error, "ERROR: " #fmt, ##__VA_ARGS__)
-#define LOG_WARNING(fmt, ...) LOG_BASE(LogLevel::Warning, "WARNING: " #fmt, ##__VA_ARGS__)
-#define LOG_INFO(fmt, ...) LOG_BASE(LogLevel::Info, "INFO: " #fmt, ##__VA_ARGS__)
-#define LOG_DEBUG(fmt, ...) LOG_BASE(LogLevel::Debug, "DEBUG: " #fmt,  ##__VA_ARGS__)
+#define LOG_ERROR(fmt, ...) LOG_BASE(LogLevel::Error, fmt, ##__VA_ARGS__)
+#define LOG_WARNING(fmt, ...) LOG_BASE(LogLevel::Warning, fmt, ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...) LOG_BASE(LogLevel::Info, fmt, ##__VA_ARGS__)
+#define LOG_DEBUG(fmt, ...) LOG_BASE(LogLevel::Debug, fmt,  ##__VA_ARGS__)
 
 #define DEBUGPRINT(fmt, ...) LOG_BASE(LogLevel::Debug, "DEBUG(line_%d): " #fmt, __LINE__, ##__VA_ARGS__)
 
@@ -215,7 +224,6 @@ template <typename R> static R makeResult(typename R::value_t t) {
 template <typename R> static R makeResult() {
 	return detail::ResultHelper<typename R::value_t, typename R::error_t>::make();
 }
-
 
 template <typename ResultT> static ResultT makeResultError() { return ResultT(ResultT::error_t()); }
 template <typename ResultT> static ResultT makeResultError(typename ResultT::error_t::code_t e, const char* msg) { return ResultT(ResultT::error_t(e, msg)); }
