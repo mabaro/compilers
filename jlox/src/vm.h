@@ -27,7 +27,7 @@ struct VirtualMachine
 
 	result_t run() {
 		disassemble(*_currentChunk, "test chunk");
-		return makeResultError<result_t>();
+		return makeResult<result_t>();
 	}
 
 	result_t interpret(const char* source) {
@@ -46,7 +46,8 @@ struct VirtualMachine
 
 	Result<char*> readFile(const char* path)
 	{
-		FILE* file = fopen(path, "rb");
+		FILE* file = nullptr;
+		fopen_s(&file, path, "rb");
 		if (file == nullptr)
 		{
 			LOG_ERROR("Couldn't open file '%s'\n", path);

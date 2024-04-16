@@ -195,6 +195,11 @@ namespace detail
 			return Result<T, E>(std::forward<T>(t));
 		}
 	};
+	template <typename E>
+	struct ResultHelper<void, E>
+	{
+		static Result<void, E> make() { return Result<void, E>(); }
+	};
 }
 
 template <typename T, typename E> static Result<T, E> makeResult(T t) {
@@ -206,6 +211,9 @@ template <typename T> static Result<T, Error<>> makeResult(T t) {
 
 template <typename R> static R makeResult(typename R::value_t t) {
 	return detail::ResultHelper<typename R::value_t, typename R::error_t>::make(std::forward<typename R::value_t>(t));
+}
+template <typename R> static R makeResult() {
+	return detail::ResultHelper<typename R::value_t, typename R::error_t>::make();
 }
 
 

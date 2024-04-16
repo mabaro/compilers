@@ -14,9 +14,11 @@ enum class TokenType
 	Greater, GreaterEqual,
 
 	Not, And, Or,
-	Class, Else, If, Nil,
+	Class, Super, Nil,
+	Var, This,
+	Else, If,
 	Print, Return,
-	While, For,
+	While, For, Func,
 	True, False,
 	Exit,
 
@@ -102,6 +104,7 @@ struct Scanner
 		case '<': return makeToken(match('=') ? TokenType::LessEqual : TokenType::Less);
 		case '>': return makeToken(match('=') ? TokenType::GreaterEqual : TokenType::Greater);
 		case '"': return string();
+		case ';': return makeToken(TokenType::Semicolon); // simple separator, optional
 		default:
 			if (isDigit(c))
 			{
@@ -127,9 +130,9 @@ protected:
 		token.line = line;
 		return token;
 	}
-	TokenResult_t makeTokenError(TokenType type, const char* msg, int tokenLength = -1) {
+	TokenResult_t makeTokenError(TokenType type, const char* msg, int64_t tokenLength = -1) {
 		char message[1024];
-		const int pos = current - start;
+		const int pos = (int)(current - start);
 		if (tokenLength == 0)
 		{
 			tokenLength = 0;
@@ -139,7 +142,7 @@ protected:
 				tokenLength = found - start - 1;
 			}
 		}
-		sprintf_s(message, "%s at '%.*s' pos:%d in line %d\n", msg, tokenLength, start, pos, line);
+		sprintf_s(message, "%s at '%.*s' pos:%d in line %d\n", msg, (int)tokenLength, start, pos, line);
 		return makeResultError<TokenResult_t>(TokenResult_t::error_t::code_t::SyntaxError, message);
 	}
 

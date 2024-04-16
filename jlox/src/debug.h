@@ -48,6 +48,8 @@ static int disassembleInstruction(const Chunk& chunk, uint16_t offset)
     {
     case (uint8_t)OpCode::Return:
         return simpleInstruction("OP_RETURN", offset);
+    case (uint8_t)OpCode::Negate:
+        return simpleInstruction("OP_NEGATE", offset);
     case (uint8_t)OpCode::Constant:
         return constantInstruction("OP_CONSTANT", chunk, offset);
     default:

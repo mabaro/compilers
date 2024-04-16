@@ -9,6 +9,12 @@
 
 int main(int argc, char **argv)
 {
+#define LOG_INFO(fmt, ...) LOG_BASE(LogLevel::Info, "INFO: " fmt, ##__VA_ARGS__)
+
+    LOG_INFO("> Quick test: 's'...\n");
+    LOG_INFO("> Quick test: 's'...\n");
+
+    exit(0);
 #if UNIT_TESTS_ENABLED
     printf(">>>>>> Unit tests\n");
     unit_tests::common::run();
@@ -19,7 +25,17 @@ int main(int argc, char **argv)
     VirtualMachine VM;
     VM.init();
 
-    //test//VM.interpret("marcos=13;");
+    if (1)//quick tests
+    {
+        auto codeStr = "a=15*25 + ( b - c)* 1.05;";
+		LOG_INFO("> Quick test: '%s'...\n", codeStr);
+        auto result = VM.interpret(codeStr);
+        if (!result.isOk())
+        {
+            LOG_ERROR("'%s'\n", result.error().message().c_str());
+        }
+        LOG_INFO("< Quick test\n");
+    }
 
     if (argc == 1)
     {
@@ -34,7 +50,7 @@ int main(int argc, char **argv)
         auto result = VM.runFile(argv[1]);
         if (!result.isOk())
         {
-            LOG_ERROR(result.error().message);
+            LOG_ERROR(result.error().message().c_str());
         }
     }
     else

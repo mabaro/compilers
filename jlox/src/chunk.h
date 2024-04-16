@@ -9,6 +9,17 @@ enum class OpCode
     Return,
     Constant,
 
+    // Unary ops
+    Negate, NegateBool,
+    
+    // Binary ops
+    Assignment,
+
+    // Arithmetic
+    Add, Subtract, Multiply, Divide,
+
+    Skip, // helper for semicolon
+
     Undefined = 0x0FF
 };
 
@@ -40,11 +51,11 @@ struct Chunk
     }
     int addConstant(Value value) {
         _constants.write(value);
-        return _constants.getSize() - 1;
+        return static_cast<int>(_constants.getSize()) - 1;
     }
     int addVariable(Value value) {
         _variables.write(value);
-        return _variables.getSize() - 1;
+        return static_cast<int>(_variables.getSize()) - 1;
     }
 
 protected:
