@@ -37,21 +37,30 @@ static int disassembleInstruction(const Chunk& chunk, uint16_t offset)
     assert(offset < chunk.getCodeSize());
     printf("%04d ", offset);
     if (offset > 0 && chunk.getLine(offset) == chunk.getLine(offset - 1)) {
-        printf("   | ");
+        printf(" | ");
     }
     else {
         printf("%u ", chunk.getLine(offset));
     }
 
-    const uint8_t instruction = chunk.getCode()[offset];
+    const OpCode instruction = OpCode(chunk.getCode()[offset]);
     switch (instruction)
     {
-    case (uint8_t)OpCode::Return:
+    case OpCode::Return:
         return simpleInstruction("OP_RETURN", offset);
-    case (uint8_t)OpCode::Negate:
+    case OpCode::Negate:
         return simpleInstruction("OP_NEGATE", offset);
-    case (uint8_t)OpCode::Constant:
+    case OpCode::Constant:
         return constantInstruction("OP_CONSTANT", chunk, offset);
+    case OpCode::Add:
+        return simpleInstruction("OP_ADD", offset);
+    case OpCode::Subtract:
+        return simpleInstruction("OP_SUBTRACT", offset);
+    case OpCode::Multiply:
+        return simpleInstruction("OP_MULTIPLY", offset);
+    case OpCode::Divide:
+        return simpleInstruction("OP_DIVIDE", offset);
+
     default:
         printf("Unknown opcode %d\n", instruction);
         return offset + 1;

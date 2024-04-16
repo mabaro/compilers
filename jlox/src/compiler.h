@@ -97,6 +97,7 @@ struct Compiler
 protected: // high level stuff
 	void expression()
 	{
+		_lastExpressionLine = _parser.current.line;
 		parsePrecedence(Precedence::ASSIGNMENT);
 	}
 	void skip()
@@ -254,7 +255,7 @@ protected:
 	{
 		Chunk *chunk = currentChunk();
 		assert(chunk);
-		chunk->write(byte, _parser.current.line);
+		chunk->write(byte, _lastExpressionLine);
 	}
 	void emitBytes(OpCode code)
 	{
@@ -401,6 +402,7 @@ protected:
 protected:
 	Scanner _scanner;
 	Parser _parser;
+	int _lastExpressionLine = -1;
 
 	Chunk *_compilingChunk = nullptr;
 	Chunk *currentChunk()
