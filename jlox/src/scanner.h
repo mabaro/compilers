@@ -10,8 +10,11 @@ enum class TokenType
 	Minus, Plus, Slash, Star,
 	Bang, BangEqual,
 	Equal, EqualEqual,
-	Less, LessEqual,
 	Greater, GreaterEqual,
+	Less, LessEqual,
+
+	Identifier, String,
+	Number, NumberFloat,
 
 	Not, And, Or,
 	Class, Super, Nil,
@@ -21,9 +24,6 @@ enum class TokenType
 	While, For, Func,
 	True, False,
 	Exit,
-
-	String, Identifier,
-	Number, NumberFloat,
 
 	Comment,
 

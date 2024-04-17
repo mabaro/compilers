@@ -21,7 +21,7 @@ int main(int argc, char **argv)
 
     if (1)//quick tests
     {
-        auto codeStr = "15*25 + 1\n15*25 + 1\n";
+        auto codeStr = "1 + 2 - 4;";
 		LOG_INFO("> Quick test: '%s'...\n", codeStr);
         auto result = VM.interpret(codeStr);
         if (!result.isOk())
