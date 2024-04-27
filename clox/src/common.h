@@ -92,7 +92,7 @@ struct Error
 		_message = std::move(e.msg); 
 	}
 	
-	bool operator==(const Error& e) const { return e._code == _code && !strcmp(e._message.c_str(), _message.c_str()); }
+	bool operator==(const Error& e) const { return e._code == _code && !e._message.compare(_message); }
 	
 	code_t code() const { return _code; }
 	const std::string& message() const { return _message; }
@@ -225,13 +225,13 @@ template <typename R> static R makeResult() {
 	return detail::ResultHelper<typename R::value_t, typename R::error_t>::make();
 }
 
-template <typename ResultT> static ResultT makeResultError() { return ResultT(ResultT::error_t()); }
-template <typename ResultT> static ResultT makeResultError(typename ResultT::error_t::code_t e, const char* msg) { return ResultT(ResultT::error_t(e, msg)); }
-template <typename ResultT> static ResultT makeResultError(typename ResultT::error_t::code_t e, const std::string& msg) { return ResultT(ResultT::error_t(e, msg)); }
+template <typename ResultT> static ResultT makeResultError() { return ResultT(typename ResultT::error_t()); }
+template <typename ResultT> static ResultT makeResultError(typename ResultT::error_t::code_t e, const char* msg) { return ResultT(typename ResultT::error_t(e, msg)); }
+template <typename ResultT> static ResultT makeResultError(typename ResultT::error_t::code_t e, const std::string& msg) { return ResultT(typename ResultT::error_t(e, msg)); }
 template <typename ResultT> static ResultT makeResultError(typename ResultT::error_t e) { return ResultT(e); }
-template <typename ResultT> static ResultT makeResultError(const char* msg) { return ResultT(ResultT::error_t(msg)); }
-template <typename ResultT> static ResultT makeResultError(const std::string& msg) { return ResultT(ResultT::error_t(msg)); }
-template <typename ResultT> static ResultT makeResultError(std::string&& msg) { return ResultT(ResultT::error_t(std::move(msg))); }
+template <typename ResultT> static ResultT makeResultError(const char* msg) { return ResultT(typename ResultT::error_t(msg)); }
+template <typename ResultT> static ResultT makeResultError(const std::string& msg) { return ResultT(typename ResultT::error_t(msg)); }
+template <typename ResultT> static ResultT makeResultError(std::string&& msg) { return ResultT(typename ResultT::error_t(std::move(msg))); }
 
 
 namespace unit_tests
@@ -263,8 +263,8 @@ namespace unit_tests
 		{
 			test_result();
 			test_optional();
-			char* message = "hola: ";
-			char* errorMsg = "adios";
+			const char* message = "hola: ";
+			const char* errorMsg = "adios";
 			auto msg = buildMessage("[line %d] Error %s: %s\n", 3, message, errorMsg);
 			printf("Error: %s\n", msg.c_str());
 

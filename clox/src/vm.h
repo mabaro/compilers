@@ -19,14 +19,14 @@ struct VirtualMachine
 		RuntimeError,
 		Undefined = 0x255
 	};
-	using Error = Error<ErrorCode>;
+	using error_t = Error<ErrorCode>;
 
 	enum class InterpretResult
 	{
 		Ok,
 		Error
 	};
-	using result_t = Result<InterpretResult, Error>;
+	using result_t = Result<InterpretResult, error_t>;
 
 	VirtualMachine() {}
 	~VirtualMachine() {}
@@ -108,8 +108,7 @@ struct VirtualMachine
 
 	Result<char*> readFile(const char* path)
 	{
-		FILE* file = nullptr;
-		fopen_s(&file, path, "rb");
+		FILE* file = fopen(path, "rb");
 		if (file == nullptr)
 		{
 			LOG_ERROR("Couldn't open file '%s'\n", path);
@@ -124,7 +123,7 @@ struct VirtualMachine
 		if (buffer == nullptr)
 		{
 			char message[1024];
-			sprintf_s(message, "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path, fileSize);
+			sprintf(message, "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path, fileSize);
 			LOG_ERROR(message);
 			fclose(file);
 			return makeResultError<Result<char*>>(Result<char*>::error_t::code_t::Undefined, message);
@@ -172,7 +171,7 @@ struct VirtualMachine
 			if (!result.isOk())
 			{
 				char message[1024];
-				sprintf_s(message, "INTERPRETER: %s", result.error().message().c_str());
+				sprintf(message, "INTERPRETER: %s", result.error().message().c_str());
 				return makeResultError<result_t>(result_t::error_t::code_t::CompileError, message);
 			}
 		}

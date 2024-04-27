@@ -293,15 +293,15 @@ protected:
 		char message[1024];
 		if (token.type == TokenType::Eof)
 		{
-			sprintf_s(message, " at end");
+			sprintf(message, " at end");
 		}
 		else if (token.type == TokenType::Error)
 		{
-			sprintf_s(message, " Error token!!!");
+			sprintf(message, " Error token!!!");
 		}
 		else
 		{
-			sprintf_s(message, " at '%.*s'", token.length, token.start);
+			sprintf(message, " at '%.*s'", token.length, token.start);
 		}
 
 		_parser.optError = Parser::error_t(Parser::error_t::code_t::Undefined, buildMessage("[line %d] Error %s: %s", _parser.current.line, message, errorMsg));

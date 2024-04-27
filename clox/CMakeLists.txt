@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.5) 
-project(jlox) 
+project(clox) 
 #
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/") # .exe and .dll 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib") # .so and .dylib 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib") # .lib and .a 
 #
-add_executable(jlox src/main.cpp) 
+add_executable(clox src/main.cpp) 
 #
 add_custom_command( 
-   TARGET jlox POST_BUILD 
+   TARGET clox POST_BUILD 
    COMMAND echo ***************** 
    COMMAND echo Running output...  
    COMMAND echo ***************** 
-   COMMAND jlox  
+   COMMAND clox  
    VERBATIM)  

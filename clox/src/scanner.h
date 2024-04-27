@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <cstring>
 
 enum class TokenType
 {
@@ -142,7 +143,7 @@ protected:
 				tokenLength = found - start - 1;
 			}
 		}
-		sprintf_s(message, "%s at '%.*s' pos:%d in line %d\n", msg, (int)tokenLength, start, pos, line);
+		sprintf(message, "%s at '%.*s' pos:%d in line %d\n", msg, (int)tokenLength, start, pos, line);
 		return makeResultError<TokenResult_t>(TokenResult_t::error_t::code_t::SyntaxError, message);
 	}
 
