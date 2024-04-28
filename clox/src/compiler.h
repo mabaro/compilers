@@ -7,6 +7,11 @@
 
 #if DEBUG_PRINT_CODE
 #include "debug.h"
+#if 0 // enable debug print
+#define MYPRINT(X,...) printf(X"\n",##__VA_ARGS__)
+#else
+#define MYPRINT
+#endif
 #endif // #if DEBUG_PRINT_CODE
 
 #include <vector>
@@ -97,6 +102,7 @@ struct Compiler
 protected: // high level stuff
 	void expression()
 	{
+		MYPRINT("Expression: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
 		_lastExpressionLine = _parser.current.line;
 		parsePrecedence(Precedence::ASSIGNMENT);
 	}
@@ -106,22 +112,24 @@ protected: // high level stuff
 	}
 	void grouping()
 	{
+		MYPRINT("grouping: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
 		expression();
 		consume(TokenType::RightParen, "Expected ')' after expression.");
 	}
 	void number()
 	{
-		double value = strtod(_parser.previous.start, nullptr);
-		emitConstant(value);
+		MYPRINT("number: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
+
+		const int value = strtod(_parser.previous.start, nullptr);
+		emitConstant(Value(value));
 	}
 	void unary()
 	{
+		MYPRINT("unary: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
 		const TokenType operatorType = _parser.previous.type;
 
+		// parse expression
 		parsePrecedence(Precedence::UNARY);
-
-		// Compile the operand.
-		expression();
 
 		// Emit the operator instruction.
 		switch (operatorType)
@@ -138,6 +146,8 @@ protected: // high level stuff
 	}
 	void binary()
 	{
+		MYPRINT("binary: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
+
 		const TokenType operatorType = _parser.previous.type;
 		const ParseRule parseRule = getParseRule(operatorType);
 		// left-associative: 1+2+3+4 = ((1 + 2) + 3) + 4
@@ -200,7 +210,7 @@ protected:
 #endif // #if DEBUG_PRINT_CODE
 	}
 
-	int makeConstant(Number value)
+	int makeConstant(const Value& value)
 	{
 		assert(currentChunk());
 		Chunk &chunk = *currentChunk();
@@ -212,7 +222,7 @@ protected:
 		}
 		return constantId;
 	}
-	void emitConstant(Number value)
+	void emitConstant(const Value& value)
 	{
 		emitBytes(OpCode::Constant, makeConstant(value));
 	}
@@ -222,7 +232,7 @@ protected:
 		assert(currentChunk());
 		Chunk &chunk = *currentChunk();
 
-		const int id = chunk.addVariable(0);
+		const int id = chunk.addVariable(Value(false));
 		if (id > UINT8_MAX)
 		{
 			error(buildMessage("Max variables per chunk exceeded: %s", UINT8_MAX).c_str());

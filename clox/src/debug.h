@@ -3,8 +3,19 @@
 #include "chunk.h"
 #include <cstdio>
 
-static void printValue(Value value) {
-  printf("%g", value);
+static void printValue(const Value& value) {
+  if (value.type == Value::Type::Integer)
+  {
+      printf("%d", value.getValue<int>());
+  }
+  else if (value.type == Value::Type::Float)
+  {
+      printf("%.2f", value.getValue<double>());
+  }
+  else
+  {
+      printf("%s", value.getValue<bool>() ? "TRUE" : "FALSE");
+  }
 }
 static int simpleInstruction(const char *name, int offset)
 {
@@ -13,7 +24,7 @@ static int simpleInstruction(const char *name, int offset)
 }
 static int constantInstruction(const char* name, const Chunk& chunk, int offset) {
   const uint8_t constantIndex = chunk.getCode()[offset + 1];
-  printf("%-16s %4d '", name, constantIndex);
+  printf("%-16s [%4d]='", name, constantIndex);
   printValue(chunk.getConstants().getValue(constantIndex));
   printf("'\n");
 

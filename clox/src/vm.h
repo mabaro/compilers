@@ -11,6 +11,7 @@ https://craftinginterpreters.com/a-virtual-machine.html
 #include <cstring>
 #include <cstdlib>
 
+
 struct VirtualMachine
 {
 	enum class ErrorCode
@@ -38,12 +39,13 @@ struct VirtualMachine
 	{
 #define READ_BYTE() (*_ip++)
 #define READ_CONSTANT() (_chunk->getConstants()[READ_BYTE()])
-#define BINARY_OP(op) \
-		do { \
-			const Value b = stackPop(); \
-			const Value a = stackPop(); \
-			stackPush(a op b); \
-		} while (false)
+#define BINARY_OP(op)               \
+	do                              \
+	{                               \
+		const Value b = stackPop(); \
+		const Value a = stackPop(); \
+		stackPush(a op b);          \
+	} while (false)
 
 		for (;;)
 		{
@@ -75,10 +77,22 @@ struct VirtualMachine
 			}
 			break;
 			case OpCode::Add:      BINARY_OP(+); break;
-			case OpCode::Divide:   BINARY_OP(/ ); break;
+			case OpCode::Divide:   BINARY_OP(/); break;
 			case OpCode::Multiply: BINARY_OP(*); break;
 			case OpCode::Subtract: BINARY_OP(-); break;
-				break;
+			case OpCode::Negate:
+			{
+				const Value &value = peek(0);
+				if (value.type == Value::Type::Float || value.type == Value::Type::Integer)
+				{
+					stackPop();
+					stackPush(-value);
+				}
+				else
+				{
+					return runtimeError("Operand must be a number");
+				}
+			} break;
 			default:
 				break;
 			}
@@ -177,6 +191,17 @@ struct VirtualMachine
 		}
 
 		return makeResultError<result_t>();
+	}
+
+protected: // Interpreter
+	const Value& peek(int distance) const
+	{
+		assert(distance < stackSize());
+		return _stackTop[-1 + distance];
+	}
+	result_t runtimeError(const char* message)
+	{
+		return makeResultError<result_t>(result_t::error_t::code_t::RuntimeError, message);
 	}
 
 protected: // Stack

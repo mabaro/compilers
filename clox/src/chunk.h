@@ -49,11 +49,11 @@ struct Chunk
         _code.push_back(byte);
         _lines.push_back(line);
     }
-    int addConstant(Value value) {
+    int addConstant(const Value& value) {
         _constants.write(value);
         return static_cast<int>(_constants.getSize()) - 1;
     }
-    int addVariable(Value value) {
+    int addVariable(const Value& value) {
         _variables.write(value);
         return static_cast<int>(_variables.getSize()) - 1;
     }
