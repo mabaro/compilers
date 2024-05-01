@@ -18,7 +18,7 @@ enum class TokenType
 	Number, NumberFloat,
 
 	Not, And, Or,
-	Class, Super, Nil,
+	Class, Super, Null,
 	Var, This,
 	Else, If,
 	Print, Return,
@@ -104,6 +104,12 @@ struct Scanner
 		case '=': return makeToken(match('=') ? TokenType::EqualEqual : TokenType::Equal);
 		case '<': return makeToken(match('=') ? TokenType::LessEqual : TokenType::Less);
 		case '>': return makeToken(match('=') ? TokenType::GreaterEqual : TokenType::Greater);
+		case '&':
+			if (match('&'))
+			{
+				return makeToken(TokenType::And);
+			}
+			break;
 		case '"': return string();
 		case ';': return makeToken(TokenType::Semicolon); // simple separator, optional
 		default:
@@ -182,6 +188,8 @@ protected:
 	}
 	bool checkKeyword(int start, int length,
 		const char* rest) {
+		const int curToStart = this->current - this->start;
+		const int expectedSize = start + length;
 		if (((int)(this->current - this->start) == (start + length)) &&
 			memcmp(this->start + start, rest, length) == 0) {
 			return true;
@@ -193,7 +201,7 @@ protected:
 		const char* rest, TokenType type) {
 		if (checkKeyword(start, length, rest))
 		{
-			current += length;
+			// current += length;
 			return type;
 		}
 
@@ -201,9 +209,9 @@ protected:
 	}
 	TokenType identifierType() {
 		switch (start[0]) {
-		case '&': return checkKeyword(1, 1, "&", TokenType::And);
-		case '|': return checkKeyword(1, 1, "|", TokenType::Or);
-		case '~': return TokenType::Not;
+		// case 'a': return checkKeyword(1, 2, "nd", TokenType::And);
+		// case 'o': return checkKeyword(1, 1, "r", TokenType::Or);
+		// case 'n': return checkKeyword(1, 2, "ot", TokenType::Not;
 		case 'c': return checkKeyword(1, 4, "lass", TokenType::Class);
 		case 'e':
 			if (checkKeyword(1, 3, "lse")) return TokenType::Else;
@@ -214,7 +222,7 @@ protected:
 			else if (checkKeyword(1, 4, "alse")) return TokenType::False;
 			break;
 		case 'i': return checkKeyword(1, 1, "f", TokenType::If);
-		case 'n': return checkKeyword(1, 2, "il", TokenType::Nil);
+		case 'n': return checkKeyword(1, 3, "ull", TokenType::Null);
 		case 'p': return checkKeyword(1, 4, "rint", TokenType::Print);
 		case 'r': return checkKeyword(1, 5, "eturn", TokenType::Return);
 		case 't': return checkKeyword(1, 3, "rue", TokenType::True);

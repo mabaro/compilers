@@ -14,6 +14,7 @@ protected:
 public:
     enum class Type {
         Bool,
+        Null,
         Float,
         Integer,
         Undefined,
@@ -21,10 +22,13 @@ public:
     };
     Type type = Type::Undefined;
 
-    bool isNumber() const { return type != Type::Bool; }
+    static struct NullType {} Null;
+    bool isNumber() const { return type != Type::Bool && type != Type::Null; }
+    bool isFalsey() const { return type == Type::Null || (type == Type::Bool && as<bool>() == false); }
 
 public:
     Value() : type(Type::Undefined) {}
+    explicit Value(NullType) : type(Type::Null) {}
     explicit Value(bool value) : boolean(value), type(Type::Bool) {}
     explicit Value(int value) : integer(value), type(Type::Integer) {}
     explicit Value(double value) : number(value), type(Type::Float) {}
@@ -43,21 +47,26 @@ public:
     }
 
     template<typename T>
-    T getValue() const {
+    T as() const {
         assert(type != Type::Undefined);
-        if (std::is_integral_v<T>)
+        if (std::is_same_v<T, bool>)
+        {
+            assert(type == Type::Bool);
+            return (T)boolean;
+        }
+        else if (std::is_integral_v<T>)
         {
             assert(type == Type::Integer);
             return (T)integer;
         }
-        if (std::is_floating_point_v<T>)
+        else if (std::is_floating_point_v<T>)
         {
             assert(type == Type::Float);
             return (T)number;
         }
 
-        assert(type == Type::Bool);
-        return (T)boolean;
+        assert(type == Type::Null);
+        return (T)0xDEADBEEF;
     }
 };
 Value operator-(const Value& a)
@@ -65,12 +74,49 @@ Value operator-(const Value& a)
     switch (a.type)
     {
     case Value::Type::Float:
-        return Value(-a.getValue<double>());
+        return Value(-a.as<double>());
     case Value::Type::Integer:
-        return Value(-a.getValue<int>());
+        return Value(-a.as<int>());
     default:
         assert(false);
         return Value();
+    }
+}
+
+bool operator==(const Value& a, const Value& b)
+{
+    if (a.type != b.type)
+    {
+        return false;
+    }
+    switch(a.type) {
+        case Value::Type::Bool: return a.as<bool>() == b.as<bool>();
+        case Value::Type::Float: return a.as<double>() == b.as<double>();
+        case Value::Type::Integer: return a.as<int>() == b.as<int>();
+        case Value::Type::Null: return true;
+        default: assert(false); return false;
+    }
+}
+bool operator<(const Value& a, const Value& b)
+{
+    assert(a.type == b.type);
+    switch(a.type) {
+        case Value::Type::Bool: return a.as<bool>() < b.as<bool>();
+        case Value::Type::Float: return a.as<double>() < b.as<double>();
+        case Value::Type::Integer: return a.as<int>() < b.as<int>();
+        case Value::Type::Null: return false;
+        default: assert(false); return false;
+    }
+}
+bool operator>(const Value& a, const Value& b)
+{
+    assert(a.type == b.type);
+    switch(a.type) {
+        case Value::Type::Bool: return a.as<bool>() > b.as<bool>();
+        case Value::Type::Float: return a.as<double>() > b.as<double>();
+        case Value::Type::Integer: return a.as<int>() > b.as<int>();
+        case Value::Type::Null: return false;
+        default: assert(false); return false;
     }
 }
 
@@ -80,9 +126,9 @@ Value operator-(const Value& a)
         switch (a.type)                                                 \
         {                                                               \
         case Value::Type::Float:                                        \
-            return Value(a.getValue<double>() OP b.getValue<double>()); \
+            return Value(a.as<double>() OP b.as<double>()); \
         case Value::Type::Integer:                                      \
-            return Value(a.getValue<int>() OP b.getValue<int>());       \
+            return Value(a.as<int>() OP b.as<int>());       \
         default:                                                        \
             assert(false);                                              \
             return Value();                                             \
@@ -111,5 +157,12 @@ protected:
 using ValueArray = RandomAccessContainer<Value>;
 
 void print(Value value) {
-    printf("%g", value);
+    switch(value.type)
+    {
+        case Value::Type::Bool: printf(value.as<bool>() ? "true" : "false" ); break;
+        case Value::Type::Null: printf("null"); break;
+        case Value::Type::Float: printf("%.2f", value.as<double>()); break;
+        case Value::Type::Integer: printf("%d", value.as<int>()); break;
+        default: assert(false); printf("UNDEFINED"); break;
+    }
 }

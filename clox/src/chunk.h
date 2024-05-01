@@ -9,11 +9,14 @@ enum class OpCode
     Return,
     Constant,
 
+    // Literal ops
+    Null, True, False,
+
     // Unary ops
-    Negate, NegateBool,
+    Negate, Not,
     
     // Binary ops
-    Assignment,
+    Assignment, Equal, Greater, Less,
 
     // Arithmetic
     Add, Subtract, Multiply, Divide,

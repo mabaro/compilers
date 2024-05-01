@@ -7,10 +7,15 @@
 
 #if DEBUG_PRINT_CODE
 #include "debug.h"
-#if 0 // enable debug print
+#if 0 // assert on error
+#define COMPILER_ASSERT(X) assert(X)
+#else
+#define COMPILER_ASSERT(X) 
+#endif
+#if 1 // enable debug print
 #define MYPRINT(X,...) printf(X"\n",##__VA_ARGS__)
 #else
-#define MYPRINT
+#define MYPRINT(X,...)
 #endif
 #endif // #if DEBUG_PRINT_CODE
 
@@ -116,6 +121,18 @@ protected: // high level stuff
 		expression();
 		consume(TokenType::RightParen, "Expected ')' after expression.");
 	}
+	void literal()
+	{
+		MYPRINT("literal: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
+
+		switch (_parser.previous.type)
+		{
+			case TokenType::Null:  emitBytes(OpCode::Null); break;
+			case TokenType::False: emitBytes(OpCode::False); break;
+			case TokenType::True:  emitBytes(OpCode::True); break;
+			default: assert(false); return;
+		}
+	}
 	void number()
 	{
 		MYPRINT("number: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
@@ -138,7 +155,7 @@ protected: // high level stuff
 			emitBytes(OpCode::Negate);
 			break;
 		case TokenType::Bang:
-			emitBytes(OpCode::NegateBool);
+			emitBytes(OpCode::Not);
 			break;
 		default:
 			return;
@@ -156,18 +173,17 @@ protected: // high level stuff
 
 		switch (operatorType)
 		{
-		case TokenType::Plus:
-			emitBytes(OpCode::Add);
-			break;
-		case TokenType::Minus:
-			emitBytes(OpCode::Subtract);
-			break;
-		case TokenType::Star:
-			emitBytes(OpCode::Multiply);
-			break;
-		case TokenType::Slash:
-			emitBytes(OpCode::Divide);
-			break;
+		case TokenType::Plus:  emitBytes(OpCode::Add); break;
+		case TokenType::Minus: emitBytes(OpCode::Subtract); break;
+		case TokenType::Star:  emitBytes(OpCode::Multiply); break;
+		case TokenType::Slash: emitBytes(OpCode::Divide); break;
+
+		case TokenType::BangEqual:    emitBytes(OpCode::Equal, OpCode::Not); break;
+		case TokenType::EqualEqual:   emitBytes(OpCode::Equal); break;
+		case TokenType::Greater:      emitBytes(OpCode::Greater); break;
+		case TokenType::GreaterEqual: emitBytes(OpCode::Equal, OpCode::Not); break;
+		case TokenType::Less:         emitBytes(OpCode::Less); break;
+		case TokenType::LessEqual:    emitBytes(OpCode::Greater, OpCode::Not); break;
 		default:
 			return; // Unreachable.
 		}
@@ -294,6 +310,7 @@ protected:
 	}
 	Parser::error_t errorAt(const Token &token, const char *errorMsg)
 	{
+		COMPILER_ASSERT(false);
 		if (_parser.panicMode)
 		{
 			return _parser.optError.value();
@@ -324,33 +341,42 @@ protected:
 
 	void populateExpressions()
 	{
-		_parseRules[(size_t)TokenType::LeftParen] = {[&] { grouping(); }, NULL, Precedence::NONE};
+		auto binaryFunc = [&]{ binary(); };
+		auto groupingFunc = [&]{ grouping(); };
+		auto literalFunc = [&]{ literal(); };
+		auto numberFunc = [&]{ number(); };
+		auto skipFunc = [&]{ skip(); };
+		auto unaryFunc = [&]{ unary(); };
+
+		_parseRules[(size_t)TokenType::LeftParen] = {groupingFunc, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::RightParen] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::LeftBrace] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::RightBrace] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::Semicolon] = {[&]{ skip(); }, NULL, Precedence::NONE};
+		_parseRules[(size_t)TokenType::Semicolon] = {skipFunc, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::Comma] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::Dot] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::Minus] = {[&]{ unary(); }, [&]{ binary(); }, Precedence::TERM};
-		_parseRules[(size_t)TokenType::Plus] = {NULL, [&] { binary(); }, Precedence::TERM};
-		_parseRules[(size_t)TokenType::Slash] = {NULL, [&] { binary(); }, Precedence::FACTOR};
-		_parseRules[(size_t)TokenType::Star] = {NULL, [&] { binary(); }, Precedence::FACTOR};
-		_parseRules[(size_t)TokenType::Bang] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::BangEqual] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::Equal] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::EqualEqual] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::Greater] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::GreaterEqual] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::Less] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::LessEqual] = {NULL, NULL, Precedence::NONE};
+		_parseRules[(size_t)TokenType::Minus] = {unaryFunc, binaryFunc, Precedence::TERM};
+		_parseRules[(size_t)TokenType::Plus] = {NULL, binaryFunc, Precedence::TERM};
+		_parseRules[(size_t)TokenType::Slash] = {NULL, binaryFunc, Precedence::FACTOR};
+		_parseRules[(size_t)TokenType::Star] = {NULL, binaryFunc, Precedence::FACTOR};
+		_parseRules[(size_t)TokenType::Bang] = {unaryFunc, NULL, Precedence::NONE};
+		_parseRules[(size_t)TokenType::BangEqual] = {NULL, binaryFunc, Precedence::EQUALITY};
+		_parseRules[(size_t)TokenType::Equal] = {NULL, binaryFunc, Precedence::EQUALITY};
+		_parseRules[(size_t)TokenType::EqualEqual] = {NULL, binaryFunc, Precedence::COMPARISON};
+		_parseRules[(size_t)TokenType::Greater] = {NULL, binaryFunc, Precedence::COMPARISON};
+		_parseRules[(size_t)TokenType::GreaterEqual] = {NULL, binaryFunc, Precedence::COMPARISON};
+		_parseRules[(size_t)TokenType::Less] = {NULL, binaryFunc, Precedence::COMPARISON};
+		_parseRules[(size_t)TokenType::LessEqual] = {NULL, binaryFunc, Precedence::COMPARISON};
 		_parseRules[(size_t)TokenType::Identifier] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::String] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::Number] = ParseRule{[&] { number(); }, NULL, Precedence::NONE};
+		_parseRules[(size_t)TokenType::Number] = ParseRule{numberFunc, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::And] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::Or] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::Class] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::Super] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::Nil] = {NULL, NULL, Precedence::NONE};
+		_parseRules[(size_t)TokenType::Null] = {literalFunc, NULL, Precedence::NONE};
+		_parseRules[(size_t)TokenType::True] = {literalFunc, NULL, Precedence::NONE};
+		_parseRules[(size_t)TokenType::False] = {literalFunc, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::Var] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::This] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::Else] = {NULL, NULL, Precedence::NONE};
@@ -360,8 +386,6 @@ protected:
 		_parseRules[(size_t)TokenType::While] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::For] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::Func] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::True] = {NULL, NULL, Precedence::NONE};
-		_parseRules[(size_t)TokenType::False] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::Error] = {NULL, NULL, Precedence::NONE};
 		_parseRules[(size_t)TokenType::Eof] = {NULL, NULL, Precedence::NONE};
 	}

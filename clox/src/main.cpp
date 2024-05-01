@@ -21,7 +21,10 @@ int main(int argc, char **argv)
 
     if (1)//quick tests
     {
-        auto codeStr = "(-1 + 2) - 4;";
+        // const char codeStr[] = "(-1 + 2) - 4 * 3 / ( -5 - 6 + 35)";
+        // const char codeStr[] = "print !true";
+        const char codeStr[] = "!(5 - 4 > 0 * 2 == !false)";
+        // const char codeStr[] = "print true";
 		LOG_INFO("> Quick test: '%s'...\n", codeStr);
         auto result = VM.interpret(codeStr);
         if (!result.isOk())

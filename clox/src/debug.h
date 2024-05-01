@@ -6,15 +6,24 @@
 static void printValue(const Value& value) {
   if (value.type == Value::Type::Integer)
   {
-      printf("%d", value.getValue<int>());
+      printf("%d", value.as<int>());
   }
   else if (value.type == Value::Type::Float)
   {
-      printf("%.2f", value.getValue<double>());
+      printf("%.2f", value.as<double>());
+  }
+  else if (value.type == Value::Type::Bool)
+  {
+      printf("%s", value.as<bool>() ? "TRUE" : "FALSE");
+  }
+  else if (value.type == Value::Type::Null)
+  {
+      printf("Null");
   }
   else
   {
-      printf("%s", value.getValue<bool>() ? "TRUE" : "FALSE");
+    assert(false);
+    printf("UNDEFINED");
   }
 }
 static int simpleInstruction(const char *name, int offset)
@@ -59,8 +68,16 @@ static int disassembleInstruction(const Chunk& chunk, uint16_t offset)
     {
     case OpCode::Return:
         return simpleInstruction("OP_RETURN", offset);
+    case OpCode::Null:
+        return simpleInstruction("OP_NULL", offset);
+    case OpCode::True:
+        return simpleInstruction("OP_TRUE", offset);
+    case OpCode::False:
+        return simpleInstruction("OP_FALSE", offset);
     case OpCode::Negate:
         return simpleInstruction("OP_NEGATE", offset);
+    case OpCode::Not:
+        return simpleInstruction("OP_NOT", offset);
     case OpCode::Constant:
         return constantInstruction("OP_CONSTANT", chunk, offset);
     case OpCode::Add:

@@ -11,7 +11,6 @@ https://craftinginterpreters.com/a-virtual-machine.html
 #include <cstring>
 #include <cstdlib>
 
-
 struct VirtualMachine
 {
 	enum class ErrorCode
@@ -51,7 +50,7 @@ struct VirtualMachine
 		{
 #if DEBUG_TRACE_EXECUTION
 			printf("          ");
-			for (Value* slot = _stack; slot < _stackTop; ++slot)
+			for (Value *slot = _stack; slot < _stackTop; ++slot)
 			{
 				printf("[ ");
 				printValue(*slot);
@@ -74,8 +73,31 @@ struct VirtualMachine
 			{
 				const Value constant = READ_CONSTANT();
 				stackPush(constant);
-			}
-			break;
+			} break;
+
+			case OpCode::Null:     stackPush(Value(Value::Null)); break;
+			case OpCode::True:     stackPush(Value(true)); break;
+			case OpCode::False:    stackPush(Value(false)); break;
+
+			case OpCode::Equal:
+			{
+				const Value a = stackPop();
+				const Value b = stackPop();
+				stackPush(Value(a == b));
+			} break;
+			case OpCode::Greater:
+			{
+				const Value a = stackPop();
+				const Value b = stackPop();
+				stackPush(Value(a > b));
+			} break;
+			case OpCode::Less:
+			{
+				const Value a = stackPop();
+				const Value b = stackPop();
+				stackPush(Value(a < b));
+			} break;
+
 			case OpCode::Add:      BINARY_OP(+); break;
 			case OpCode::Divide:   BINARY_OP(/); break;
 			case OpCode::Multiply: BINARY_OP(*); break;
@@ -93,6 +115,7 @@ struct VirtualMachine
 					return runtimeError("Operand must be a number");
 				}
 			} break;
+			case OpCode::Not: stackPush(Value(stackPop().isFalsey() ? false : true)); break;
 			default:
 				break;
 			}
@@ -104,14 +127,14 @@ struct VirtualMachine
 #undef BINARY_OP
 	}
 
-	result_t interpret(const char* source)
+	result_t interpret(const char *source)
 	{
 		Compiler::result_t result = _compiler.compile(source);
 		if (!result.isOk())
 		{
 			return makeResultError<result_t>(ErrorCode::CompileError, result.error().message());
 		}
-		const Chunk* currentChunk = result.value();
+		const Chunk *currentChunk = result.value();
 		_chunk = currentChunk;
 		_ip = currentChunk->getCode();
 
@@ -120,44 +143,44 @@ struct VirtualMachine
 		return runResult;
 	}
 
-	Result<char*> readFile(const char* path)
+	Result<char *> readFile(const char *path)
 	{
-		FILE* file = fopen(path, "rb");
+		FILE *file = fopen(path, "rb");
 		if (file == nullptr)
 		{
 			LOG_ERROR("Couldn't open file '%s'\n", path);
-			return makeResultError<Result<char*>>(Result<char*>::error_t::code_t::Undefined);
+			return makeResultError<Result<char *>>(Result<char *>::error_t::code_t::Undefined);
 		}
 
 		fseek(file, 0L, SEEK_END);
 		const size_t fileSize = ftell(file);
 		rewind(file);
 
-		char* buffer = (char*)malloc(fileSize) + 1;
+		char *buffer = (char *)malloc(fileSize) + 1;
 		if (buffer == nullptr)
 		{
 			char message[1024];
 			sprintf(message, "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path, fileSize);
 			LOG_ERROR(message);
 			fclose(file);
-			return makeResultError<Result<char*>>(Result<char*>::error_t::code_t::Undefined, message);
+			return makeResultError<Result<char *>>(Result<char *>::error_t::code_t::Undefined, message);
 		}
 		const size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
 		if (bytesRead < fileSize)
 		{
 			LOG_ERROR("Couldn't read the file '%s'\n", path);
 			fclose(file);
-			return makeResultError<Result<char*>>(Result<char*>::error_t::code_t::Undefined);
+			return makeResultError<Result<char *>>(Result<char *>::error_t::code_t::Undefined);
 		}
 		buffer[bytesRead] = '\0';
 
 		fclose(file);
-		return makeResult<Result<char*>>(buffer);
+		return makeResult<Result<char *>>(buffer);
 	}
 
-	result_t runFile(const char* path)
+	result_t runFile(const char *path)
 	{
-		Result<char*> source = readFile(path);
+		Result<char *> source = readFile(path);
 		if (!source.isOk())
 		{
 			return makeResultError<result_t>(source.error().message());
@@ -194,20 +217,32 @@ struct VirtualMachine
 	}
 
 protected: // Interpreter
-	const Value& peek(int distance) const
+	const Value &peek(int distance) const
 	{
 		assert(distance < stackSize());
 		return _stackTop[-1 + distance];
 	}
-	result_t runtimeError(const char* message)
+
+	result_t runtimeError(const char *format, ...)
 	{
+		char message[256];
+		va_list args;
+		va_start(args, format);
+		vsnprintf(message, sizeof(message), format, args);
+		va_end(args);
+		sprintf(message, "%s\n", message);
+
+		const size_t instruction = this->_ip - this->_chunk->getCode() - 1;
+		const int line = this->_chunk->getLine(instruction);
+		fprintf(stderr, "[line %d] in script\n", line);
+		stackReset();
 		return makeResultError<result_t>(result_t::error_t::code_t::RuntimeError, message);
 	}
 
 protected: // Stack
 	static constexpr size_t STACK_SIZE = 1024;
 	Value _stack[STACK_SIZE];
-	Value* _stackTop = &_stack[0];
+	Value *_stackTop = &_stack[0];
 
 	void stackReset()
 	{
@@ -229,8 +264,8 @@ protected: // Stack
 	}
 
 protected:
-	const Chunk* _chunk = nullptr;
-	const uint8_t* _ip = nullptr;
+	const Chunk *_chunk = nullptr;
+	const uint8_t *_ip = nullptr;
 
 	Compiler _compiler;
 };
