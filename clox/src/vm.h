@@ -115,7 +115,7 @@ struct VirtualMachine
 					return runtimeError("Operand must be a number");
 				}
 			} break;
-			case OpCode::Not: stackPush(Value(stackPop().isFalsey() ? false : true)); break;
+			case OpCode::Not: stackPush(Value(stackPop().isFalsey())); break;
 			default:
 				break;
 			}
