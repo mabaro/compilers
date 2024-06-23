@@ -4,18 +4,16 @@
 
 struct Value
 {
-protected:
     union {
         bool boolean;
         double number;
         int integer;
-    };
+    } valueAs;
 
-public:
     enum class Type {
         Bool,
         Null,
-        Float,
+        Number,
         Integer,
         Undefined,
         COUNT = Undefined
@@ -26,24 +24,18 @@ public:
     bool isNumber() const { return type != Type::Bool && type != Type::Null; }
     bool isFalsey() const { return type == Type::Null || (type == Type::Bool && as<bool>() == false); }
 
-public:
-    Value() : type(Type::Undefined) {}
-    explicit Value(NullType) : type(Type::Null) {}
-    explicit Value(bool value) : boolean(value), type(Type::Bool) {}
-    explicit Value(int value) : integer(value), type(Type::Integer) {}
-    explicit Value(double value) : number(value), type(Type::Float) {}
 
-    explicit operator int() const { 
+    explicit operator int() const {
         assert(type == Type::Integer);
-        return integer;
+        return valueAs.integer;
     }
-    explicit operator bool() const { 
+    explicit operator bool() const {
         assert(type == Type::Bool);
-        return boolean;
+        return valueAs.boolean;
     }
-    explicit operator double() const { 
-        assert(type == Type::Float);
-        return number;
+    explicit operator double() const {
+        assert(type == Type::Number);
+        return valueAs.number;
     }
 
     template<typename T>
@@ -52,72 +44,120 @@ public:
         if (std::is_same_v<T, bool>)
         {
             assert(type == Type::Bool);
-            return (T)boolean;
+            return (T)valueAs.boolean;
         }
         else if (std::is_integral_v<T>)
         {
             assert(type == Type::Integer);
-            return (T)integer;
+            return (T)valueAs.integer;
         }
         else if (std::is_floating_point_v<T>)
         {
-            assert(type == Type::Float);
-            return (T)number;
+            assert(type == Type::Number);
+            return (T)valueAs.number;
         }
 
         assert(type == Type::Null);
         return (T)0xDEADBEEF;
     }
-};
-Value operator-(const Value& a)
-{
-    switch (a.type)
-    {
-    case Value::Type::Float:
-        return Value(-a.as<double>());
-    case Value::Type::Integer:
-        return Value(-a.as<int>());
-    default:
-        assert(false);
-        return Value();
-    }
-}
 
+    static Value CreateValue()
+    {
+        return Value{ .type = Type::Undefined };
+    }
+    static Value CreateValue(NullType)
+    {
+        return Value{
+		   .valueAs { .integer = (int)0xDEADBEEF },
+           .type = Type::Null,
+        };
+    }
+    static Value CreateValue(bool value)
+    {
+        return Value{
+			.valueAs {.boolean = value },
+            .type = Type::Bool,
+        };
+    }
+    static Value CreateValue(int value)
+    {
+        return Value{
+            .valueAs {.integer = value },
+            .type = Type::Bool,
+        };
+    }
+	static Value CreateValue(double value)
+    {
+        return Value{
+            .valueAs {.number = value },
+            .type = Type::Bool,
+        };
+    }
+
+    Value operator-() const
+    {
+        switch (type)
+        {
+        case Value::Type::Number:
+            return CreateValue(-valueAs.number);
+        case Value::Type::Integer:
+            return CreateValue(-valueAs.integer);
+        default:
+            assert(false);
+            return CreateValue();
+        }
+        return *this;
+    }
+
+    Value operator-(const Value& a)
+    {
+        switch (a.type)
+        {
+        case Value::Type::Number:
+            return CreateValue(-a.as<double>());
+        case Value::Type::Integer:
+            return CreateValue(-a.as<int>());
+        default:
+            assert(false);
+            return CreateValue();
+        }
+    }
+};
 bool operator==(const Value& a, const Value& b)
 {
-    if (a.type != b.type)
-    {
-        return false;
-    }
-    switch(a.type) {
-        case Value::Type::Bool: return a.as<bool>() == b.as<bool>();
-        case Value::Type::Float: return a.as<double>() == b.as<double>();
-        case Value::Type::Integer: return a.as<int>() == b.as<int>();
-        case Value::Type::Null: return true;
-        default: assert(false); return false;
-    }
+	if (a.type != b.type)
+	{
+		return false;
+	}
+	switch (a.type) {
+	case Value::Type::Bool: return a.as<bool>() == b.as<bool>();
+	case Value::Type::Number: return a.as<double>() == b.as<double>();
+	case Value::Type::Integer: return a.as<int>() == b.as<int>();
+	case Value::Type::Null: return true;
+	default: assert(false); return false;
+	}
 }
 bool operator<(const Value& a, const Value& b)
 {
-    assert(a.type == b.type);
-    switch(a.type) {
-        case Value::Type::Bool: return a.as<bool>() < b.as<bool>();
-        case Value::Type::Float: return a.as<double>() < b.as<double>();
-        case Value::Type::Integer: return a.as<int>() < b.as<int>();
-        case Value::Type::Null: return false;
-        default: assert(false); return false;
-    }
+	assert(a.type == b.type);
+	switch (a.type) {
+	case Value::Type::Bool: return a.as<bool>() < b.as<bool>();
+	case Value::Type::Number: return a.as<double>() < b.as<double>();
+	case Value::Type::Integer: return a.as<int>() < b.as<int>();
+	case Value::Type::Null: return false;
+	default: assert(false); return false;
+	}
 }
 bool operator>(const Value& a, const Value& b)
 {
-    assert(a.type == b.type);
-    switch(a.type) {
-        case Value::Type::Bool: return a.as<bool>() > b.as<bool>();
-        case Value::Type::Float: return a.as<double>() > b.as<double>();
-        case Value::Type::Integer: return a.as<int>() > b.as<int>();
-        case Value::Type::Null: return false;
-        default: assert(false); return false;
-    }
+	assert(a.type == b.type);
+	switch (a.type) {
+	case Value::Type::Bool: return a.as<bool>() > b.as<bool>();
+	case Value::Type::Number: return a.as<double>() > b.as<double>();
+	case Value::Type::Integer: return a.as<int>() > b.as<int>();
+	case Value::Type::Null: return false;
+	default: assert(false); return false;
+	}
 }
 
 #define DECL_OPERATOR(OP)                                               \
@@ -125,20 +165,22 @@ bool operator>(const Value& a, const Value& b)
     {                                                                   \
         switch (a.type)                                                 \
         {                                                               \
-        case Value::Type::Float:                                        \
-            return Value(a.as<double>() OP b.as<double>()); \
+        case Value::Type::Number:                                        \
+            return Value::CreateValue(a.as<double>() OP b.as<double>()); \
         case Value::Type::Integer:                                      \
-            return Value(a.as<int>() OP b.as<int>());       \
+            return Value::CreateValue(a.as<int>() OP b.as<int>());       \
         default:                                                        \
             assert(false);                                              \
-            return Value();                                             \
+            return Value::CreateValue();                                             \
         }                                                               \
     }
 
 DECL_OPERATOR(+)
 DECL_OPERATOR(-)
 DECL_OPERATOR(*)
-DECL_OPERATOR(/)
+DECL_OPERATOR(/ )
+
+////////////////////////////
 
 template<typename T>
 struct RandomAccessContainer {
@@ -161,7 +203,7 @@ void print(const Value& value) {
     {
         case Value::Type::Bool: printf(value.as<bool>() ? "true" : "false" ); break;
         case Value::Type::Null: printf("null"); break;
-        case Value::Type::Float: printf("%.2f", value.as<double>()); break;
+        case Value::Type::Number: printf("%.2f", value.as<double>()); break;
         case Value::Type::Integer: printf("%d", value.as<int>()); break;
         default: assert(false); printf("UNDEFINED"); break;
     }
