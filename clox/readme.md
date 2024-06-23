@@ -1,6 +1,7 @@
 https://craftinginterpreters.com/compiling-expressions.html
 https://craftinginterpreters.com/chunks-of-bytecode.html
 https://craftinginterpreters.com/compiling-expressions.html#parsing-prefix-expressions
+https://craftinginterpreters.com/global-variables.html#assignment
 https://craftinginterpreters.com/types-of-values.html
 
 LOX grammar (BNF definition):

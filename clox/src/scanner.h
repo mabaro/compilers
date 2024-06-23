@@ -111,7 +111,7 @@ struct Scanner
 			}
 			break;
 		case '"': return string();
-		case ';': return makeToken(TokenType::Semicolon); // simple separator, optional
+		case ';': return makeToken(TokenType::Semicolon);
 		default:
 			if (isDigit(c))
 			{

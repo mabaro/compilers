@@ -61,6 +61,20 @@ struct Chunk
         return static_cast<int>(_variables.getSize()) - 1;
     }
 
+#if DEBUG_TRACE_EXECUTION
+public: // helpers
+    void printConstants() const {
+		printf(" Constants: ");
+        for(size_t i=0; i<getConstants().getSize(); ++i)
+		{
+			printf("%zu[ ", i);
+			print(getConstants()[i]);
+			printf(" ]");
+		}
+		printf("\n");
+	}
+#endif // #if DEBUG_TRACE_EXECUTION
+
 protected:
 
     std::vector<uint8_t> _code;

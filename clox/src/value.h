@@ -156,7 +156,7 @@ protected:
 };
 using ValueArray = RandomAccessContainer<Value>;
 
-void print(Value value) {
+void print(const Value& value) {
     switch(value.type)
     {
         case Value::Type::Bool: printf(value.as<bool>() ? "true" : "false" ); break;

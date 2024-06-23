@@ -50,14 +50,8 @@ struct VirtualMachine
 		{
 #if DEBUG_TRACE_EXECUTION
 			printf("          ");
-			for (Value *slot = _stack; slot < _stackTop; ++slot)
-			{
-				printf("[ ");
-				printValue(*slot);
-				printf(" ]");
-			}
-			printf("\n");
-
+			stackPrint();
+			_chunk->printConstants();
 			disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()));
 #endif // #if DEBUG_TRACE_EXECUTION
 
@@ -214,7 +208,7 @@ struct VirtualMachine
 			}
 		}
 
-		return makeResultError<result_t>();
+		return makeResult<result_t>(InterpretResult::Ok);
 	}
 
 protected: // Interpreter
@@ -263,6 +257,19 @@ protected: // Stack
 	{
 		return _stackTop - _stack;
 	}
+#if DEBUG_TRACE_EXECUTION
+	void stackPrint() const
+	{
+		printf(" Stack: ");
+		for (const Value *slot = _stack; slot < _stackTop; ++slot)
+		{
+			printf("[ ");
+			printValue(*slot);
+			printf(" ]");
+		}
+		printf("\n");
+	}
+#endif // #if DEBUG_TRACE_EXECUTION
 
 protected:
 	const Chunk *_chunk = nullptr;

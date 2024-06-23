@@ -5,7 +5,11 @@
 
 #include "common.h"
 
+#ifdef _DEBUG
+#define UNIT_TESTS_ENABLED 1
+#else // #ifdef _DEBUG
 #define UNIT_TESTS_ENABLED 0
+#endif // #else // #ifdef _DEBUG
 
 int main(int argc, char **argv)
 {
@@ -19,7 +23,8 @@ int main(int argc, char **argv)
     VirtualMachine VM;
     VM.init();
 
-    if (1)//quick tests
+    const bool interactiveRepl = true;
+    if (!interactiveRepl)//quick tests
     {
         // const char codeStr[] = "(-1 + 2) - 4 * 3 / ( -5 - 6 + 35)";
         // const char codeStr[] = "print !true";
