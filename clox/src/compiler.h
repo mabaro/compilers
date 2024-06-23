@@ -107,12 +107,13 @@ struct Compiler
 protected: // high level stuff
 	void expression()
 	{
-		MYPRINT("Expression: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
+		MYPRINT("expression: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
 		_lastExpressionLine = _parser.current.line;
 		parsePrecedence(Precedence::ASSIGNMENT);
 	}
 	void skip()
 	{
+		MYPRINT("skip: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
 		// nothing to do here
 	}
 	void grouping()
@@ -137,8 +138,8 @@ protected: // high level stuff
 	{
 		MYPRINT("number: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
 
-		const double value = strtod(_parser.previous.start, nullptr);
-		emitConstant(Value(value));
+		Value value = Value::CreateValue(strtod(_parser.previous.start, nullptr));
+		emitConstant(value);
 	}
 	void unary()
 	{
@@ -218,18 +219,18 @@ protected:
 	{
 		emitReturn();
 #if DEBUG_PRINT_CODE
-	if (!_parser.optError.hasValue())
-	{
-		assert(currentChunk());
-		disassemble(*currentChunk(), "code");
-	}
+		if (!_parser.optError.hasValue())
+		{
+			assert(currentChunk());
+			disassemble(*currentChunk(), "code");
+		}
 #endif // #if DEBUG_PRINT_CODE
 	}
 
-	int makeConstant(const Value& value)
+	int makeConstant(const Value & value)
 	{
 		assert(currentChunk());
-		Chunk &chunk = *currentChunk();
+		Chunk& chunk = *currentChunk();
 
 		const int constantId = chunk.addConstant(value);
 		if (constantId > UINT8_MAX)
@@ -248,7 +249,7 @@ protected:
 		assert(currentChunk());
 		Chunk &chunk = *currentChunk();
 
-		const int id = chunk.addVariable(Value(false));
+		const int id = chunk.addVariable(Value::CreateValue());
 		if (id > UINT8_MAX)
 		{
 			error(buildMessage("Max variables per chunk exceeded: %s", UINT8_MAX).c_str());

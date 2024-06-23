@@ -60,7 +60,10 @@ struct VirtualMachine
 			{
 			case OpCode::Return:
 				printf("RESULT: ");
-				printValue(stackPop());
+				if (stackSize() > 0)
+				{
+					printValue(stackPop());
+				}
 				printf("\n");
 				return InterpretResult::Ok;
 			case OpCode::Constant:
@@ -69,27 +72,27 @@ struct VirtualMachine
 				stackPush(constant);
 			} break;
 
-			case OpCode::Null:     stackPush(Value(Value::Null)); break;
-			case OpCode::True:     stackPush(Value(true)); break;
-			case OpCode::False:    stackPush(Value(false)); break;
+			case OpCode::Null:     stackPush(Value::CreateValue(Value::Null)); break;
+			case OpCode::True:     stackPush(Value::CreateValue(true)); break;
+			case OpCode::False:    stackPush(Value::CreateValue(false)); break;
 
 			case OpCode::Equal:
 			{
 				const Value a = stackPop();
 				const Value b = stackPop();
-				stackPush(Value(a == b));
+				stackPush(Value::CreateValue(a == b));
 			} break;
 			case OpCode::Greater:
 			{
 				const Value a = stackPop();
 				const Value b = stackPop();
-				stackPush(Value(a > b));
+				stackPush(Value::CreateValue(a > b));
 			} break;
 			case OpCode::Less:
 			{
 				const Value a = stackPop();
 				const Value b = stackPop();
-				stackPush(Value(a < b));
+				stackPush(Value::CreateValue(a < b));
 			} break;
 
 			case OpCode::Add:      BINARY_OP(+); break;
@@ -99,7 +102,7 @@ struct VirtualMachine
 			case OpCode::Negate:
 			{
 				const Value &value = peek(0);
-				if (value.type == Value::Type::Float || value.type == Value::Type::Integer)
+				if (value.type == Value::Type::Number || value.type == Value::Type::Integer)
 				{
 					stackPop();
 					stackPush(-value);
@@ -109,7 +112,7 @@ struct VirtualMachine
 					return runtimeError("Operand must be a number");
 				}
 			} break;
-			case OpCode::Not: stackPush(Value(stackPop().isFalsey())); break;
+			case OpCode::Not: stackPush(Value::CreateValue(stackPop().isFalsey())); break;
 			default:
 				break;
 			}
@@ -199,12 +202,16 @@ struct VirtualMachine
 				break;
 			}
 
+			if (strstr(line, "quit"))
+			{
+				break;
+			}
 			result_t result = interpret(line);
 			if (!result.isOk())
 			{
 				char message[1024];
 				sprintf_s(message, "INTERPRETER: %s", result.error().message().c_str());
-				return makeResultError<result_t>(result_t::error_t::code_t::CompileError, message);
+				LOG_ERROR(message);
 			}
 		}
 

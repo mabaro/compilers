@@ -8,7 +8,7 @@ static void printValue(const Value& value) {
   {
       printf("%d", value.as<int>());
   }
-  else if (value.type == Value::Type::Float)
+  else if (value.type == Value::Type::Number)
   {
       printf("%.2f", value.as<double>());
   }
