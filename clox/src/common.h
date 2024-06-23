@@ -1,5 +1,7 @@
 #pragma once
 
+#include "assert.h"
+
 #include <cstdio>
 #include <cstdint>
 #include <cstdarg>
@@ -117,7 +119,7 @@ struct Optional
 	Optional() {}
 	Optional(const T& t) : _value(new T(t)) {}
 	Optional(T&& t) : _value(new T(std::move(t))) {}
-	Optional(const Optional& o) : _value(o._value ? new T(*o._value) : nullptr) { assert(!hasValue() || _value); }
+	Optional(const Optional& o) : _value(o._value ? new T(*o._value) : nullptr) { ASSERT(!hasValue() || _value); }
 	Optional& operator=(const Optional& o) {
 		reset();
 		_value = o._value ? new T(*o._value) : nullptr;
@@ -132,11 +134,11 @@ struct Optional
 		reset();
 	}
 
-	const T& value() const { assert(hasValue()); return *_value; }
+	const T& value() const { ASSERT(hasValue()); return *_value; }
 	T& value() { return *_value; }
 	bool hasValue() const { return _value != nullptr; }
 	T&& extract() {
-		assert(hasValue());
+		ASSERT(hasValue());
 		T temp = std::move(*_value);
 		reset();
 		return std::move(temp);
@@ -165,13 +167,13 @@ struct Result
 	Result& operator=(Result&&) = delete;
 
 	bool isOk() const { return !_error.hasValue() && _value.hasValue(); }
-	ErrorT error() const { assert(_error.hasValue()); return _error.value(); }
+	ErrorT error() const { ASSERT(_error.hasValue()); return _error.value(); }
 
-	const T& value() const { assert(_value.hasValue()); return _value.value(); }
-	T& value() { assert(_value.hasValue()); return _value.value(); }
+	const T& value() const { ASSERT(_value.hasValue()); return _value.value(); }
+	T& value() { ASSERT(_value.hasValue()); return _value.value(); }
 	
 	T&& extract() {
-		assert(isOk());
+		ASSERT(isOk());
 		_error.reset();
 		return std::forward<T>(_value.extract());
 	}
@@ -198,7 +200,7 @@ struct Result<void, ErrorT>
 	Result& operator=(Result&&) = delete;
 
 	bool isOk() const { return !_error.hasValue(); }
-	const error_t& error() const { assert(_error.hasValue()); return _error.value(); }
+	const error_t& error() const { ASSERT(_error.hasValue()); return _error.value(); }
 
 protected:
 	Optional<error_t> _error;
@@ -254,15 +256,15 @@ namespace unit_tests
 		bool test_result() {
 			int a = 0;
 			Result<int> res = makeResult<int>(a);
-			assert(res.value() == a);
+			ASSERT(res.value() == a);
 			Result<Dummy> res2 = makeResult(Dummy{});
-			assert(res2.value().a == -1);
+			ASSERT(res2.value().a == -1);
 			Result<Dummy> res3 = makeResult(res2.value());
-			assert(res3.value().a == res2.value().a);
+			ASSERT(res3.value().a == res2.value().a);
 			Result<Dummy> res4 = makeResult(res3.extract());
-			assert(res4.value().a == res2.value().a && !res3.isOk());
+			ASSERT(res4.value().a == res2.value().a && !res3.isOk());
 			Result<Dummy> res5 = makeResultError<Result<Dummy>>();
-			assert(!res5.isOk() && res5.error() == Error<>{});
+			ASSERT(!res5.isOk() && res5.error() == Error<>{});
 
 			return true;
 		}
@@ -271,19 +273,19 @@ namespace unit_tests
 			{
 				Optional<int> opt(1);
 				Optional<int> opt2(opt);
-				assert(opt.hasValue());
+				ASSERT(opt.hasValue());
 				opt = opt2.extract();
-				assert(!opt2.hasValue());
-				assert(opt.hasValue());
+				ASSERT(!opt2.hasValue());
+				ASSERT(opt.hasValue());
 			}
 			{
 				using T = Dummy;
 				Optional<Dummy> opt(Dummy{});
 				Optional<Dummy> opt2(opt);
-				assert(opt.hasValue());
+				ASSERT(opt.hasValue());
 				opt = opt2.extract();
-				assert(!opt2.hasValue());
-				assert(opt.hasValue());
+				ASSERT(!opt2.hasValue());
+				ASSERT(opt.hasValue());
 			}
 			return true;
 		}

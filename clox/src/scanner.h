@@ -283,7 +283,7 @@ namespace unit_tests {
 			t1.line = 15;
 			Token t2;
 			auto tokenResult = makeResult<Token>(t1);
-			assert(tokenResult.value().line == t1.line);
+			ASSERT(tokenResult.value().line == t1.line);
 
 		}
 	}

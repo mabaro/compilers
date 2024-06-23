@@ -22,7 +22,7 @@ static void printValue(const Value& value) {
   }
   else
   {
-    assert(false);
+    ASSERT(false);
     printf("UNDEFINED");
   }
 }
@@ -54,7 +54,7 @@ static void disassemble(const Chunk& chunk, const char *name)
 
 static int disassembleInstruction(const Chunk& chunk, uint16_t offset)
 {
-    assert(offset < chunk.getCodeSize());
+    ASSERT(offset < chunk.getCodeSize());
     printf("%04d ", offset);
     if (offset > 0 && chunk.getLine(offset) == chunk.getLine(offset - 1)) {
         printf(" | ");

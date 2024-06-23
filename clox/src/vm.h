@@ -221,7 +221,7 @@ struct VirtualMachine
 protected: // Interpreter
 	const Value &peek(int distance) const
 	{
-		assert(distance < stackSize());
+		ASSERT(distance < stackSize());
 		return _stackTop[-1 + distance];
 	}
 
