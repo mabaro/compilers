@@ -88,14 +88,7 @@ static int disassembleInstruction(const Chunk& chunk, uint16_t offset)
         return simpleInstruction("OP_MULTIPLY", offset);
     case OpCode::Divide:
         return simpleInstruction("OP_DIVIDE", offset);
-    case OpCode::Assignment:
-        return simpleInstruction("OP_ASSIGNMENT", offset);
-    case OpCode::Equal:
-        return simpleInstruction("OP_EQUAL", offset);
-    case OpCode::Greater:
-        return simpleInstruction("OP_GREATER", offset);
-    case OpCode::Less:
-        return simpleInstruction("OP_LESS", offset);
+
     default:
         printf("Unknown opcode %d\n", instruction);
         return offset + 1;

@@ -22,7 +22,7 @@ public:
     };
     Type type = Type::Undefined;
 
-    static struct NullType {} Null;
+    static constexpr struct NullType {} Null = NullType{};
     bool isNumber() const { return type != Type::Bool && type != Type::Null; }
     bool isFalsey() const { return type == Type::Null || (type == Type::Bool && as<bool>() == false); }
 

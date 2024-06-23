@@ -137,7 +137,7 @@ protected: // high level stuff
 	{
 		MYPRINT("number: prev[%s] cur[%s]", _parser.previous.start, _parser.current.start);
 
-		const int value = strtod(_parser.previous.start, nullptr);
+		const double value = strtod(_parser.previous.start, nullptr);
 		emitConstant(Value(value));
 	}
 	void unary()
@@ -320,15 +320,15 @@ protected:
 		char message[1024];
 		if (token.type == TokenType::Eof)
 		{
-			sprintf(message, " at end");
+			sprintf_s(message, " at end");
 		}
 		else if (token.type == TokenType::Error)
 		{
-			sprintf(message, " Error token!!!");
+			sprintf_s(message, " Error token!!!");
 		}
 		else
 		{
-			sprintf(message, " at '%.*s'", token.length, token.start);
+			sprintf_s(message, " at '%.*s'", token.length, token.start);
 		}
 
 		_parser.optError = Parser::error_t(Parser::error_t::code_t::Undefined, buildMessage("[line %d] Error %s: %s", _parser.current.line, message, errorMsg));

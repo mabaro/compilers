@@ -58,7 +58,7 @@ struct VirtualMachine
 			}
 			printf("\n");
 
-			disassembleInstruction(*_chunk, size_t(_ip - _chunk->getCode()));
+			disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()));
 #endif // #if DEBUG_TRACE_EXECUTION
 
 			const OpCode instruction = OpCode(READ_BYTE());
@@ -145,7 +145,8 @@ struct VirtualMachine
 
 	Result<char *> readFile(const char *path)
 	{
-		FILE *file = fopen(path, "rb");
+		FILE* file = nullptr;
+		errno_t error = fopen_s(&file, path, "rb");
 		if (file == nullptr)
 		{
 			LOG_ERROR("Couldn't open file '%s'\n", path);
@@ -160,7 +161,7 @@ struct VirtualMachine
 		if (buffer == nullptr)
 		{
 			char message[1024];
-			sprintf(message, "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path, fileSize);
+			sprintf_s(message, "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path, fileSize);
 			LOG_ERROR(message);
 			fclose(file);
 			return makeResultError<Result<char *>>(Result<char *>::error_t::code_t::Undefined, message);
@@ -208,7 +209,7 @@ struct VirtualMachine
 			if (!result.isOk())
 			{
 				char message[1024];
-				sprintf(message, "INTERPRETER: %s", result.error().message().c_str());
+				sprintf_s(message, "INTERPRETER: %s", result.error().message().c_str());
 				return makeResultError<result_t>(result_t::error_t::code_t::CompileError, message);
 			}
 		}
@@ -230,10 +231,10 @@ protected: // Interpreter
 		va_start(args, format);
 		vsnprintf(message, sizeof(message), format, args);
 		va_end(args);
-		sprintf(message, "%s\n", message);
+		sprintf_s(message, "%s\n", message);
 
-		const size_t instruction = this->_ip - this->_chunk->getCode() - 1;
-		const int line = this->_chunk->getLine(instruction);
+		const uint16_t instruction = static_cast<uint16_t>(this->_ip - this->_chunk->getCode() - 1);
+		const uint16_t line = this->_chunk->getLine(instruction);
 		fprintf(stderr, "[line %d] in script\n", line);
 		stackReset();
 		return makeResultError<result_t>(result_t::error_t::code_t::RuntimeError, message);

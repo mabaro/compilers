@@ -149,7 +149,7 @@ protected:
 				tokenLength = found - start - 1;
 			}
 		}
-		sprintf(message, "%s at '%.*s' pos:%d in line %d\n", msg, (int)tokenLength, start, pos, line);
+		sprintf_s(message, "%s at '%.*s' pos:%d in line %d\n", msg, (int)tokenLength, start, pos, line);
 		return makeResultError<TokenResult_t>(TokenResult_t::error_t::code_t::SyntaxError, message);
 	}
 
@@ -188,9 +188,9 @@ protected:
 	}
 	bool checkKeyword(int start, int length,
 		const char* rest) {
-		const int curToStart = this->current - this->start;
-		const int expectedSize = start + length;
-		if (((int)(this->current - this->start) == (start + length)) &&
+		const ptrdiff_t curToStart = this->current - this->start;
+		const ptrdiff_t expectedSize = start + length;
+		if (((ptrdiff_t)(this->current - this->start) == (start + length)) &&
 			memcmp(this->start + start, rest, length) == 0) {
 			return true;
 		}
