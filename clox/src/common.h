@@ -136,9 +136,10 @@ struct Optional
 	T& value() { return *_value; }
 	bool hasValue() const { return _value != nullptr; }
 	T&& extract() {
-		ScopedCallback cleanF([&]() { reset(); });
 		assert(hasValue());
-		return std::move(*_value);
+		T temp = std::move(*_value);
+		reset();
+		return std::move(temp);
 	}
 	void reset() {
 		delete _value;
@@ -267,20 +268,30 @@ namespace unit_tests
 		}
 		bool test_optional()
 		{
-			Optional<int> opt(1);
-			Optional<int> opt2(opt);
-			assert(opt.hasValue());
-			opt = opt2.extract();
-			assert(!opt2.hasValue());
-			assert(opt.hasValue());
-
+			{
+				Optional<int> opt(1);
+				Optional<int> opt2(opt);
+				assert(opt.hasValue());
+				opt = opt2.extract();
+				assert(!opt2.hasValue());
+				assert(opt.hasValue());
+			}
+			{
+				using T = Dummy;
+				Optional<Dummy> opt(Dummy{});
+				Optional<Dummy> opt2(opt);
+				assert(opt.hasValue());
+				opt = opt2.extract();
+				assert(!opt2.hasValue());
+				assert(opt.hasValue());
+			}
 			return true;
 		}
 		void run()
 		{
 			bool success = true;
-			success &= test_result();
 			success &= test_optional();
+			success &= test_result();
 
 			const char* message = "Unit tests finished";
 			const char* result = success ? "Succeeded" : "Failed";
