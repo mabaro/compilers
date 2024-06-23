@@ -5,6 +5,8 @@
 #include <cstdarg>
 #include <string>
 #include <cassert>
+#include <functional>
+#include <type_traits>
 
 #define DEBUG_PRINT_CODE 1
 #define DEBUG_TRACE_EXECUTION 1
@@ -102,6 +104,13 @@ protected:
 	const std::string _message = "Undefined";
 };
 
+struct ScopedCallback {
+	using callback_t = std::function<void()>;
+	ScopedCallback(callback_t callback) : callbackFunc(callback) {}
+	~ScopedCallback() { callbackFunc(); }
+	callback_t callbackFunc = nullptr;
+};
+
 template<typename T>
 struct Optional
 {
@@ -127,10 +136,9 @@ struct Optional
 	T& value() { return *_value; }
 	bool hasValue() const { return _value != nullptr; }
 	T&& extract() {
+		ScopedCallback cleanF([&]() { reset(); });
 		assert(hasValue());
-		auto extracted = std::move(*_value);
-		reset();
-		return std::move(extracted);
+		return std::move(*_value);
 	}
 	void reset() {
 		delete _value;
@@ -160,11 +168,11 @@ struct Result
 
 	const T& value() const { assert(_value.hasValue()); return _value.value(); }
 	T& value() { assert(_value.hasValue()); return _value.value(); }
+	
 	T&& extract() {
 		assert(isOk());
-		auto extracted = _value.extract();
 		_error.reset();
-		return std::move(extracted);
+		return std::forward<T>(_value.extract());
 	}
 
 protected:
@@ -239,8 +247,10 @@ namespace unit_tests
 {
 	namespace common
 	{
-		struct Dummy { int a=-1; bool b=false; };
-		void test_result() {
+		struct Dummy {
+			int a=-1; bool b=false;
+		};
+		bool test_result() {
 			int a = 0;
 			Result<int> res = makeResult<int>(a);
 			assert(res.value() == a);
@@ -252,23 +262,30 @@ namespace unit_tests
 			assert(res4.value().a == res2.value().a && !res3.isOk());
 			Result<Dummy> res5 = makeResultError<Result<Dummy>>();
 			assert(!res5.isOk() && res5.error() == Error<>{});
+
+			return true;
 		}
-		void test_optional()
+		bool test_optional()
 		{
 			Optional<int> opt(1);
 			Optional<int> opt2(opt);
 			assert(opt.hasValue());
-			//assert(opt2.hasValue());
+			opt = opt2.extract();
+			assert(!opt2.hasValue());
+			assert(opt.hasValue());
+
+			return true;
 		}
 		void run()
 		{
-			test_result();
-			test_optional();
-			const char* message = "hola: ";
-			const char* errorMsg = "adios";
-			auto msg = buildMessage("[line %d] Error %s: %s\n", 3, message, errorMsg);
-			printf("Error: %s\n", msg.c_str());
+			bool success = true;
+			success &= test_result();
+			success &= test_optional();
 
+			const char* message = "Unit tests finished";
+			const char* result = success ? "Succeeded" : "Failed";
+			auto msg = buildMessage("[line %d] %s. Result: %s\n", 3, message, result);
+			printf(msg.c_str());
 		}
 	}
 }
