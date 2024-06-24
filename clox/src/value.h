@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #include "common.h"
 
 #define ALLOCATE(Obj, count) (Obj *)malloc(sizeof(Obj) * count)
@@ -14,6 +12,7 @@ struct Object
         COUNT
     };
     Type type = Type::COUNT;
+    static const char *getString(Type type);
 
     template <typename ObjectT>
     static ObjectT *allocate()
@@ -23,10 +22,16 @@ struct Object
         return newObject;
     }
 
-    template<typename T>
-    static const T* as(const Object* obj) {
-        ASSERT(T::obj_type == obj->type);
-        return static_cast<const T*>(obj);
+    template <typename T>
+    static const T *as(const Object *obj)
+    {
+        ASSERT(obj);
+        if (obj && T::obj_type == obj->type)
+        {
+            return static_cast<const T *>(obj);
+        }
+        FAIL_MSG("Cannot cast %s -> %s", getString(obj->type), getString(T::obj_type));
+        return nullptr;
     }
 };
 
@@ -37,6 +42,7 @@ struct ObjectString : public Object
     size_t length = 0;
     char *chars = nullptr;
     static ObjectString *Create(const char *begin, const char *end);
+    static ObjectString *Create(char *ownedStr, size_t length);
 };
 
 struct Value
@@ -60,6 +66,7 @@ struct Value
         COUNT = Undefined
     };
     Type type = Type::Undefined;
+    static const char* getString(Type type);
 
     static constexpr struct NullType
     {
@@ -104,6 +111,7 @@ struct Value
     static Value Create(int value);
     static Value Create(double value);
     static Value Create(const char *begin, const char *end);
+    static Value Create(char *ownedStr, size_t length);
 
     Value operator-() const;
     Value operator-(const Value &a);
@@ -118,6 +126,8 @@ DECL_OPERATOR(-)
 DECL_OPERATOR(*)
 DECL_OPERATOR(/)
 #undef DECL_OPERATOR
+
+Result<Value> operator+(const Object &a, const Object &b);
 
 ////////////////////////////
 

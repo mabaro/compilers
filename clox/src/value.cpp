@@ -1,8 +1,17 @@
 #include "value.h"
 
 #include <cstring>
-#include <vector>
 
+const char *Object::getString(Type type)
+{
+    switch (type)
+    {
+        case Type::String:
+            return "String";
+        default:
+            return "Undefined type";
+    }
+}
 ObjectString *ObjectString::Create(const char *begin, const char *end)
 {
     const size_t length = end - begin;
@@ -17,6 +26,34 @@ ObjectString *ObjectString::Create(const char *begin, const char *end)
     return newStringObj;
 }
 
+ObjectString *ObjectString::Create(char *ownedStr, size_t length)
+{
+    ObjectString *newStringObj = Object::allocate<ObjectString>();
+    newStringObj->chars = ownedStr;
+    newStringObj->length = length;
+    return newStringObj;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+const char *Value::getString(Type type)
+{
+    switch (type)
+    {
+        case Type::Bool:
+            return "Boolean";
+        case Type::Null:
+            return "Null";
+        case Type::Number:
+            return "Number";
+        case Type::Integer:
+            return "Integer";
+        case Type::Object:
+            return "Object";
+        default:
+            return "Undefined type";
+    }
+}
 Value::operator bool() const
 {
     ASSERT(type == Type::Bool);
@@ -73,6 +110,15 @@ Value Value::Create(double value)
         .type = Type::Number,
     };
 }
+Value Value::Create(char *ownedStr, size_t length)
+{
+    return Value{
+        .as{
+            .object = ObjectString::Create(ownedStr, length),
+        },
+        .type = Type::Object,
+    };
+}
 Value Value::Create(const char *begin, const char *end)
 {
     return Value{
@@ -112,8 +158,36 @@ Value Value::operator-(const Value &a)
     }
 }
 
+Result<Value> operator+(const Object &a, const Object &b)
+{
+    switch (a.type)
+    {
+        case Object::Type::String:
+        {  // concatenate
+            const ObjectString *aStr = Object::as<ObjectString>(&a);
+            const ObjectString *bStr = Object::as<ObjectString>(&b);
+            if (aStr && bStr)
+            {
+                const size_t newLength = aStr->length + bStr->length + 1;
+                char *newStr = (char *)malloc(newLength);
+                memcpy(newStr, aStr->chars, aStr->length);
+                memcpy(newStr + aStr->length, bStr->chars, bStr->length);
+                newStr[newLength] = 0;
+                return Value::Create(newStr, newLength);
+            }
+        }
+        break;
+        default:
+            FAIL();
+    }
+    return Error_t(buildMessage("Undefined operation for objects of types: %s and %s", Object::getString(a.type),
+                                Object::getString(b.type)));
+}
+
 bool compareObject(const Object *a, const Object *b)
 {
+    ASSERT(b->type == a->type);
+
     if (a == nullptr || b == nullptr)
     {
         FAIL();
@@ -126,7 +200,7 @@ bool compareObject(const Object *a, const Object *b)
         {
             const ObjectString *aStr = Object::as<ObjectString>(a);
             const ObjectString *bStr = Object::as<ObjectString>(b);
-            return (b->type == a->type) && !strcmp(aStr->chars, bStr->chars);
+            return (aStr->length == bStr->length) && memcmp(aStr->chars, bStr->chars, aStr->length);
         }
         default:
             FAIL();
