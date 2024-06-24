@@ -395,6 +395,7 @@ struct Compiler
         _parseRules[(size_t)TokenType::Identifier] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::String] = {stringFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Number] = {numberFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::NumberFloat] = {numberFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::And] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Or] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Class] = {NULL, NULL, Precedence::NONE};
