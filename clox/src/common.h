@@ -167,12 +167,12 @@ struct Optional
     }
     T& value() { return *_value; }
     bool hasValue() const { return _value != nullptr; }
-    T&& extract()
+    T extract()
     {
         ASSERT(hasValue());
         T temp = std::move(*_value);
         reset();
-        return std::move(temp);
+        return temp;
     }
     void reset()
     {
@@ -220,11 +220,12 @@ struct Result
         return _value.value();
     }
 
-    T&& extract()
+    T extract()
     {
         ASSERT(isOk());
         _error.reset();
-        return std::forward<T>(_value.extract());
+        // return std::forward<T>(_value.extract());
+        return _value.extract();
     }
 
    protected:
