@@ -10,11 +10,13 @@ set(SOURCES
     src/assert.cpp
     src/chunk.h
     src/common.h
+    src/common.cpp
     src/compiler.h
     src/debug.h
     src/debug.cpp
     src/scanner.h
     src/value.h
+    src/value.cpp
     src/vm.h)
 add_library(clox_lib ${SOURCES})
 target_include_directories(clox_lib PUBLIC src thirdparty)

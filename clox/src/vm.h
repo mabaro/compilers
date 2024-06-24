@@ -51,6 +51,7 @@ struct VirtualMachine
 #if DEBUG_TRACE_EXECUTION
             printf("          ");
             stackPrint();
+            printf("          ");
             _chunk->printConstants();
             disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()));
 #endif  // #if DEBUG_TRACE_EXECUTION
@@ -74,34 +75,34 @@ struct VirtualMachine
                 break;
 
                 case OpCode::Null:
-                    stackPush(Value::CreateValue(Value::Null));
+                    stackPush(Value::Create(Value::Null));
                     break;
                 case OpCode::True:
-                    stackPush(Value::CreateValue(true));
+                    stackPush(Value::Create(true));
                     break;
                 case OpCode::False:
-                    stackPush(Value::CreateValue(false));
+                    stackPush(Value::Create(false));
                     break;
 
                 case OpCode::Equal:
                 {
                     const Value a = stackPop();
                     const Value b = stackPop();
-                    stackPush(Value::CreateValue(a == b));
+                    stackPush(Value::Create(a == b));
                 }
                 break;
                 case OpCode::Greater:
                 {
                     const Value a = stackPop();
                     const Value b = stackPop();
-                    stackPush(Value::CreateValue(a > b));
+                    stackPush(Value::Create(a > b));
                 }
                 break;
                 case OpCode::Less:
                 {
                     const Value a = stackPop();
                     const Value b = stackPop();
-                    stackPush(Value::CreateValue(a < b));
+                    stackPush(Value::Create(a < b));
                 }
                 break;
 
@@ -132,7 +133,7 @@ struct VirtualMachine
                 }
                 break;
                 case OpCode::Not:
-                    stackPush(Value::CreateValue(stackPop().isFalsey()));
+                    stackPush(Value::Create(stackPop().isFalsey()));
                     break;
                 default:
                     break;
@@ -156,6 +157,8 @@ struct VirtualMachine
         _chunk = currentChunk;
         _ip = currentChunk->getCode();
 
+        printf("--------------------------------------\n");
+        printf("* Executing code...\n");
         result_t runResult = run();
 
         return runResult;
@@ -248,6 +251,7 @@ struct VirtualMachine
                     printf("--------------------------------\n");
                     printf("DebugBreak %s\n", enable ? "enabled" : "disabled");
                     printf("--------------------------------\n");
+                    continue;
                 }
             }
 
@@ -309,9 +313,9 @@ struct VirtualMachine
         printf(" Stack: ");
         for (const Value *slot = _stack; slot < _stackTop; ++slot)
         {
-            printf("[ ");
+            printf("[");
             printValue(*slot);
-            printf(" ]");
+            printf("]");
         }
         printf("\n");
     }

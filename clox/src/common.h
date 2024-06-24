@@ -24,7 +24,42 @@ enum class LogLevel
 
     All = 0xFF
 };
-LogLevel sLogLevel = LogLevel::All;
+namespace Logger
+{
+void SetLogLevel(LogLevel level);
+LogLevel GetLogLevel();
+
+template <typename... Args>
+void Log(LogLevel level, const char* fmt, Args... args)
+{
+    FILE* outFile = nullptr;
+    switch (level)
+    {
+        case LogLevel::Error:
+            outFile = stderr;
+            fprintf(outFile, "Error: ");
+            break;
+        case LogLevel::Warning:
+            outFile = stderr;
+            fprintf(outFile, "Warning: ");
+            break;
+        case LogLevel::Info:
+            outFile = stdout;
+            fprintf(outFile, "Info: ");
+            break;
+        case LogLevel::Debug:
+            outFile = stdout;
+            fprintf(outFile, "Warning: ");
+            break;
+        default:
+            break;
+    }
+    if (outFile)
+    {
+        fprintf(outFile, fmt, std::forward<Args>(args)...);
+    }
+}
+}  // namespace Logger
 
 static std::string buildMessage(const char* fmt, ...)
 {
@@ -36,37 +71,11 @@ static std::string buildMessage(const char* fmt, ...)
     return std::string(buff);
 }
 
-#define LOG_BASE(level, fmt, ...)                 \
-    while (1)                                     \
-    {                                             \
-        FILE* outFile = nullptr;                  \
-        switch (level)                            \
-        {                                         \
-            case LogLevel::Error:                 \
-                outFile = stderr;                 \
-                fprintf(outFile, "Error: ");      \
-                break;                            \
-            case LogLevel::Warning:               \
-                outFile = stderr;                 \
-                fprintf(outFile, "Warning: ");    \
-                break;                            \
-            case LogLevel::Info:                  \
-                outFile = stdout;                 \
-                fprintf(outFile, "Info: ");       \
-                break;                            \
-            case LogLevel::Debug:                 \
-                outFile = stdout;                 \
-                fprintf(outFile, "Warning: ");    \
-                break;                            \
-            default:                              \
-                break;                            \
-        }                                         \
-        if (outFile)                              \
-        {                                         \
-            fprintf(outFile, fmt, ##__VA_ARGS__); \
-        }                                         \
-        break;                                    \
-    }
+#define LOG_BASE(level, fmt, ...)             \
+    do                                        \
+    {                                         \
+        Logger::Log(level, fmt, __VA_ARGS__); \
+    } while (0)
 
 #define LOG_ERROR(fmt, ...) LOG_BASE(LogLevel::Error, fmt, ##__VA_ARGS__)
 #define LOG_WARNING(fmt, ...) LOG_BASE(LogLevel::Warning, fmt, ##__VA_ARGS__)
@@ -74,6 +83,18 @@ static std::string buildMessage(const char* fmt, ...)
 #define LOG_DEBUG(fmt, ...) LOG_BASE(LogLevel::Debug, fmt, ##__VA_ARGS__)
 
 #define DEBUGPRINT(fmt, ...) LOG_BASE(LogLevel::Debug, "DEBUG(line_%d): " #fmt, __LINE__, ##__VA_ARGS__)
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct ScopedCallback
+{
+    using callback_t = std::function<void()>;
+    ScopedCallback(callback_t callback) : callbackFunc(callback) {}
+    ~ScopedCallback() { callbackFunc(); }
+    callback_t callbackFunc = nullptr;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 enum class ErrorCode
 {
@@ -114,13 +135,7 @@ struct Error
     const std::string _message = "Undefined";
 };
 
-struct ScopedCallback
-{
-    using callback_t = std::function<void()>;
-    ScopedCallback(callback_t callback) : callbackFunc(callback) {}
-    ~ScopedCallback() { callbackFunc(); }
-    callback_t callbackFunc = nullptr;
-};
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 struct Optional
@@ -166,6 +181,8 @@ struct Optional
    protected:
     T* _value = nullptr;
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T, typename ErrorT = Error<>>
 struct Result
@@ -313,62 +330,33 @@ static ResultT makeResultError(std::string&& msg)
     return ResultT(typename ResultT::error_t(std::move(msg)));
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct RandomAccessContainer
+{
+    size_t getSize() const { return _values.size(); }
+    const T* getValues() const { return _values.data(); }
+    const T& getValue(size_t index) const
+    {
+        ASSERT(index < _values.size());
+        return _values[index];
+    }
+
+    const T& operator[](size_t index) const { return getValue(index); }
+
+    void write(T value) { _values.push_back(value); }
+
+   protected:
+    std::vector<T> _values;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace unit_tests
 {
 namespace common
 {
-struct Dummy
-{
-    int a = -1;
-    bool b = false;
-};
-bool test_result()
-{
-    int a = 0;
-    Result<int> res = makeResult<int>(a);
-    ASSERT(res.value() == a);
-    Result<Dummy> res2 = makeResult(Dummy{});
-    ASSERT(res2.value().a == -1);
-    Result<Dummy> res3 = makeResult(res2.value());
-    ASSERT(res3.value().a == res2.value().a);
-    Result<Dummy> res4 = makeResult(res3.extract());
-    ASSERT(res4.value().a == res2.value().a && !res3.isOk());
-    Result<Dummy> res5 = makeResultError<Result<Dummy>>();
-    ASSERT(!res5.isOk() && res5.error() == Error<>{});
-
-    return true;
-}
-bool test_optional()
-{
-    {
-        Optional<int> opt(1);
-        Optional<int> opt2(opt);
-        ASSERT(opt.hasValue());
-        opt = opt2.extract();
-        ASSERT(!opt2.hasValue());
-        ASSERT(opt.hasValue());
-    }
-    {
-        using T = Dummy;
-        Optional<Dummy> opt(Dummy{});
-        Optional<Dummy> opt2(opt);
-        ASSERT(opt.hasValue());
-        opt = opt2.extract();
-        ASSERT(!opt2.hasValue());
-        ASSERT(opt.hasValue());
-    }
-    return true;
-}
-void run()
-{
-    bool success = true;
-    success &= test_optional();
-    success &= test_result();
-
-    const char* message = "Unit tests finished";
-    const char* result = success ? "Succeeded" : "Failed";
-    auto msg = buildMessage("[line %d] %s. Result: %s\n", 3, message, result);
-    printf(msg.c_str());
-}
+void run();
 }  // namespace common
 }  // namespace unit_tests

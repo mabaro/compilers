@@ -4,58 +4,22 @@
 #include "chunk.h"
 #include "common.h"
 
-static void printValue(const Value& value)
-{
-    if (value.type == Value::Type::Integer)
-    {
-        printf("%d", value.as.integer);
-    }
-    else if (value.type == Value::Type::Number)
-    {
-        printf("%.2f", value.as.number);
-    }
-    else if (value.type == Value::Type::Bool)
-    {
-        printf("%s", value.as.boolean ? "TRUE" : "FALSE");
-    }
-    else if (value.type == Value::Type::Null)
-    {
-        printf("Null");
-    }
-    else
-    {
-        ASSERT(false);
-        printf("UNDEFINED");
-    }
-}
-static int simpleInstruction(const char* name, int offset)
+int simpleInstruction(const char* name, int offset)
 {
     printf("%s\n", name);
     return offset + 1;
 }
-static int constantInstruction(const char* name, const Chunk& chunk, int offset)
+int constantInstruction(const char* name, const Chunk& chunk, int offset)
 {
     const uint8_t constantIndex = chunk.getCode()[offset + 1];
-    printf("%-16s [%4d]='", name, constantIndex);
+    printf("%-16s [%04d]='", name, constantIndex);
     printValue(chunk.getConstants().getValue(constantIndex));
     printf("'\n");
 
     return offset + 2;
 }
 
-static int disassembleInstruction(const Chunk& chunk, uint16_t offset);
-
-static void disassemble(const Chunk& chunk, const char* name)
-{
-    printf("== %s ==\n", name);
-
-    for (int offset = 0; offset < chunk.getCodeSize();)
-    {
-        offset = disassembleInstruction(chunk, offset);
-    }
-}
-
-static int disassembleInstruction(const Chunk& chunk, uint16_t offset)
+int disassembleInstruction(const Chunk& chunk, uint16_t offset)
 {
     ASSERT(offset < chunk.getCodeSize());
     printf("%04d ", offset);
@@ -93,9 +57,26 @@ static int disassembleInstruction(const Chunk& chunk, uint16_t offset)
             return simpleInstruction("OP_MULTIPLY", offset);
         case OpCode::Divide:
             return simpleInstruction("OP_DIVIDE", offset);
-
+        case OpCode::Assignment:
+            return simpleInstruction("OP_ASSIGNMENT", offset);
+        case OpCode::Equal:
+            return simpleInstruction("OP_EQUAL", offset);
+        case OpCode::Greater:
+            return simpleInstruction("OP_GREATER", offset);
+        case OpCode::Less:
+            return simpleInstruction("OP_LESS", offset);
         default:
             printf("Unknown opcode %d\n", instruction);
             return offset + 1;
+    }
+}
+
+void disassemble(const Chunk& chunk, const char* name)
+{
+    printf("== %s ==\n", name);
+
+    for (int offset = 0; offset < chunk.getCodeSize();)
+    {
+        offset = disassembleInstruction(chunk, offset);
     }
 }

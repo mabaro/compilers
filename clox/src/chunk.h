@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vector>
-
 #include "common.h"
 #include "value.h"
+
+#include <vector>
 
 enum class OpCode
 {
@@ -38,6 +38,8 @@ enum class OpCode
 
 struct Chunk
 {
+    using ValueArray = RandomAccessContainer<Value>;
+
     Chunk() {}
     ~Chunk() {}
 
@@ -78,9 +80,9 @@ struct Chunk
         printf(" Constants: ");
         for (size_t i = 0; i < getConstants().getSize(); ++i)
         {
-            printf("%zu[ ", i);
-            print(getConstants()[i]);
-            printf(" ]");
+            printf("%zu[", i);
+            printValue(getConstants()[i]);
+            printf("]");
         }
         printf("\n");
     }

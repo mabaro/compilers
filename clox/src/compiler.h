@@ -146,13 +146,13 @@ struct Compiler
         MYPRINT("number:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
                 _parser.current.length, _parser.current.start);
 
-        Value value = Value::CreateValue(strtod(_parser.previous.start, nullptr));
+        Value value = Value::Create(strtod(_parser.previous.start, nullptr));
         emitConstant(value);
     }
     void string()
     {
         emitConstant(
-            Value::CreateValue(_parser.previous.start + 1, _parser.previous.start + _parser.previous.length - 2));
+            Value::Create(_parser.previous.start + 1, _parser.previous.start + _parser.previous.length - 1));
     }
     void unary()
     {
@@ -282,7 +282,7 @@ struct Compiler
         ASSERT(currentChunk());
         Chunk &chunk = *currentChunk();
 
-        const int id = chunk.addVariable(Value::CreateValue());
+        const int id = chunk.addVariable(Value::Create());
         if (id > UINT8_MAX)
         {
             error(buildMessage("Max variables per chunk exceeded: %s", UINT8_MAX).c_str());
@@ -332,7 +332,7 @@ struct Compiler
     Parser::error_t error(const char *errorMsg) { return errorAt(_parser.previous, errorMsg); }
     Parser::error_t errorAt(const Token &token, const char *errorMsg)
     {
-        FAIL();
+        FAIL_MSG(errorMsg);
         if (_parser.panicMode)
         {
             return _parser.optError.value();
