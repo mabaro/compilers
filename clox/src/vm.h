@@ -86,29 +86,62 @@ struct VirtualMachine
 
                 case OpCode::Equal:
                 {
-                    const Value a = stackPop();
                     const Value b = stackPop();
+                    const Value a = stackPop();
                     stackPush(Value::Create(a == b));
                 }
                 break;
                 case OpCode::Greater:
                 {
-                    const Value a = stackPop();
                     const Value b = stackPop();
+                    const Value a = stackPop();
                     stackPush(Value::Create(a > b));
                 }
                 break;
                 case OpCode::Less:
                 {
-                    const Value a = stackPop();
                     const Value b = stackPop();
+                    const Value a = stackPop();
                     stackPush(Value::Create(a < b));
                 }
                 break;
 
                 case OpCode::Add:
-                    BINARY_OP(+);
-                    break;
+                {
+                    const Value b = stackPop();
+                    const Value a = stackPop();
+                    if (a.type == Value::Type::Object || b.type == Value::Type::Object)
+                    {
+                        const Object *aObj = a.type == Value::Type::Object ? a.as.object : nullptr;
+                        const Object *bObj = b.type == Value::Type::Object ? b.as.object : nullptr;
+                        if (aObj && bObj)
+                        {
+                            Result<Value> result = *aObj + *bObj;
+                            if (result.isOk())
+                            {
+                                stackPush(a + b);
+                            }
+                            else
+                            {
+                                return runtimeError("Cannot add types %s + %s: %s",
+                                                    aObj ? Object::getString(aObj->type) : Value::getString(a.type),
+                                                    bObj ? Object::getString(bObj->type) : Value::getString(b.type),
+                                                    result.error().message());
+                            }
+                        }
+                        else
+                        {
+                            return runtimeError("Cannot add different types: %s + %s",
+                                                aObj ? Object::getString(aObj->type) : Value::getString(a.type),
+                                                bObj ? Object::getString(bObj->type) : Value::getString(b.type));
+                        }
+                    }
+                    else
+                    {
+                        stackPush(a + b);
+                    }
+                }
+                break;
                 case OpCode::Divide:
                     BINARY_OP(/);
                     break;
@@ -146,9 +179,9 @@ struct VirtualMachine
 #undef BINARY_OP
     }
 
-    result_t interpret(const char *source)
+    result_t interpret(const char *source, const char* sourcePath)
     {
-        Compiler::result_t result = _compiler.compile(source);
+        Compiler::result_t result = _compiler.compile(source, sourcePath);
         if (!result.isOk())
         {
             return makeResultError<result_t>(ErrorCode::CompileError, result.error().message());
@@ -181,8 +214,8 @@ struct VirtualMachine
         if (buffer == nullptr)
         {
             char message[1024];
-            snprintf(message, sizeof(message),"Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path,
-                      fileSize);
+            snprintf(message, sizeof(message),
+                     "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path, fileSize);
             LOG_ERROR(message);
             fclose(file);
             return makeResultError<Result<char *>>(Result<char *>::error_t::code_t::Undefined, message);
@@ -207,7 +240,7 @@ struct VirtualMachine
         {
             return makeResultError<result_t>(source.error().message());
         }
-        result_t result = interpret(source.value());
+        result_t result = interpret(source.value(), path);
         free(source.value());
 
         return result;
@@ -232,9 +265,10 @@ struct VirtualMachine
                 {
                     printf("--------------------------------\n");
                     printf("Commands(preceded with '!'):\n");
-                    printf("\t!debugbreak true/false\n");
+                    printf("\tdebugbreak <enable/disable>\n");
                     printf("\tquit\n");
                     printf("--------------------------------\n");
+                    continue;
                 }
                 else if (strstr(line, "quit"))
                 {
@@ -254,12 +288,11 @@ struct VirtualMachine
                 }
             }
 
-            result_t result = interpret(line);
+            result_t result = interpret(line, "REPL");
             if (!result.isOk())
             {
-                char message[1024];
-                snprintf(message, sizeof(message),"INTERPRETER: %s", result.error().message().c_str());
-                LOG_ERROR(message);
+                LOG_ERROR("[INTERPRETER] %s\n", result.error().message().c_str());
+                LOG_ERROR("                   %s", line);
             }
         }
 
@@ -280,11 +313,11 @@ struct VirtualMachine
         va_start(args, format);
         vsnprintf(message, sizeof(message), format, args);
         va_end(args);
-        snprintf(message, sizeof(message),"%s\n", message);
 
-        const uint16_t instruction = static_cast<uint16_t>(this->_ip - this->_chunk->getCode() - 1);
-        const uint16_t line = this->_chunk->getLine(instruction);
-        fprintf(stderr, "[line %d] in script\n", line);
+        const Chunk *chunk = this->_chunk;
+        const uint16_t instruction = static_cast<uint16_t>(this->_ip - chunk->getCode() - 1);
+        const uint16_t line = chunk->getLine(instruction);
+        fprintf(stderr, "[%s:%d] Runtime error: %s\n", chunk->getSourcePath(), line, message);
         stackReset();
         return makeResultError<result_t>(result_t::error_t::code_t::RuntimeError, message);
     }
@@ -304,6 +337,11 @@ struct VirtualMachine
     {
         --_stackTop;
         return *_stackTop;
+    }
+    Value stackPeek(size_t offset)
+    {
+        ASSERT(offset < stackSize());
+        return *(_stackTop - offset);
     }
     size_t stackSize() const { return _stackTop - _stack; }
 #if DEBUG_TRACE_EXECUTION
