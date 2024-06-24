@@ -62,12 +62,12 @@ void Object::FreeObject(Object *obj)
 }
 void Object::FreeObjects()
 {
-    Object *ptr = s_allocatedList;
-    while (ptr)
+    Object *object = s_allocatedList;
+    while (object)
     {
-        Object *next = ptr->_allocatedNext;
-        DEALLOCATE(Object, ptr);
-        ptr = next;
+        Object *next = object->_allocatedNext;
+        FreeObject(object);
+        object = next;
     }
 }
 

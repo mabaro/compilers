@@ -3,6 +3,7 @@
 #include "utils/common.h"
 
 #define ALLOCATE(Type) (Type *)malloc(sizeof(Type))
+#define ALLOCATE_FLEX(Type, ExtraSize) (Type *)malloc(sizeof(Type) + ExtraSize)
 #define ALLOCATE_N(Type, count) (Type *)malloc(sizeof(Type) * count)
 #define DEALLOCATE(Type, pointer) free(pointer)
 #define DEALLOCATE_N(Type, pointer, N) free(pointer)
@@ -30,7 +31,7 @@ struct Object
     static Result<Object *> deserialize(std::istream &i_stream);
 
     template <typename ObjectT>
-    static ObjectT *allocate()
+    static ObjectT *allocate(size_t flexibleSize = 0)
     {
         static_assert(std::is_same_v<ObjectT, ObjectString>, "ObjectT not supported");
 
