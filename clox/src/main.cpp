@@ -1,15 +1,13 @@
 #include <cstdio>
 
-#include "vm.h"
-
-
 #include "common.h"
+#include "vm.h"
 
 #ifdef _DEBUG
 #define UNIT_TESTS_ENABLED 1
-#else // #ifdef _DEBUG
+#else  // #ifdef _DEBUG
 #define UNIT_TESTS_ENABLED 0
-#endif // #else // #ifdef _DEBUG
+#endif  // #else // #ifdef _DEBUG
 
 int main(int argc, char **argv)
 {
@@ -18,19 +16,19 @@ int main(int argc, char **argv)
     unit_tests::common::run();
     unit_tests::scanner::run();
     printf("<<<<<< Unit tests\n");
-#endif // #if 0
+#endif  // #if 0
 
     VirtualMachine VM;
     VM.init();
 
     const bool interactiveRepl = true;
-    if (!interactiveRepl)//quick tests
+    if (!interactiveRepl)  // quick tests
     {
         // const char codeStr[] = "(-1 + 2) - 4 * 3 / ( -5 - 6 + 35)";
         // const char codeStr[] = "print !true";
         const char codeStr[] = "!(5 - 4 > 0 * 2 == !false)";
         // const char codeStr[] = "print true";
-		LOG_INFO("> Quick test: '%s'...\n", codeStr);
+        LOG_INFO("> Quick test: '%s'...\n", codeStr);
         auto result = VM.interpret(codeStr);
         if (!result.isOk())
         {
@@ -38,7 +36,7 @@ int main(int argc, char **argv)
         }
         LOG_INFO("< Quick test\n");
     }
-	else if (argc == 1)
+    else if (argc == 1)
     {
         auto result = VM.repl();
         if (!result.isOk())

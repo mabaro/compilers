@@ -20,7 +20,8 @@
 
 using Number = double;
 
-enum class OperationType : uint8_t {
+enum class OperationType : uint8_t
+{
     Return,
 
     Constant8,
@@ -28,7 +29,8 @@ enum class OperationType : uint8_t {
     Undefined = 255
 };
 
-struct Parser {
+struct Parser
+{
     using error_t = Error<>;
 
     Token current;
@@ -38,7 +40,8 @@ struct Parser {
     bool panicMode = false;
 };
 
-enum class Precedence {
+enum class Precedence
+{
     NONE,
     ASSIGNMENT,  // =
     OR,          // or
@@ -52,19 +55,26 @@ enum class Precedence {
     PRIMARY
 };
 
-struct ParseRule {
+struct ParseRule
+{
     using parse_func_t = std::function<void()>;
     parse_func_t prefix;
     parse_func_t infix;
     Precedence precedence;
 };
 
-struct Compiler {
-    enum class ErrorCode { ScannerError, Undefined };
+struct Compiler
+{
+    enum class ErrorCode
+    {
+        ScannerError,
+        Undefined
+    };
     using error_t = Error<ErrorCode>;
     using result_t = Result<Chunk *, error_t>;
 
-    result_t compile(const char *source) {
+    result_t compile(const char *source)
+    {
         populateExpressions();
 
         _scanner.init(source);
@@ -74,12 +84,14 @@ struct Compiler {
         _parser.panicMode = false;
 
         advance();
-        while (!getCurrentError().hasValue() && !match(TokenType::Eof)) {
+        while (!getCurrentError().hasValue() && !match(TokenType::Eof))
+        {
             expression();
         }
 
         consume(TokenType::Eof, "Expected end of expression");
-        if (getCurrentError().hasValue()) {
+        if (getCurrentError().hasValue())
+        {
             return makeResultError<result_t>(result_t::error_t::code_t::Undefined, getCurrentError().value().message());
         }
 
@@ -88,28 +100,33 @@ struct Compiler {
     }
 
    protected:  // high level stuff
-    void expression() {
+    void expression()
+    {
         MYPRINT("expression: prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
                 _parser.current.length, _parser.current.start);
         _lastExpressionLine = _parser.current.line;
         parsePrecedence(Precedence::ASSIGNMENT);
     }
-    void skip() {
+    void skip()
+    {
         MYPRINT("skip:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start, _parser.current.length,
                 _parser.current.start);
         // nothing to do here
     }
-    void grouping() {
+    void grouping()
+    {
         MYPRINT("grouping:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
                 _parser.current.length, _parser.current.start);
         expression();
         consume(TokenType::RightParen, "Expected ')' after expression.");
     }
-    void literal() {
+    void literal()
+    {
         MYPRINT("literal:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
                 _parser.current.length, _parser.current.start);
 
-        switch (_parser.previous.type) {
+        switch (_parser.previous.type)
+        {
             case TokenType::Null:
                 emitBytes(OpCode::Null);
                 break;
@@ -124,14 +141,21 @@ struct Compiler {
                 return;
         }
     }
-    void number() {
+    void number()
+    {
         MYPRINT("number:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
                 _parser.current.length, _parser.current.start);
 
         Value value = Value::CreateValue(strtod(_parser.previous.start, nullptr));
         emitConstant(value);
     }
-    void unary() {
+    void string()
+    {
+        emitConstant(
+            Value::CreateValue(_parser.previous.start + 1, _parser.previous.start + _parser.previous.length - 2));
+    }
+    void unary()
+    {
         MYPRINT("unary:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start, _parser.current.length,
                 _parser.current.start);
         const TokenType operatorType = _parser.previous.type;
@@ -140,7 +164,8 @@ struct Compiler {
         parsePrecedence(Precedence::UNARY);
 
         // Emit the operator instruction.
-        switch (operatorType) {
+        switch (operatorType)
+        {
             case TokenType::Minus:
                 emitBytes(OpCode::Negate);
                 break;
@@ -151,7 +176,8 @@ struct Compiler {
                 return;
         }
     }
-    void binary() {
+    void binary()
+    {
         MYPRINT("binary:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
                 _parser.current.length, _parser.current.start);
 
@@ -161,7 +187,8 @@ struct Compiler {
         // right-associative: a=b=c=d -> a = (b = (c = d))
         parsePrecedence(Precedence((int)parseRule.precedence + 1));
 
-        switch (operatorType) {
+        switch (operatorType)
+        {
             case TokenType::Plus:
                 emitBytes(OpCode::Add);
                 break;
@@ -193,9 +220,9 @@ struct Compiler {
             case TokenType::LessEqual:
                 emitBytes(OpCode::Greater, OpCode::Not);
                 break;
-            //case TokenType::Equal:
-            //    emitBytes(OpCode::Assignment);
-            //    break;
+            case TokenType::Equal:
+                emitBytes(OpCode::Assignment);
+                break;
             default:
                 FAIL_MSG("Unreachable symbol while parsing [%.*s]", _parser.previous.length, _parser.previous.start);
                 return;  // Unreachable.
@@ -203,17 +230,20 @@ struct Compiler {
     }
 
     const ParseRule &getParseRule(TokenType type) const { return _parseRules[(size_t)type]; }
-    void parsePrecedence(Precedence precedence) {
+    void parsePrecedence(Precedence precedence)
+    {
         advance();
 
         const ParseRule &parseRule = getParseRule(_parser.previous.type);
-        if (parseRule.prefix == NULL) {
+        if (parseRule.prefix == NULL)
+        {
             error("Expect expression.");
             return;
         }
         parseRule.prefix();
 
-        while (precedence <= getParseRule(_parser.current.type).precedence) {
+        while (precedence <= getParseRule(_parser.current.type).precedence)
+        {
             advance();
             ParseRule::parse_func_t infixRule = getParseRule(_parser.previous.type).infix;
             infixRule();
@@ -221,45 +251,55 @@ struct Compiler {
     }
 
    protected:
-    void finishCompilation() {
+    void finishCompilation()
+    {
         emitReturn();
 #if DEBUG_PRINT_CODE
-        if (!_parser.optError.hasValue()) {
+        if (!_parser.optError.hasValue())
+        {
             ASSERT(currentChunk());
             disassemble(*currentChunk(), "code");
         }
 #endif  // #if DEBUG_PRINT_CODE
     }
 
-    int makeConstant(const Value &value) {
+    int makeConstant(const Value &value)
+    {
         ASSERT(currentChunk());
         Chunk &chunk = *currentChunk();
 
         const int constantId = chunk.addConstant(value);
-        if (constantId > UINT8_MAX) {
+        if (constantId > UINT8_MAX)
+        {
             error(buildMessage("Max constants per chunk exceeded: %s", UINT8_MAX).c_str());
         }
         return constantId;
     }
     void emitConstant(const Value &value) { emitBytes(OpCode::Constant, makeConstant(value)); }
 
-    int makeVariable() {
+    int makeVariable()
+    {
         ASSERT(currentChunk());
         Chunk &chunk = *currentChunk();
 
         const int id = chunk.addVariable(Value::CreateValue());
-        if (id > UINT8_MAX) {
+        if (id > UINT8_MAX)
+        {
             error(buildMessage("Max variables per chunk exceeded: %s", UINT8_MAX).c_str());
         }
         return id;
     }
-    void emitVariable(const std::string &name) {
+    void emitVariable(const std::string &name)
+    {
         int varIndex = -1;
         auto it = _variables.find(name);
-        if (it == _variables.end()) {
+        if (it == _variables.end())
+        {
             varIndex = makeVariable();
             _variables.insert(std::make_pair(name, varIndex));
-        } else {
+        }
+        else
+        {
             varIndex = it->second;
         }
 
@@ -268,18 +308,21 @@ struct Compiler {
 
     void emitReturn() { emitBytes((uint8_t)OperationType::Return); }
 
-    void emitBytes(uint8_t byte) {
+    void emitBytes(uint8_t byte)
+    {
         Chunk *chunk = currentChunk();
         ASSERT(chunk);
         chunk->write(byte, _lastExpressionLine);
     }
     void emitBytes(OpCode code) { emitBytes((uint8_t)code); }
-    void emitBytes(int constantId) {
+    void emitBytes(int constantId)
+    {
         ASSERT(constantId < UINT8_MAX);
         emitBytes((uint8_t)constantId);
     }
     template <typename T, typename... Args>
-    void emitBytes(T byte, Args... args) {
+    void emitBytes(T byte, Args... args)
+    {
         emitBytes(byte);
         emitBytes(args...);
     }
@@ -287,19 +330,26 @@ struct Compiler {
    protected:
     Parser::error_t errorAtCurrent(const char *errorMsg) { return errorAt(_parser.current, errorMsg); }
     Parser::error_t error(const char *errorMsg) { return errorAt(_parser.previous, errorMsg); }
-    Parser::error_t errorAt(const Token &token, const char *errorMsg) {
-        ASSERT(false);
-        if (_parser.panicMode) {
+    Parser::error_t errorAt(const Token &token, const char *errorMsg)
+    {
+        FAIL();
+        if (_parser.panicMode)
+        {
             return _parser.optError.value();
         }
         _parser.panicMode = true;
 
         char message[1024];
-        if (token.type == TokenType::Eof) {
+        if (token.type == TokenType::Eof)
+        {
             sprintf_s(message, " at end");
-        } else if (token.type == TokenType::Error) {
+        }
+        else if (token.type == TokenType::Error)
+        {
             sprintf_s(message, " Error token!!!");
-        } else {
+        }
+        else
+        {
             sprintf_s(message, " at '%.*s'", token.length, token.start);
         }
 
@@ -313,11 +363,13 @@ struct Compiler {
     using token_result_t = Result<Token, error_t>;
     using expression_handler_t = std::function<void()>;
 
-    void populateExpressions() {
+    void populateExpressions()
+    {
         auto binaryFunc = [&] { binary(); };
         auto groupingFunc = [&] { grouping(); };
         auto literalFunc = [&] { literal(); };
         auto numberFunc = [&] { number(); };
+        auto stringFunc = [&] { string(); };
         auto skipFunc = [&] { skip(); };
         auto unaryFunc = [&] { unary(); };
 
@@ -341,8 +393,8 @@ struct Compiler {
         _parseRules[(size_t)TokenType::Less] = {NULL, binaryFunc, Precedence::COMPARISON};
         _parseRules[(size_t)TokenType::LessEqual] = {NULL, binaryFunc, Precedence::COMPARISON};
         _parseRules[(size_t)TokenType::Identifier] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::String] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Number] = ParseRule{numberFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::String] = {stringFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Number] = {numberFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::And] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Or] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Class] = {NULL, NULL, Precedence::NONE};
@@ -368,27 +420,35 @@ struct Compiler {
 
     bool match(TokenType type) const { return getCurrentToken().type == type; }
 
-    void consume(TokenType type, const char *message) {
-        if (_parser.current.type == type) {
+    void consume(TokenType type, const char *message)
+    {
+        if (_parser.current.type == type)
+        {
             advance();
             return;
         }
         errorAtCurrent(message);
     }
 
-    void advance() {
+    void advance()
+    {
         _parser.previous = _parser.current;
 
-        for (;;) {
+        for (;;)
+        {
             auto tokenResult = _scanner.scanToken();
-            ASSERT(tokenResult.isOk());
-
-            _parser.current = tokenResult.value();
-            if (tokenResult.value().type != TokenType::Error) {
-                break;
+            if (tokenResult.isOk())
+            {
+                _parser.current = tokenResult.value();
+                if (tokenResult.value().type != TokenType::Error)
+                {
+                    break;
+                }
             }
-
-            errorAt(_parser.current, "").message();
+            else
+            {
+                errorAt(_parser.current, tokenResult.error().message().c_str()).message();
+            }
         }
     }
 

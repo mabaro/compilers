@@ -1,6 +1,10 @@
 #pragma once
-#include "common.h"
+#include <cstdlib>
 #include <vector>
+
+#include "common.h"
+
+#define ALLOCATE(Obj, count) (Obj *)malloc(sizeof(Obj) * count)
 
 struct Object
 {
@@ -10,12 +14,33 @@ struct Object
         COUNT
     };
     Type type = Type::COUNT;
+
+    template <typename ObjectT>
+    static ObjectT *allocate(Type type)
+    {
+        ObjectT *newObject = ALLOCATE(ObjectT, 1);
+        newObject->type = type;
+        return newObject;
+    }
 };
 
 struct ObjectString : public Object
 {
-    int length = 0;
+    size_t length = 0;
     char *chars = nullptr;
+    static ObjectString *Create(const char *begin, const char *end)
+    {
+        const size_t length = end - begin;
+        char *newString = ALLOCATE(char, length + 1);
+        ASSERT(newString);
+        memcpy(newString, begin, length);
+        newString[length] = 0;
+
+        ObjectString *newStringObj = Object::allocate<ObjectString>(Object::Type::String);
+        newStringObj->chars = newString;
+        newStringObj->length = length;
+        return newStringObj;
+    }
 };
 
 struct Value
@@ -26,7 +51,7 @@ struct Value
         double number;
         int integer;
         Object *object;
-    } valueAs;
+    } as;
 
     enum class Type
     {
@@ -34,87 +59,107 @@ struct Value
         Null,
         Number,
         Integer,
+        Object,
         Undefined,
         COUNT = Undefined
     };
     Type type = Type::Undefined;
 
-
-    static constexpr struct NullType {} Null = NullType{};
+    static constexpr struct NullType
+    {
+    } Null = NullType{};
 
     bool is(Type t) const { return t == type; }
     bool isNumber() const { return type == Type::Integer || type == Type::Number; }
-    bool isFalsey() const { return type == Type::Null || (type == Type::Bool && as<bool>() == false); }
+    bool isFalsey() const { return type == Type::Null || (type == Type::Bool && as.boolean == false); }
 
     explicit operator bool() const
     {
         ASSERT(type == Type::Bool);
-        return valueAs.boolean;
+        return as.boolean;
     }
     explicit operator int() const
     {
         ASSERT(type == Type::Integer);
-        return valueAs.integer;
+        return as.integer;
     }
     explicit operator double() const
     {
         ASSERT(type == Type::Number);
-        return valueAs.number;
+        return as.number;
+    }
+    explicit operator char *() const
+    {
+        ASSERT(type == Type::Object && as.object->type == Object::Type::String);
+        if (as.object->type == Object::Type::String)
+        {
+            ObjectString *strObj = static_cast<ObjectString *>(as.object);
+            return strObj->chars;
+        }
+        FAIL();
+        return (char *)"Invalid ObjectString";
     }
 
     template <typename T>
-    T as() const
+    T asT() const
     {
         ASSERT(type != Type::Undefined);
         if (std::is_same_v<T, bool>)
         {
             ASSERT(type == Type::Bool);
-            return (T)valueAs.boolean;
+            return (T)as.boolean;
         }
         else if (std::is_integral_v<T>)
         {
             ASSERT(type == Type::Integer);
-            return (T)valueAs.integer;
+            return (T)as.integer;
         }
         else if (std::is_floating_point_v<T>)
         {
             ASSERT(type == Type::Number);
-            return (T)valueAs.number;
+            return (T)as.number;
         }
 
         ASSERT(type == Type::Null);
         return (T)0xDEADBEEF;
     }
 
-    static Value CreateValue()
-    {
-        return Value{.type = Type::Undefined};
-    }
+    static Value CreateValue() { return Value{.type = Type::Undefined}; }
     static Value CreateValue(NullType)
     {
         return Value{
-            .valueAs{.integer = (int)0xDEADBEEF},
+            .as{.integer = (int)0xDEADBEEF},
             .type = Type::Null,
         };
     }
     static Value CreateValue(bool value)
     {
         return Value{
-            .valueAs{.boolean = value},
+            .as{.boolean = value},
             .type = Type::Bool,
         };
     }
     static Value CreateValue(int value)
     {
         return Value{
-            .valueAs{.integer = value},
+            .as{.integer = value},
             .type = Type::Integer,
         };
     }
     static Value CreateValue(double value)
     {
         return Value{
-            .valueAs{.number = value},
+            .as{.number = value},
+            .type = Type::Number,
+        };
+    }
+    static Value CreateValue(const char *begin, const char *end)
+    {
+        const size_t length = end - begin;
+        return Value{
+            .as{
+                .object = ObjectString::Create(begin, end),
+            },
             .type = Type::Number,
         };
     }
@@ -123,13 +168,13 @@ struct Value
     {
         switch (type)
         {
-        case Value::Type::Number:
-            return CreateValue(-valueAs.number);
-        case Value::Type::Integer:
-            return CreateValue(-valueAs.integer);
-        default:
-            ASSERT(false);
-            return CreateValue();
+            case Value::Type::Number:
+                return CreateValue(-as.number);
+            case Value::Type::Integer:
+                return CreateValue(-as.integer);
+            default:
+                ASSERT(false);
+                return CreateValue();
         }
         return *this;
     }
@@ -138,13 +183,13 @@ struct Value
     {
         switch (a.type)
         {
-        case Value::Type::Number:
-            return CreateValue(-a.as<double>());
-        case Value::Type::Integer:
-            return CreateValue(-a.as<int>());
-        default:
-            ASSERT(false);
-            return CreateValue();
+            case Value::Type::Number:
+                return CreateValue(-a.as.number);
+            case Value::Type::Integer:
+                return CreateValue(-a.as.integer);
+            default:
+                ASSERT(false);
+                return CreateValue();
         }
     }
 };
@@ -156,17 +201,17 @@ bool operator==(const Value &a, const Value &b)
     }
     switch (a.type)
     {
-    case Value::Type::Bool:
-        return a.as<bool>() == b.as<bool>();
-    case Value::Type::Number:
-        return a.as<double>() == b.as<double>();
-    case Value::Type::Integer:
-        return a.as<int>() == b.as<int>();
-    case Value::Type::Null:
-        return true;
-    default:
-        ASSERT(false);
-        return false;
+        case Value::Type::Bool:
+            return a.as.boolean == b.as.boolean;
+        case Value::Type::Number:
+            return a.as.number == b.as.number;
+        case Value::Type::Integer:
+            return a.as.integer == b.as.integer;
+        case Value::Type::Null:
+            return true;
+        default:
+            ASSERT(false);
+            return false;
     }
 }
 bool operator<(const Value &a, const Value &b)
@@ -174,17 +219,17 @@ bool operator<(const Value &a, const Value &b)
     ASSERT(a.type == b.type);
     switch (a.type)
     {
-    case Value::Type::Bool:
-        return a.as<bool>() < b.as<bool>();
-    case Value::Type::Number:
-        return a.as<double>() < b.as<double>();
-    case Value::Type::Integer:
-        return a.as<int>() < b.as<int>();
-    case Value::Type::Null:
-        return false;
-    default:
-        ASSERT(false);
-        return false;
+        case Value::Type::Bool:
+            return a.as.boolean < b.as.boolean;
+        case Value::Type::Number:
+            return a.as.number < b.as.number;
+        case Value::Type::Integer:
+            return a.as.integer < b.as.integer;
+        case Value::Type::Null:
+            return false;
+        default:
+            ASSERT(false);
+            return false;
     }
 }
 bool operator>(const Value &a, const Value &b)
@@ -192,17 +237,17 @@ bool operator>(const Value &a, const Value &b)
     ASSERT(a.type == b.type);
     switch (a.type)
     {
-    case Value::Type::Bool:
-        return a.as<bool>() > b.as<bool>();
-    case Value::Type::Number:
-        return a.as<double>() > b.as<double>();
-    case Value::Type::Integer:
-        return a.as<int>() > b.as<int>();
-    case Value::Type::Null:
-        return false;
-    default:
-        ASSERT(false);
-        return false;
+        case Value::Type::Bool:
+            return a.as.boolean > b.as.boolean;
+        case Value::Type::Number:
+            return a.as.number > b.as.number;
+        case Value::Type::Integer:
+            return a.as.integer > b.as.integer;
+        case Value::Type::Null:
+            return false;
+        default:
+            ASSERT(false);
+            return false;
     }
 }
 
@@ -211,13 +256,13 @@ bool operator>(const Value &a, const Value &b)
     {                                                                    \
         switch (a.type)                                                  \
         {                                                                \
-        case Value::Type::Number:                                        \
-            return Value::CreateValue(a.as<double>() OP b.as<double>()); \
-        case Value::Type::Integer:                                       \
-            return Value::CreateValue(a.as<int>() OP b.as<int>());       \
-        default:                                                         \
-            ASSERT(false);                                               \
-            return Value::CreateValue();                                 \
+            case Value::Type::Number:                                    \
+                return Value::CreateValue(a.as.number OP b.as.number);   \
+            case Value::Type::Integer:                                   \
+                return Value::CreateValue(a.as.integer OP b.as.integer); \
+            default:                                                     \
+                ASSERT(false);                                           \
+                return Value::CreateValue();                             \
         }                                                                \
     }
 
@@ -241,35 +286,52 @@ struct RandomAccessContainer
 
     const T &operator[](size_t index) const { return getValue(index); }
 
-    void write(T value)
-    {
-        _values.push_back(value);
-    }
+    void write(T value) { _values.push_back(value); }
 
-protected:
+   protected:
     std::vector<T> _values;
 };
 using ValueArray = RandomAccessContainer<Value>;
+
+void print(const Object *obj)
+{
+    ASSERT(obj);
+
+    switch (obj->type)
+    {
+        case Object::Type::String:
+        {
+            const ObjectString &strObj = *static_cast<const ObjectString *>(obj);
+            printf("%.*s", (int)strObj.length, strObj.chars);
+        }
+        break;
+        default:
+            FAIL_MSG("Unexpected Object type(%d)", obj->type);
+    }
+}
 
 void print(const Value &value)
 {
     switch (value.type)
     {
-    case Value::Type::Bool:
-        printf(value.as<bool>() ? "true" : "false");
-        break;
-    case Value::Type::Null:
-        printf("null");
-        break;
-    case Value::Type::Number:
-        printf("%.2f", value.as<double>());
-        break;
-    case Value::Type::Integer:
-        printf("%d", value.as<int>());
-        break;
-    default:
-        ASSERT(false);
-        printf("UNDEFINED");
-        break;
+        case Value::Type::Bool:
+            printf(value.as.boolean ? "true" : "false");
+            break;
+        case Value::Type::Null:
+            printf("null");
+            break;
+        case Value::Type::Number:
+            printf("%.2f", value.as.number);
+            break;
+        case Value::Type::Integer:
+            printf("%d", value.as.integer);
+            break;
+        case Value::Type::Object:
+            print(value.as.object);
+            break;
+        default:
+            ASSERT(false);
+            printf("UNDEFINED");
+            break;
     }
 }
