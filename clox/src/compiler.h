@@ -73,12 +73,12 @@ struct Compiler
     using error_t = Error<ErrorCode>;
     using result_t = Result<Chunk *, error_t>;
 
-    result_t compile(const char *source)
+    result_t compile(const char *source, const char* sourcePath)
     {
         populateExpressions();
 
         _scanner.init(source);
-        _compilingChunk = new Chunk();
+        _compilingChunk = new Chunk(sourcePath);
 
         _parser.optError = Optional<Parser::error_t>();
         _parser.panicMode = false;

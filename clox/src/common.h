@@ -135,6 +135,7 @@ struct Error
     const code_t _code = code_t::Undefined;
     const std::string _message = "Undefined";
 };
+using Error_t = Error<ErrorCode>;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
