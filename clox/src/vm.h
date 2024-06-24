@@ -32,7 +32,11 @@ struct VirtualMachine
     ~VirtualMachine() {}
 
     result_t init() { return makeResult<result_t>(InterpretResult::Ok); }
-    result_t finish() { return makeResult<result_t>(InterpretResult::Ok); }
+    result_t finish()
+    {
+        Object::FreeObjects();
+        return makeResult<result_t>(InterpretResult::Ok);
+    }
 
     result_t run()
     {
@@ -119,7 +123,7 @@ struct VirtualMachine
                             Result<Value> result = *aObj + *bObj;
                             if (result.isOk())
                             {
-                                stackPush(a + b);
+                                stackPush(result.extract());
                             }
                             else
                             {
@@ -179,7 +183,7 @@ struct VirtualMachine
 #undef BINARY_OP
     }
 
-    result_t interpret(const char *source, const char* sourcePath)
+    result_t interpret(const char *source, const char *sourcePath)
     {
         Compiler::result_t result = _compiler.compile(source, sourcePath);
         if (!result.isOk())
@@ -317,9 +321,10 @@ struct VirtualMachine
         const Chunk *chunk = this->_chunk;
         const uint16_t instruction = static_cast<uint16_t>(this->_ip - chunk->getCode() - 1);
         const uint16_t line = chunk->getLine(instruction);
-        fprintf(stderr, "[%s:%d] Runtime error: %s\n", chunk->getSourcePath(), line, message);
+        char outputMessage[512];
+        snprintf(outputMessage, sizeof(outputMessage), "[%s:%d] Runtime error: %s\n", chunk->getSourcePath(), line, message);
         stackReset();
-        return makeResultError<result_t>(result_t::error_t::code_t::RuntimeError, message);
+        return makeResultError<result_t>(result_t::error_t::code_t::RuntimeError, outputMessage);
     }
 
    protected:  // Stack

@@ -2,7 +2,10 @@
 
 #include "common.h"
 
-#define ALLOCATE(Obj, count) (Obj *)malloc(sizeof(Obj) * count)
+#define ALLOCATE(Type) (Type *)malloc(sizeof(Type))
+#define ALLOCATE_N(Type, count) (Type *)malloc(sizeof(Type) * count)
+#define DEALLOCATE(Type, pointer) free(pointer)
+#define DEALLOCATE_N(Type, pointer, N) free(pointer)
 
 struct Object
 {
@@ -17,8 +20,12 @@ struct Object
     template <typename ObjectT>
     static ObjectT *allocate()
     {
-        ObjectT *newObject = ALLOCATE(ObjectT, 1);
+        ObjectT *newObject = ALLOCATE(ObjectT);
         newObject->type = ObjectT::obj_type;
+        ////////////////////////////////////////////////////////////////////////////////
+        newObject->_allocatedNext = s_allocatedList;
+        s_allocatedList = newObject;
+        ////////////////////////////////////////////////////////////////////////////////
         return newObject;
     }
 
@@ -33,6 +40,26 @@ struct Object
         FAIL_MSG("Cannot cast %s -> %s", getString(obj->type), getString(T::obj_type));
         return nullptr;
     }
+    template <typename T>
+    static T *as(Object *obj)
+    {
+        ASSERT(obj);
+        if (obj && T::obj_type == obj->type)
+        {
+            return static_cast<T *>(obj);
+        }
+        FAIL_MSG("Cannot cast %s -> %s", getString(obj->type), getString(T::obj_type));
+        return nullptr;
+    }
+
+    static void FreeObjects();
+
+   protected:
+    
+    static void FreeObject(Object *obj);
+
+    Object *_allocatedNext = nullptr;
+    static Object *s_allocatedList;
 };
 
 struct ObjectString : public Object
@@ -66,7 +93,7 @@ struct Value
         COUNT = Undefined
     };
     Type type = Type::Undefined;
-    static const char* getString(Type type);
+    static const char *getString(Type type);
 
     static constexpr struct NullType
     {

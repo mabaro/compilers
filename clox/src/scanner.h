@@ -174,7 +174,7 @@ struct Scanner
                 break;
         }
 
-        return makeResultError<TokenResult_t>("Unexpected character.");
+        return makeResultError<TokenResult_t>(buildMessage("Unexpected character: '%c'", c));
     }
 
    protected:

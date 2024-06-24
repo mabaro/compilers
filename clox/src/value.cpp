@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+Object *Object::s_allocatedList = nullptr;
+
 const char *Object::getString(Type type)
 {
     switch (type)
@@ -12,10 +14,33 @@ const char *Object::getString(Type type)
             return "Undefined type";
     }
 }
+void Object::FreeObject(Object *obj)
+{
+    switch (obj->type)
+    {
+        case Type::String:
+        {
+            ObjectString *strObj = as<ObjectString>(obj);
+            DEALLOCATE_N(char, strObj->chars, strObj->length);
+            DEALLOCATE(ObjectString, strObj);
+        }
+    }
+}
+void Object::FreeObjects()
+{
+    Object *ptr = s_allocatedList;
+    while (ptr)
+    {
+        Object *next = ptr->_allocatedNext;
+        DEALLOCATE(Object, ptr);
+        ptr = next;
+    }
+}
+
 ObjectString *ObjectString::Create(const char *begin, const char *end)
 {
     const size_t length = end - begin;
-    char *newString = ALLOCATE(char, length + 1);
+    char *newString = ALLOCATE_N(char, length + 1);
     ASSERT(newString);
     memcpy(newString, begin, length);
     newString[length] = 0;
@@ -168,8 +193,8 @@ Result<Value> operator+(const Object &a, const Object &b)
             const ObjectString *bStr = Object::as<ObjectString>(&b);
             if (aStr && bStr)
             {
-                const size_t newLength = aStr->length + bStr->length + 1;
-                char *newStr = (char *)malloc(newLength);
+                const size_t newLength = aStr->length + bStr->length;
+                char *newStr = (char *)malloc(newLength + 1);
                 memcpy(newStr, aStr->chars, aStr->length);
                 memcpy(newStr + aStr->length, bStr->chars, bStr->length);
                 newStr[newLength] = 0;
