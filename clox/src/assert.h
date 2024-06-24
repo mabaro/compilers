@@ -36,7 +36,7 @@ bool assert_handler(const char* condition, const char* file, int line, const cha
     {                                                                                   \
         if (!(X))                                                                       \
         {                                                                               \
-            if (util::detail::assert_handler(#X, __FILE__, __LINE__, fmt, __VA_ARGS__)) \
+            if (util::detail::assert_handler(#X, __FILE__, __LINE__, fmt, ##__VA_ARGS__)) \
             {                                                                           \
                 debug_break();                                                          \
             }                                                                           \
@@ -55,5 +55,5 @@ bool assert_handler(const char* condition, const char* file, int line, const cha
         }                                                                      \
     } while (0)
 
-#define FAIL_MSG(fmt, ...) ASSERT_MSG(0, fmt, __VA_ARGS__)
+#define FAIL_MSG(fmt, ...) ASSERT_MSG(0, fmt, ##__VA_ARGS__)
 #define FAIL() ASSERT(false)

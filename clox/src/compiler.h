@@ -342,15 +342,15 @@ struct Compiler
         char message[1024];
         if (token.type == TokenType::Eof)
         {
-            sprintf_s(message, " at end");
+            snprintf(message, sizeof(message)," at end");
         }
         else if (token.type == TokenType::Error)
         {
-            sprintf_s(message, " Error token!!!");
+            snprintf(message, sizeof(message)," Error token!!!");
         }
         else
         {
-            sprintf_s(message, " at '%.*s'", token.length, token.start);
+            snprintf(message, sizeof(message)," at '%.*s'", token.length, token.start);
         }
 
         _parser.optError =

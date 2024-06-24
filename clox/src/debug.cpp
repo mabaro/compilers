@@ -1,8 +1,6 @@
-#pragma once
-#include <cstdio>
+#include "debug.h"
 
-#include "chunk.h"
-#include "common.h"
+#include <cstdio>
 
 int simpleInstruction(const char* name, int offset)
 {

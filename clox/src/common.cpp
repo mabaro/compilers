@@ -1,5 +1,3 @@
-#pragma once
-
 #include "common.h"
 
 #define DEBUG_PRINT_CODE 1

@@ -1,8 +1,6 @@
-#pragma once
-
 #include "value.h"
 
-#include <cstdlib>
+#include <cstring>
 #include <vector>
 
 ObjectString *ObjectString::Create(const char *begin, const char *end)
@@ -13,7 +11,7 @@ ObjectString *ObjectString::Create(const char *begin, const char *end)
     memcpy(newString, begin, length);
     newString[length] = 0;
 
-    ObjectString *newStringObj = Object::allocate<ObjectString>(Object::Type::String);
+    ObjectString *newStringObj = Object::allocate<ObjectString>();
     newStringObj->chars = newString;
     newStringObj->length = length;
     return newStringObj;
@@ -114,6 +112,28 @@ Value Value::operator-(const Value &a)
     }
 }
 
+bool compareObject(const Object *a, const Object *b)
+{
+    if (a == nullptr || b == nullptr)
+    {
+        FAIL();
+        return a == b;
+    }
+
+    switch (a->type)
+    {
+        case Object::Type::String:
+        {
+            const ObjectString *aStr = Object::as<ObjectString>(a);
+            const ObjectString *bStr = Object::as<ObjectString>(b);
+            return (b->type == a->type) && !strcmp(aStr->chars, bStr->chars);
+        }
+        default:
+            FAIL();
+    }
+    return false;
+}
+
 bool operator==(const Value &a, const Value &b)
 {
     if (a.type != b.type)
@@ -128,6 +148,8 @@ bool operator==(const Value &a, const Value &b)
             return a.as.number == b.as.number;
         case Value::Type::Integer:
             return a.as.integer == b.as.integer;
+        case Value::Type::Object:
+            return compareObject(a.as.object, b.as.object);
         case Value::Type::Null:
             return true;
         default:
@@ -172,19 +194,19 @@ bool operator>(const Value &a, const Value &b)
     }
 }
 
-#define DECL_OPERATOR(OP)                                                \
-    Value operator OP(const Value &a, const Value &b)                    \
-    {                                                                    \
-        switch (a.type)                                                  \
-        {                                                                \
-            case Value::Type::Number:                                    \
+#define DECL_OPERATOR(OP)                                           \
+    Value operator OP(const Value &a, const Value &b)               \
+    {                                                               \
+        switch (a.type)                                             \
+        {                                                           \
+            case Value::Type::Number:                               \
                 return Value::Create(a.as.number OP b.as.number);   \
-            case Value::Type::Integer:                                   \
+            case Value::Type::Integer:                              \
                 return Value::Create(a.as.integer OP b.as.integer); \
-            default:                                                     \
-                ASSERT(false);                                           \
+            default:                                                \
+                ASSERT(false);                                      \
                 return Value::Create();                             \
-        }                                                                \
+        }                                                           \
     }
 
 DECL_OPERATOR(+)

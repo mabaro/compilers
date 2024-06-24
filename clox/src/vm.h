@@ -166,8 +166,7 @@ struct VirtualMachine
 
     Result<char *> readFile(const char *path)
     {
-        FILE *file = nullptr;
-        errno_t error = fopen_s(&file, path, "rb");
+        FILE *file = fopen(path, "rb");
         if (file == nullptr)
         {
             LOG_ERROR("Couldn't open file '%s'\n", path);
@@ -182,7 +181,7 @@ struct VirtualMachine
         if (buffer == nullptr)
         {
             char message[1024];
-            sprintf_s(message, "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path,
+            snprintf(message, sizeof(message),"Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path,
                       fileSize);
             LOG_ERROR(message);
             fclose(file);
@@ -259,7 +258,7 @@ struct VirtualMachine
             if (!result.isOk())
             {
                 char message[1024];
-                sprintf_s(message, "INTERPRETER: %s", result.error().message().c_str());
+                snprintf(message, sizeof(message),"INTERPRETER: %s", result.error().message().c_str());
                 LOG_ERROR(message);
             }
         }
@@ -281,7 +280,7 @@ struct VirtualMachine
         va_start(args, format);
         vsnprintf(message, sizeof(message), format, args);
         va_end(args);
-        sprintf_s(message, "%s\n", message);
+        snprintf(message, sizeof(message),"%s\n", message);
 
         const uint16_t instruction = static_cast<uint16_t>(this->_ip - this->_chunk->getCode() - 1);
         const uint16_t line = this->_chunk->getLine(instruction);

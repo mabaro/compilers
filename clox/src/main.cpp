@@ -1,7 +1,7 @@
-#include <cstdio>
-
 #include "common.h"
 #include "vm.h"
+
+#include <cstdio>
 
 #ifdef _DEBUG
 #define UNIT_TESTS_ENABLED 1

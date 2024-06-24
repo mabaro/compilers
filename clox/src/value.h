@@ -16,16 +16,24 @@ struct Object
     Type type = Type::COUNT;
 
     template <typename ObjectT>
-    static ObjectT *allocate(Type type)
+    static ObjectT *allocate()
     {
         ObjectT *newObject = ALLOCATE(ObjectT, 1);
-        newObject->type = type;
+        newObject->type = ObjectT::obj_type;
         return newObject;
+    }
+
+    template<typename T>
+    static const T* as(const Object* obj) {
+        ASSERT(T::obj_type == obj->type);
+        return static_cast<const T*>(obj);
     }
 };
 
 struct ObjectString : public Object
 {
+    static constexpr Type obj_type = Type::String;
+
     size_t length = 0;
     char *chars = nullptr;
     static ObjectString *Create(const char *begin, const char *end);
@@ -112,7 +120,5 @@ DECL_OPERATOR(/)
 #undef DECL_OPERATOR
 
 ////////////////////////////
-
-void print(const Object *obj);
 
 void printValue(const Value &value);
