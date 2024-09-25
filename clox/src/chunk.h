@@ -31,6 +31,9 @@ enum class OpCode
     Multiply,
     Divide,
 
+    // Core methods
+    Print,
+
     Skip,  // helper for semicolon
 
     Undefined = 0x0FF

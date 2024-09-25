@@ -7,11 +7,9 @@
 
 #if DEBUG_PRINT_CODE
 #include "debug.h"
-#if 1  // enable debug print
-#define MYPRINT(X, ...) printf(X "\n", ##__VA_ARGS__)
+#define MYPRINT(X, ...) printf("[%s] " X "\n", __FUNCTION__, ##__VA_ARGS__)
 #else
 #define MYPRINT(X, ...)
-#endif
 #endif  // #if DEBUG_PRINT_CODE
 
 #include <functional>
@@ -228,7 +226,13 @@ struct Compiler
                 return;  // Unreachable.
         }
     }
-
+    void print()
+    {
+        MYPRINT("print:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
+        _parser.current.length, _parser.current.start);
+        expression();
+        emitBytes(OpCode::Print);
+    }
     const ParseRule &getParseRule(TokenType type) const { return _parseRules[(size_t)type]; }
     void parsePrecedence(Precedence precedence)
     {
@@ -372,6 +376,7 @@ struct Compiler
         auto stringFunc = [&] { string(); };
         auto skipFunc = [&] { skip(); };
         auto unaryFunc = [&] { unary(); };
+        auto printFunc = [&] { print(); };
 
         _parseRules[(size_t)TokenType::LeftParen] = {groupingFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::RightParen] = {NULL, NULL, Precedence::NONE};
@@ -406,7 +411,7 @@ struct Compiler
         _parseRules[(size_t)TokenType::This] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Else] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::If] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Print] = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Print] = {printFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Return] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::While] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::For] = {NULL, NULL, Precedence::NONE};

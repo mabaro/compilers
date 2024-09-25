@@ -6,6 +6,8 @@
 
 #define ALLOCATE(Obj, count) (Obj *)malloc(sizeof(Obj) * count)
 
+struct ObjectString;
+
 struct Object
 {
     enum class Type
@@ -16,10 +18,16 @@ struct Object
     Type type = Type::COUNT;
 
     template <typename ObjectT>
-    static ObjectT *allocate(Type type)
+    static ObjectT *allocate()
     {
-        ObjectT *newObject = ALLOCATE(ObjectT, 1);
-        newObject->type = type;
+        static_assert(std::is_same_v<ObjectT, ObjectString>, "ObjectT not supported");
+
+        ObjectT *newObject = nullptr;
+        if (std::is_same_v<ObjectString, ObjectT>)
+        {
+            newObject = ALLOCATE(ObjectT, 1);
+            newObject->type = Type::String;
+        }
         return newObject;
     }
 };
@@ -65,30 +73,6 @@ struct Value
     explicit operator int() const;
     explicit operator double() const;
     explicit operator char *() const;
-
-    template <typename T>
-    T asT() const
-    {
-        ASSERT(type != Type::Undefined);
-        if (std::is_same_v<T, bool>)
-        {
-            ASSERT(type == Type::Bool);
-            return (T)as.boolean;
-        }
-        else if (std::is_integral_v<T>)
-        {
-            ASSERT(type == Type::Integer);
-            return (T)as.integer;
-        }
-        else if (std::is_floating_point_v<T>)
-        {
-            ASSERT(type == Type::Number);
-            return (T)as.number;
-        }
-
-        ASSERT(type == Type::Null);
-        return (T)0xDEADBEEF;
-    }
 
     static Value Create();
     static Value Create(NullType);

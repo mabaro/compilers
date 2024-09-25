@@ -13,7 +13,7 @@ ObjectString *ObjectString::Create(const char *begin, const char *end)
     memcpy(newString, begin, length);
     newString[length] = 0;
 
-    ObjectString *newStringObj = Object::allocate<ObjectString>(Object::Type::String);
+    ObjectString *newStringObj = Object::allocate<ObjectString>();
     newStringObj->chars = newString;
     newStringObj->length = length;
     return newStringObj;
@@ -164,6 +164,17 @@ bool operator>(const Value &a, const Value &b)
             return a.as.number > b.as.number;
         case Value::Type::Integer:
             return a.as.integer > b.as.integer;
+        case Value::Type::Object:
+            switch (a.as.object->type)
+            {
+                case Object::Type::String:
+                    auto strA = static_cast<char *>(a);
+                    auto strB = static_cast<char *>(b);
+                    return strcmp(strA, strB);
+                default:
+                    FAIL_MSG("Not implemented");
+                    return false;
+            }
         case Value::Type::Null:
             return false;
         default:
@@ -172,19 +183,19 @@ bool operator>(const Value &a, const Value &b)
     }
 }
 
-#define DECL_OPERATOR(OP)                                                \
-    Value operator OP(const Value &a, const Value &b)                    \
-    {                                                                    \
-        switch (a.type)                                                  \
-        {                                                                \
-            case Value::Type::Number:                                    \
+#define DECL_OPERATOR(OP)                                           \
+    Value operator OP(const Value &a, const Value &b)               \
+    {                                                               \
+        switch (a.type)                                             \
+        {                                                           \
+            case Value::Type::Number:                               \
                 return Value::Create(a.as.number OP b.as.number);   \
-            case Value::Type::Integer:                                   \
+            case Value::Type::Integer:                              \
                 return Value::Create(a.as.integer OP b.as.integer); \
-            default:                                                     \
-                ASSERT(false);                                           \
+            default:                                                \
+                ASSERT(false);                                      \
                 return Value::Create();                             \
-        }                                                                \
+        }                                                           \
     }
 
 DECL_OPERATOR(+)

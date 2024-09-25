@@ -10,8 +10,8 @@
 
 #include "assert.h"
 
-#define DEBUG_PRINT_CODE 1
-#define DEBUG_TRACE_EXECUTION 1
+#define DEBUG_PRINT_CODE 0
+#define DEBUG_TRACE_EXECUTION 0
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -135,6 +135,43 @@ struct VirtualMachine
                 case OpCode::Not:
                     stackPush(Value::Create(stackPop().isFalsey()));
                     break;
+                case OpCode::Print:
+                {  // read_object
+                    const Value &value = peek(0);
+                    if (value.type == Value::Type::Object)
+                    {
+                        if (value.as.object->type == Object::Type::String)
+                        {
+                            ObjectString *string = static_cast<ObjectString *>(value.as.object);
+                            printf("%s", string->chars);
+                            break;
+                        }
+                        printf("Print is not yet implemented for Object::Type(%d)", value.as.object->type);
+                        FAIL_MSG("Not implemented");
+                    }
+                    else
+                    {
+                        switch (value.type)
+                        {
+                            case Value::Type::Bool:
+                                printf("%s", value.as.boolean ? "TRUE" : "FALSE");
+                                break;
+                            case Value::Type::Integer:
+                                printf("%d", value.as.integer);
+                                break;
+                            case Value::Type::Number:
+                                printf("%f", value.as.number);
+                                break;
+                            case Value::Type::Null:
+                                printf("NULL");
+                                break;
+                            default:
+                                printf("Print is not yet implemented for type(%d)\n", value.type);
+                                FAIL_MSG("Not implemented");
+                        }
+                    }
+                    break;
+                }
                 default:
                     break;
             }

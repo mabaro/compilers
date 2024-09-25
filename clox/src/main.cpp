@@ -21,14 +21,15 @@ int main(int argc, char **argv)
     VirtualMachine VM;
     VM.init();
 
-    const bool interactiveRepl = true;
+    const bool interactiveRepl = false;
     if (!interactiveRepl)  // quick tests
     {
         // const char codeStr[] = "(-1 + 2) - 4 * 3 / ( -5 - 6 + 35)";
         // const char codeStr[] = "print !true";
-        const char codeStr[] = "!(5 - 4 > 0 * 2 == !false)";
+        // const char codeStr[] = "!(5 - 4 > 0 * 2 == !false)";
+        const char codeStr[] = "print (\"true is: \"); print(true); print(\"\n\")";
         // const char codeStr[] = "print true";
-        LOG_INFO("> Quick test: '%s'...\n", codeStr);
+        LOG_INFO("> Quick test: [%s]\n", codeStr);
         auto result = VM.interpret(codeStr);
         if (!result.isOk())
         {
