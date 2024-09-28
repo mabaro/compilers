@@ -1,8 +1,7 @@
 #pragma once
 
-#include <cstring>
-
 #include "common.h"
+#include <cstring>
 
 enum class TokenType
 {
@@ -31,23 +30,33 @@ enum class TokenType
     Number,
     NumberFloat,
 
-    Not,
+    True,
+    False,
+
     And,
+    Not,
     Or,
+
     Class,
     Super,
+    This,
+
     Null,
     Var,
-    This,
+#if USING(LANG_EXT_MUT)
+    Mut,   // extension ( default vars are const )
+#endif // #if USING(LANG_EXT_MUT)
+
     Else,
     If,
     Print,
     Return,
+
     While,
     For,
+
     Func,
-    True,
-    False,
+
     Exit,
 
     Comment,
@@ -244,10 +253,9 @@ struct Scanner
     }
     bool checkKeyword(int start, int length, const char* rest)
     {
-        const ptrdiff_t curToStart = this->current - this->start;
+        const ptrdiff_t startToCurr = this->current - this->start;
         const ptrdiff_t expectedSize = start + length;
-        if (((ptrdiff_t)(this->current - this->start) == (start + length)) &&
-            memcmp(this->start + start, rest, length) == 0)
+        if ((startToCurr == expectedSize) && memcmp(this->start + start, rest, length) == 0)
         {
             return true;
         }
@@ -266,40 +274,59 @@ struct Scanner
     }
     TokenType identifierType()
     {
-        switch (start[0])
+        struct Keyword {
+            const char* str; TokenType type;
+        };
+#define ADD_KEYWORD(STR, TYPE) {#STR, TokenType::##TYPE}
+        static const Keyword keywords[] = {
+            ADD_KEYWORD(class, Class),
+            ADD_KEYWORD(else, Else),
+            ADD_KEYWORD(exit, Exit),
+            ADD_KEYWORD(false, False),
+            ADD_KEYWORD(for, For),
+            ADD_KEYWORD(if, If),
+#if USING(LANG_EXT_MUT)
+            ADD_KEYWORD(mut, Mut ),
+#endif // #if USING(LANG_EXT_MUT)
+            ADD_KEYWORD(null, Null ),
+            ADD_KEYWORD(print, Print ),
+            ADD_KEYWORD(return, Return ),
+            ADD_KEYWORD(super, Super ),
+            ADD_KEYWORD(true, True),
+            ADD_KEYWORD(var, Var),
+            ADD_KEYWORD(while, While),
+            };
+#undef ADD_KEYWORD
+#if USING(DEBUG_BUILD)
+        // ensure keywords are sorted!
+        const char* lastStr = keywords[0].str;
+        for (const Keyword& keyword : keywords)
         {
-            // case 'a': return checkKeyword(1, 2, "nd", TokenType::And);
-            // case 'o': return checkKeyword(1, 1, "r", TokenType::Or);
-            // case 'n': return checkKeyword(1, 2, "ot", TokenType::Not;
-            case 'c':
-                return checkKeyword(1, 4, "lass", TokenType::Class);
-            case 'e':
-                if (checkKeyword(1, 3, "lse"))
-                    return TokenType::Else;
-                else if (checkKeyword(1, 3, "xit"))
-                    return TokenType::Exit;
-                break;
-            case 'f':
-                if (checkKeyword(1, 2, "or"))
-                    return TokenType::For;
-                else if (checkKeyword(1, 4, "alse"))
-                    return TokenType::False;
-                break;
-            case 'i':
-                return checkKeyword(1, 1, "f", TokenType::If);
-            case 'n':
-                return checkKeyword(1, 3, "ull", TokenType::Null);
-            case 'p':
-                return checkKeyword(1, 4, "rint", TokenType::Print);
-            case 'r':
-                return checkKeyword(1, 5, "eturn", TokenType::Return);
-            case 't':
-                return checkKeyword(1, 3, "rue", TokenType::True);
-            case 'w':
-                return checkKeyword(1, 4, "hile", TokenType::While);
+            for (const char *prevCar = lastStr, *curCar = keyword.str;
+                *prevCar != '\0' && *curCar != '\0';
+                ++prevCar, ++curCar)
+            {
+                ASSERT(prevCar <= curCar);
+            }
+            lastStr = keyword.str;
         }
+#endif // #if USING(DEBUG_BUILD)
+        const char* currentTokenStr = this->start;
+        const size_t currentTokenLen = this->current - this->start;
+        for (const auto& keyword : keywords)
+        {
+            if (0 == memcmp(keyword.str, currentTokenStr, currentTokenLen))
+            {
+                return keyword.type;
+            }
+            if ( keyword.str[0] > currentTokenStr[0])
+            {// requires keywords being sorted
+                break;
+            }
+        }
+        
         return TokenType::Identifier;
-    }
+}
     bool isDigit(const char c) const { return c >= '0' && c <= '9'; }
     bool isAlpha(const char c) const { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'); }
     void skipWhitespace()
