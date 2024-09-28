@@ -12,11 +12,9 @@ jobs:
 
   build:
     runs-on: ${{ matrix.os }}
-    
-    defaults:
-      run:
-        working-directory: ./clox    
-
+    with:
+      working-directory: ${{ github.workspace }}/clox/
+          
     strategy:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: false
@@ -56,7 +54,6 @@ jobs:
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
       shell: bash
-      working-directory: ./clox
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
