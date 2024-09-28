@@ -134,7 +134,7 @@ struct VirtualMachine
                                 return runtimeError("Cannot add types %s + %s: %s",
                                                     aObj ? Object::getString(aObj->type) : Value::getString(a.type),
                                                     bObj ? Object::getString(bObj->type) : Value::getString(b.type),
-                                                    result.error().message());
+                                                    result.error().message().c_str());
                             }
                         }
                         else
