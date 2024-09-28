@@ -1,11 +1,10 @@
 #pragma once
 
-#include "common.h"
-#include <cstring>
-
-#include <cstring>
 #include <stdio.h>
 
+#include <cstring>
+
+#include "common.h"
 
 enum class TokenType
 {
@@ -48,8 +47,8 @@ enum class TokenType
     Null,
     Var,
 #if USING(LANG_EXT_MUT)
-    Mut,   // extension ( default vars are const )
-#endif // #if USING(LANG_EXT_MUT)
+    Mut,  // extension ( default vars are const )
+#endif    // #if USING(LANG_EXT_MUT)
 
     Else,
     If,
@@ -278,10 +277,13 @@ struct Scanner
     }
     TokenType identifierType()
     {
-        struct Keyword {
-            const char* str; TokenType type;
+        struct Keyword
+        {
+            const char* str;
+            int len;
+            TokenType type;
         };
-#define ADD_KEYWORD(STR, TYPE) {#STR, TokenType::TYPE}
+#define ADD_KEYWORD(STR, TYPE) {#STR, (int)strlen(#STR), TokenType::TYPE}
         static const Keyword keywords[] = {
             ADD_KEYWORD(class, Class),
             ADD_KEYWORD(else, Else),
@@ -291,7 +293,7 @@ struct Scanner
             ADD_KEYWORD(if, If),
 #if USING(LANG_EXT_MUT)
             ADD_KEYWORD(mut, Mut ),
-#endif // #if USING(LANG_EXT_MUT)
+#endif  // #if USING(LANG_EXT_MUT)
             ADD_KEYWORD(null, Null ),
             ADD_KEYWORD(print, Print ),
             ADD_KEYWORD(return, Return ),
@@ -306,31 +308,34 @@ struct Scanner
         const char* lastStr = keywords[0].str;
         for (const Keyword& keyword : keywords)
         {
-            for (const char *prevCar = lastStr, *curCar = keyword.str;
-                *prevCar != '\0' && *curCar != '\0';
-                ++prevCar, ++curCar)
+            for (const char *prevCar = lastStr, *curCar = keyword.str; *prevCar != '\0' && *curCar != '\0';
+                 ++prevCar, ++curCar)
             {
-                ASSERT(prevCar <= curCar);
+                ASSERT(*prevCar <= *curCar);
+                if (*prevCar < *curCar)
+                {
+                    break;
+                }
             }
             lastStr = keyword.str;
         }
-#endif // #if USING(DEBUG_BUILD)
+#endif  // #if USING(DEBUG_BUILD)
         const char* currentTokenStr = this->start;
         const size_t currentTokenLen = this->current - this->start;
         for (const auto& keyword : keywords)
         {
-            if (0 == memcmp(keyword.str, currentTokenStr, currentTokenLen))
+            if ((keyword.len == currentTokenLen) && 0 == memcmp(keyword.str, currentTokenStr, currentTokenLen))
             {
                 return keyword.type;
             }
-            if ( keyword.str[0] > currentTokenStr[0])
-            {// requires keywords being sorted
+            if (keyword.str[0] > currentTokenStr[0])
+            {  // requires keywords being sorted
                 break;
             }
         }
-        
+
         return TokenType::Identifier;
-}
+    }
     bool isDigit(const char c) const { return c >= '0' && c <= '9'; }
     bool isAlpha(const char c) const { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'); }
     void skipWhitespace()

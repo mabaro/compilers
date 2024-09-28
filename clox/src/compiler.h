@@ -1,17 +1,19 @@
 #pragma once
 
-#include "common.h"
 #include "chunk.h"
+#include "common.h"
 #include "scanner.h"
 #include "vm.h"
 
 #if DEBUG_PRINT_CODE
 #include "debug.h"
 #define MYPRINT(X, ...) printf("[%s] " X "\n", __FUNCTION__, ##__VA_ARGS__)
-#define MYPRINT_T() MYPRINT("prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start, _parser.current.length, _parser.current.start);
+#define MYPRINT_T()                                                                                         \
+    MYPRINT("CUR[%.*s] NXT[%.*s]", _parser.previous.length, _parser.previous.start, _parser.current.length, \
+            _parser.current.start);
 #else
 #define MYPRINT(X, ...)
-#define MYPRINT_T(X, ...)
+#define MYPRINT_T()
 #endif  // #if DEBUG_PRINT_CODE
 
 #include <functional>
@@ -73,12 +75,12 @@ struct Compiler
     using error_t = Error<ErrorCode>;
     using result_t = Result<Chunk *, error_t>;
 
-    result_t compile(const char *source, const char* sourcePath)
+    result_t compile(const char *source, const char *sourcePath)
     {
         populateParseRules();
 
         _scanner.init(source);
-        _compilingChunk = new Chunk(sourcePath);
+        _compilingChunk = std::make_unique<Chunk>(sourcePath);
 
         _parser.optError = Optional<Parser::error_t>();
         _parser.panicMode = false;
@@ -86,7 +88,7 @@ struct Compiler
         advance();
         while (!getCurrentError().hasValue() && !match(TokenType::Eof))
         {
-            expression();
+            declaration();
         }
 
         consume(TokenType::Eof, "Expected end of expression");
@@ -100,6 +102,49 @@ struct Compiler
     }
 
    protected:  // high level stuff
+    void declaration()
+    {
+        if (match(TokenType::Var))
+        {
+            variableDeclaration();
+        }
+        else
+        {
+            statement();
+        }
+
+        if (_parser.panicMode)
+        {
+            synchronize();
+        }
+    }
+    void statement()
+    {
+        if (match(TokenType::Print))
+        {
+            printStatement();
+        }
+        else
+        {
+            expressionStatement();
+        }
+    }
+    void printStatement()
+    {
+        expression();
+        consume(TokenType::Semicolon, "Expect ';' after value");
+        MYPRINT_T();
+        emitBytes(OpCode::Print);
+    }
+    void expressionStatement()
+    {
+        expression();
+        consume(TokenType::Semicolon, "Expected ';' after expression.");
+        emitBytes(OpCode::Pop);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+   protected:
     void expression()
     {
         MYPRINT_T();
@@ -117,11 +162,24 @@ struct Compiler
         expression();
         consume(TokenType::RightParen, "Expected ')' after expression.");
     }
-    void identifier()
+    void variable()
     {
         MYPRINT_T();
-        emitConstant(Value::Create(_parser.previous.start, _parser.previous.start + _parser.previous.length));
-        // Value::Create(_parser.previous.start + 1, _parser.previous.start + _parser.previous.length - 1));
+        namedVariable(_parser.previous);
+    }
+    void namedVariable(const Token &name)
+    {
+        MYPRINT_T();
+        const uint8_t varId = identifierConstant(name);
+        if (match(TokenType::Equal))
+        {
+            expression();
+            emitBytes(OpCode::GlobalVarSet, varId);
+        }
+        else
+        {
+            emitBytes(OpCode::GlobalVarGet, varId);
+        }
     }
     void literal()
     {
@@ -150,11 +208,7 @@ struct Compiler
         Value value = Value::Create(strtod(_parser.previous.start, nullptr));
         emitConstant(value);
     }
-    void string()
-    {
-        emitConstant(
-            Value::Create(_parser.previous.start + 1, _parser.previous.start + _parser.previous.length - 1));
-    }
+    void string() { emitConstant(Value::CreateByCopy(_parser.previous.start + 1, _parser.previous.length - 1)); }
     void unary()
     {
         MYPRINT_T();
@@ -227,19 +281,22 @@ struct Compiler
                 return;  // Unreachable.
         }
     }
-    void print()
-    {
-        MYPRINT_T();
-        expression();
-        emitBytes(OpCode::Print);
-    }
     void variableDeclaration()
     {
         MYPRINT_T();
-        advance();
-        identifier();
-        //check if assignment -> expression
-        emitBytes(OpCode::Variable);
+
+        const uint8_t varId = parseVariable("Expected variable name.");
+        if (match(TokenType::Equal))
+        {
+            expression();
+        }
+        else
+        {
+            emitBytes(OpCode::Null);
+        }
+        consume(TokenType::Semicolon, "Expected ';' after variable declaration.");
+
+        defineVariable(varId);
     }
     const ParseRule &getParseRule(TokenType type) const { return _parseRules[(size_t)type]; }
     void parsePrecedence(Precedence precedence)
@@ -260,6 +317,18 @@ struct Compiler
             ParseRule::parse_func_t infixRule = getParseRule(_parser.previous.type).infix;
             infixRule();
         }
+    }
+
+    uint8_t parseVariable(const char *errorMessage)
+    {
+        consume(TokenType::Identifier, errorMessage);
+        return identifierConstant(_parser.previous);
+    }
+    void defineVariable(uint8_t id) { emitBytes(OpCode::GlobalVarDef, id); }
+    uint8_t identifierConstant(const Token &token)
+    {
+        MYPRINT_T();
+        return makeConstant(Value::CreateByCopy(token.start, token.length));
     }
 
    protected:
@@ -285,6 +354,9 @@ struct Compiler
         {
             error(buildMessage("Max constants per chunk exceeded: %s", UINT8_MAX).c_str());
         }
+#if USING(DEBUG_TRACE_EXECUTION)
+        chunk.printConstants();
+#endif  // #if USING(DEBUG_PRINT_CODE)
         return constantId;
     }
     void emitConstant(const Value &value) { emitBytes(OpCode::Constant, makeConstant(value)); }
@@ -297,7 +369,12 @@ struct Compiler
         ASSERT(chunk);
         chunk->write(byte, _lastExpressionLine);
     }
-    void emitBytes(OpCode code) { emitBytes((uint8_t)code); }
+    void emitBytes(OpCode code)
+    {
+        MYPRINT_T();
+        MYPRINT("emitOp: %s", named_enum::name(code));
+        emitBytes((uint8_t)code);
+    }
     void emitBytes(int constantId)
     {
         ASSERT(constantId < UINT8_MAX);
@@ -325,21 +402,51 @@ struct Compiler
         char message[1024];
         if (token.type == TokenType::Eof)
         {
-            snprintf(message, sizeof(message)," at end");
+            snprintf(message, sizeof(message), " at end");
         }
         else if (token.type == TokenType::Error)
         {
-            snprintf(message, sizeof(message)," Error token!!!");
+            snprintf(message, sizeof(message), " Error token!!!");
         }
         else
         {
-            snprintf(message, sizeof(message)," at '%.*s'", token.length, token.start);
+            snprintf(message, sizeof(message), " at '%.*s'", token.length, token.start);
         }
 
         _parser.optError =
             Parser::error_t(Parser::error_t::code_t::Undefined,
                             buildMessage("[line %d] Error %s: %s", _parser.current.line, message, errorMsg));
         return _parser.optError.value();
+    }
+
+    void synchronize()
+    {
+        // discard remaining part of current block (i.e., statement)
+        _parser.panicMode = false;
+
+        while (_parser.current.type != TokenType::Eof)
+        {
+            if (_parser.previous.type == TokenType::Semicolon)
+            {
+                return;
+            }
+            switch (_parser.current.type)
+            {
+                case TokenType::Class:
+                case TokenType::Func:
+                case TokenType::Var:
+                case TokenType::For:
+                case TokenType::If:
+                case TokenType::While:
+                case TokenType::Print:
+                case TokenType::Return:
+                    return;
+                default:
+                    break;
+            }
+
+            advance();
+        }
     }
 
    protected:
@@ -355,9 +462,8 @@ struct Compiler
         auto stringFunc = [&] { string(); };
         auto skipFunc = [&] { skip(); };
         auto unaryFunc = [&] { unary(); };
-        auto printFunc = [&] { print(); };
         auto varFunc = [&] { variableDeclaration(); };
-        auto identifierFunc = [&] { identifier(); };
+        auto identifierFunc = [&] { variable(); };
 
         _parseRules[(size_t)TokenType::LeftParen] = {groupingFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::RightParen] = {NULL, NULL, Precedence::NONE};
@@ -393,7 +499,7 @@ struct Compiler
         _parseRules[(size_t)TokenType::This] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Else] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::If] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Print] = {printFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Print] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Var] = {varFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Return] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::While] = {NULL, NULL, Precedence::NONE};
@@ -406,11 +512,19 @@ struct Compiler
     const Optional<Parser::error_t> &getCurrentError() const { return _parser.optError; }
     const Token &getCurrentToken() const { return _parser.current; }
 
-    bool match(TokenType type) const { return getCurrentToken().type == type; }
-
+    bool check(TokenType type) const { return getCurrentToken().type == type; }
+    bool match(TokenType type)
+    {
+        if (!check(type))
+        {
+            return false;
+        }
+        advance();
+        return true;
+    }
     void consume(TokenType type, const char *message)
     {
-        if (_parser.current.type == type)
+        if (check(type))
         {
             advance();
             return;
@@ -445,8 +559,8 @@ struct Compiler
     Parser _parser;
     int _lastExpressionLine = -1;
 
-    Chunk *_compilingChunk = nullptr;
-    Chunk *currentChunk() { return _compilingChunk; }
+    std::unique_ptr<Chunk> _compilingChunk = nullptr;
+    Chunk *currentChunk() { return _compilingChunk.get(); }
 
     ParseRule _parseRules[(size_t)TokenType::COUNT];
 

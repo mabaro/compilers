@@ -11,6 +11,7 @@ https://craftinginterpreters.com/a-virtual-machine.html
 #include "common.h"
 #include "compiler.h"
 #include "debug.h"
+#include "environment.h"
 
 struct VirtualMachine
 {
@@ -18,6 +19,7 @@ struct VirtualMachine
     {
         CompileError,
         RuntimeError,
+        FileSystemError,
         Undefined = 0x255
     };
     using error_t = Error<ErrorCode>;
@@ -29,13 +31,27 @@ struct VirtualMachine
     };
     using result_t = Result<InterpretResult, error_t>;
 
+    static const int kGlobalEnvironmentIndex = 0;
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
     VirtualMachine() {}
     ~VirtualMachine() {}
 
-    result_t init() { return makeResult<result_t>(InterpretResult::Ok); }
+    result_t init()
+    {
+        _environments.push_back(std::make_unique<Environment>());
+        return makeResult<result_t>(InterpretResult::Ok);
+    }
     result_t finish()
     {
-        _globalVariables.clear();
+        ASSERT(_environments.size() <= 1);
+        for (auto &env : _environments)
+        {
+            env->Reset();
+        }
+        _environments.clear();
+
         Object::FreeObjects();
         return makeResult<result_t>(InterpretResult::Ok);
     }
@@ -44,6 +60,7 @@ struct VirtualMachine
     {
 #define READ_BYTE() (*_ip++)
 #define READ_CONSTANT() (_chunk->getConstants()[READ_BYTE()])
+#define READ_STRING() (READ_CONSTANT().as.object->asString()->chars)
 #define BINARY_OP(op)               \
     do                              \
     {                               \
@@ -68,12 +85,6 @@ struct VirtualMachine
             switch (instruction)
             {
                 case OpCode::Return:
-                    printf("RESULT: ");
-                    if (stackSize() > 0)
-                    {
-                        printValue(stackPop());
-                    }
-                    printf("\n");
                     return InterpretResult::Ok;
                 case OpCode::Constant:
                 {
@@ -132,16 +143,16 @@ struct VirtualMachine
                             else
                             {
                                 return runtimeError("Cannot add types %s + %s: %s",
-                                                    aObj ? Object::getString(aObj->type) : Value::getString(a.type),
-                                                    bObj ? Object::getString(bObj->type) : Value::getString(b.type),
+                                                    aObj ? Object::getTypeName(aObj->type) : Value::getTypeName(a.type),
+                                                    bObj ? Object::getTypeName(bObj->type) : Value::getTypeName(b.type),
                                                     result.error().message().c_str());
                             }
                         }
                         else
                         {
                             return runtimeError("Cannot add different types: %s + %s",
-                                                aObj ? Object::getString(aObj->type) : Value::getString(a.type),
-                                                bObj ? Object::getString(bObj->type) : Value::getString(b.type));
+                                                aObj ? Object::getTypeName(aObj->type) : Value::getTypeName(a.type),
+                                                bObj ? Object::getTypeName(bObj->type) : Value::getTypeName(b.type));
                         }
                     }
                     else
@@ -177,85 +188,69 @@ struct VirtualMachine
                     stackPush(Value::Create(stackPop().isFalsey()));
                     break;
                 case OpCode::Print:
-                {  // read_object
-                    const Value &value = peek(0);
-                    if (value.type == Value::Type::Object)
-                    {
-                        if (value.as.object->type == Object::Type::String)
-                        {
-                            ObjectString *string = static_cast<ObjectString *>(value.as.object);
-                            printf("%.*s", (int)string->length, string->chars);
-                        }
-                        else
-                        {
-                            printf("Print is not yet implemented for Object::Type(%d)",
-                                   static_cast<int>(value.as.object->type));
-                            FAIL_MSG("Not implemented");
-                        }
-                    }
-                    else
-                    {
-                        switch (value.type)
-                        {
-                            case Value::Type::Bool:
-                                printf("%s", value.as.boolean ? "TRUE" : "FALSE");
-                                break;
-                            case Value::Type::Integer:
-                                printf("%d", value.as.integer);
-                                break;
-                            case Value::Type::Number:
-                                printf("%f", value.as.number);
-                                break;
-                            case Value::Type::Null:
-                                printf("NULL");
-                                break;
-                            default:
-                                printf("Print is not yet implemented for type(%d)\n", static_cast<int>(value.type));
-                                FAIL_MSG("Not implemented");
-                        }
-                    }
+                {
+                    printValue(stackPop());
                     break;
                 }
-                case OpCode::Variable:
+                case OpCode::Pop:
                 {
-                    const Value constValue = READ_CONSTANT();
-                    ASSERT(constValue.type == Value::Type::Object &&
-                           constValue.as.object->type == Object::Type::String);
-                    const char *varName = constValue.as.object->asString()->chars;
-                    const Value &value = _globalVariables[varName];
-                    stackPush(value);
+                    stackPop();
+                    break;
+                }
+                case OpCode::GlobalVarDef:
+                {
+                    const char *varName = READ_STRING();
+                    Value *value = AddVariable(varName, kGlobalEnvironmentIndex);
+                    *value = stackPop();  // null or expression :)
+                    break;
+                }
+                case OpCode::GlobalVarGet:
+                {
+                    const char *varName = READ_STRING();
+                    Value *value = FindVariable(varName, kGlobalEnvironmentIndex);
+                    if (value == nullptr)
+                    {
+                        return runtimeError("Trying to read undefined variable '%s'.",
+                                            value->as.object->asString()->chars);
+                    }
+                    stackPush(*value);
+                    break;
+                }
+                case OpCode::GlobalVarSet:
+                {
+                    const char *varName = READ_STRING();
+                    Value *value = FindVariable(varName, kGlobalEnvironmentIndex);
+                    if (value == nullptr)
+                    {
+                        return runtimeError("Trying to write to undefined variable '%s'.", varName);
+                    }
+                    *value = peek(0);
                     break;
                 }
                 case OpCode::Assignment:
                 {
                     const Value rvalue = stackPop();
-                    const Value lvalue = stackPop();
-                    ASSERT(lvalue.type == Value::Type::Object && lvalue.as.object->type == Object::Type::String);
-                    const auto &varNameStr = lvalue.as.object->asString();
-                    const char *varName = varNameStr->chars;
+                    const char *varName = READ_STRING();
                     Value *varValue = nullptr;
                     // check local variables
                     // ...
                     if (varValue == nullptr)
                     {
-                        auto varIt = _globalVariables.find(varName);
-                        if (varIt != _globalVariables.end())
-                        {
-                            varValue = &varIt->second;
-                        }
+                        varValue = FindVariable(varName, kGlobalEnvironmentIndex);
+                    }
+                    if (varValue == nullptr)
+                    {  // allow dynamic creation ?
+                        varValue = AddVariable(varName, kGlobalEnvironmentIndex);
+                        DEBUGPRINT_EX("Dynamic var(%s) created\n", varName);
                     }
                     if (varValue != nullptr)
                     {
                         *varValue = rvalue;
-                    }
-                    else
-                    {
-                        // allow dynamic creation ?
-                        _globalVariables[varName] = rvalue;
+#if USING(DEBUG_BUILD)
                         std::string tempStr;
                         printValue(tempStr, rvalue);
-                        DEBUGPRINT_EX("New var(%s)=%s\n", varName, tempStr.c_str());
-                        // return runtimeError("Variable(%s) not found", varName);
+                        DEBUGPRINT_EX("var(%s)=%s\n", varName, tempStr.c_str());
+#endif  // #if USING(DEBUG_BUILD)
                     }
                     break;
                 }
@@ -267,6 +262,7 @@ struct VirtualMachine
         return makeResult<result_t>(InterpretResult::Error);
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_STRING
 #undef BINARY_OP
     }
 
@@ -290,50 +286,65 @@ struct VirtualMachine
 
     Result<char *> readFile(const char *path)
     {
+        using result_t = Result<char *>;
+        
         FILE *file = nullptr;
         fopen_s(&file, path, "rb");
         if (file == nullptr)
         {
-            LOG_ERROR("Couldn't open file '%s'\n", path);
-            return makeResultError<Result<char *>>(Result<char *>::error_t::code_t::Undefined);
+            return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
+                                                   format("Couldn't open file '%s'\n", path));
         }
+        ScopedCallback closeFile([&file] { fclose(file); });
 
         fseek(file, 0L, SEEK_END);
         const size_t fileSize = ftell(file);
         rewind(file);
 
-        char *buffer = (char *)malloc(fileSize) + 1;
+        char *buffer = (char *)malloc(fileSize+1);
         if (buffer == nullptr)
         {
             char message[1024];
             snprintf(message, sizeof(message),
                      "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path, fileSize);
             LOG_ERROR(message);
-            fclose(file);
-            return makeResultError<Result<char *>>(Result<char *>::error_t::code_t::Undefined, message);
+            return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
         }
         const size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
         if (bytesRead < fileSize)
         {
             LOG_ERROR("Couldn't read the file '%s'\n", path);
-            fclose(file);
-            return makeResultError<Result<char *>>(Result<char *>::error_t::code_t::Undefined);
+            return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
+                                                   format("Couldn't read the file '%s'\n", path));
         }
         buffer[bytesRead] = '\0';
 
-        fclose(file);
-        return makeResult<Result<char *>>(buffer);
+        return makeResult<result_t>(buffer);
     }
 
-    result_t runFile(const char *path)
+    result_t runFromSource(const char *sourceCode)
     {
+        LOG_INFO("Running from source...\n");
+        result_t result = interpret(sourceCode, "SOURCE");
+        return result;
+    }
+
+    result_t runFromFile(const char *path)
+    {
+        LOG_INFO("Running from file(%s)...\n", path);
         Result<char *> source = readFile(path);
+        ScopedCallback freeSource([&source] { free(source.extract()); });
         if (!source.isOk())
         {
             return makeResultError<result_t>(source.error().message());
         }
-        result_t result = interpret(source.value(), path);
-        free(source.value());
+        char *buffer = source.value();
+
+        result_t result = interpret(buffer, path);
+        if (!result.isOk())
+        {
+            LOG_ERROR("%s", result.error().message().c_str());
+        }
 
         return result;
     }
@@ -434,12 +445,12 @@ struct VirtualMachine
         *_stackTop = std::move(value);
         ++_stackTop;
     }
-    Value stackPop()
+    Value &stackPop()
     {
         --_stackTop;
         return *_stackTop;
     }
-    Value stackPeek(size_t offset)
+    Value &stackPeek(size_t offset)
     {
         ASSERT(offset < stackSize());
         return *(_stackTop - offset);
@@ -460,14 +471,8 @@ struct VirtualMachine
 
     void PrintVariables() const
     {
-        printf(" Variables: ");
-        for (const auto it : _globalVariables)
-        {
-            printf("%s=[", it.first.c_str());
-            printValue(it.second);
-            printf("]");
-        }
-        printf("\n");
+        printf(" Global variables: ");
+        _environments.front()->Print();
     }
 #endif  // #if DEBUG_TRACE_EXECUTION
 
@@ -475,7 +480,22 @@ struct VirtualMachine
     const Chunk *_chunk = nullptr;
     const uint8_t *_ip = nullptr;
 
-    std::unordered_map<std::string, Value> _globalVariables;
+    Value *AddVariable(const char *name, int environmentIndex)
+    {
+        ASSERT(environmentIndex < _environments.size());
+        return _environments[environmentIndex]->AddVariable(name);
+    }
+    bool RemoveVariable(const char *name, int environmentIndex)
+    {
+        ASSERT(environmentIndex < _environments.size());
+        return _environments[environmentIndex]->RemoveVariable(name);
+    }
+    Value *FindVariable(const char *name, int environmentIndex)
+    {
+        ASSERT(environmentIndex < _environments.size());
+        return _environments[environmentIndex]->FindVariable(name);
+    }
+    std::vector<std::unique_ptr<Environment>> _environments;
 
     Compiler _compiler;
 };

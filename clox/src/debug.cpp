@@ -47,8 +47,6 @@ int disassembleInstruction(const Chunk& chunk, uint16_t offset)
             return simpleInstruction("OP_NEGATE", offset);
         case OpCode::Not:
             return simpleInstruction("OP_NOT", offset);
-        case OpCode::Constant:
-            return constantInstruction("OP_CONSTANT", chunk, offset);
         case OpCode::Add:
             return simpleInstruction("OP_ADD", offset);
         case OpCode::Subtract:
@@ -67,8 +65,16 @@ int disassembleInstruction(const Chunk& chunk, uint16_t offset)
             return simpleInstruction("OP_LESS", offset);
         case OpCode::Print:
             return simpleInstruction("OP_PRINT", offset);
-        case OpCode::Variable:
-            return simpleInstruction("OP_VARIABLE", offset);
+        case OpCode::Pop:
+            return simpleInstruction("OP_POP", offset);
+        case OpCode::Constant:
+            return constantInstruction("OP_CONSTANT", chunk, offset);
+        case OpCode::GlobalVarDef:
+            return constantInstruction("OP_GLOBAL_VAR_DEFINE", chunk, offset);
+        case OpCode::GlobalVarGet:
+            return constantInstruction("OP_GLOBAL_VAR_GET", chunk, offset);
+         case OpCode::GlobalVarSet:
+            return constantInstruction("OP_GLOBAL_VAR_SET", chunk, offset);
         default:
             printf("Unknown opcode %d\n", (int)instruction);
             return offset + 1;
