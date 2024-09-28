@@ -36,6 +36,9 @@ static bool test_result()
     ASSERT(res4.value().a == res2.value().a && !res3.isOk());
     Result<Dummy> res5 = makeResultError<Result<Dummy>>();
     ASSERT(!res5.isOk() && res5.error() == Error<>{});
+    char* buffer = (char*)malloc(512);
+    Result<char*> res6 = makeResult<Result<char*>>(buffer);
+    free(buffer);
 
     return true;
 }

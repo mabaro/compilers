@@ -16,19 +16,20 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEBUG_PRINT_CODE        IN_USE
-#define DEBUG_TRACE_EXECUTION   NOT_IN_USE
+#define DEBUG_PRINT_CODE NOT_IN_USE       // USING(DEBUG_BUILD)
+#define DEBUG_TRACE_EXECUTION NOT_IN_USE  // USING(DEBUG_BUILD)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Portability hacks
+
 #ifdef __unix
-#define fopen_s(pFile,filename,mode) ((*(pFile))=fopen((filename),(mode)))==NULL
+#define fopen_s(pFile, filename, mode) ((*(pFile)) = fopen((filename), (mode))) == NULL
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Language features
 
-#define LANG_EXT_MUT            IN_USE // variables are const by default
+#define LANG_EXT_MUT IN_USE  // variables are const by default
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -104,6 +105,18 @@ static std::string buildMessage(const char* fmt, ...)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+static std::string format(const char* format, ...)
+{
+    char message[256];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(message, sizeof(message), format, args);
+    va_end(args);
+    return message;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct ScopedCallback
 {
     using callback_t = std::function<void()>;
@@ -124,9 +137,9 @@ struct Error
     using code_t = ErrCodeT;
 
     Error() {}
-    Error(const char* msg) : _message(msg) {}
-    Error(const std::string& msg) : _message(msg) {}
-    Error(code_t e) : _code(e) {}
+    explicit Error(const char* msg) : _message(msg) {}
+    explicit Error(const std::string& msg) : _message(msg) {}
+    explicit Error(code_t e) : _code(e) {}
     Error(code_t e, const std::string& msg) : _code(e), _message(msg) {}
     Error(code_t e, const char* msg) : _code(e), _message(msg) {}
 
