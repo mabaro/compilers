@@ -281,7 +281,7 @@ struct Scanner
         struct Keyword {
             const char* str; TokenType type;
         };
-#define ADD_KEYWORD(STR, TYPE) {#STR, TokenType::##TYPE}
+#define ADD_KEYWORD(STR, TYPE) {#STR, TokenType::TYPE}
         static const Keyword keywords[] = {
             ADD_KEYWORD(class, Class),
             ADD_KEYWORD(else, Else),

@@ -67,7 +67,7 @@ void Log(LogLevel level, const char* fmt, Args... args)
     }
     if (outFile)
     {
-        fprintf(outFile, fmt, std::forward<Args>(args)...);
+        std::fprintf(outFile, fmt, std::forward<Args>(args)...);
     }
 }
 }  // namespace Logger

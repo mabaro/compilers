@@ -23,7 +23,10 @@ void Object::FreeObject(Object *obj)
             ObjectString *strObj = as<ObjectString>(obj);
             DEALLOCATE_N(char, strObj->chars, strObj->length);
             DEALLOCATE(ObjectString, strObj);
+        break;
         }
+        default:
+            FAIL_MSG("Unsupported type: %d", obj->type);
     }
 }
 void Object::FreeObjects()
