@@ -30,6 +30,15 @@ struct Object
         }
         return newObject;
     }
+
+    ObjectString* asString() {
+        ASSERT( type == Type::String);
+        if ( type == Type::String)
+        {
+            return (ObjectString*)this;
+        }
+        return nullptr;
+    }
 };
 
 struct ObjectString : public Object
@@ -99,4 +108,5 @@ DECL_OPERATOR(/)
 
 void print(const Object *obj);
 
+void printValue(std::string& oStr, const Value &value);
 void printValue(const Value &value);

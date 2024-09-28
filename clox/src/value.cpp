@@ -168,9 +168,11 @@ bool operator>(const Value &a, const Value &b)
             switch (a.as.object->type)
             {
                 case Object::Type::String:
+                {
                     auto strA = static_cast<char *>(a);
                     auto strB = static_cast<char *>(b);
                     return strcmp(strA, strB);
+                }
                 default:
                     FAIL_MSG("Not implemented");
                     return false;
@@ -222,27 +224,48 @@ static void print(const Object *obj)
     }
 }
 
-void printValue(const Value &value)
+void printValue(std::string& oStr, const Value &value)
 {
+    oStr.resize(256);
     switch (value.type)
     {
         case Value::Type::Bool:
-            printf(value.as.boolean ? "true" : "false");
+            snprintf(oStr.data(), oStr.capacity(), "%s", value.as.boolean ? "true" : "false");
             break;
         case Value::Type::Null:
-            printf("null");
+            snprintf(oStr.data(), oStr.capacity(), "%s", "null");
             break;
         case Value::Type::Number:
-            printf("%.2f", value.as.number);
+            snprintf(oStr.data(), oStr.capacity(), "%.2f", value.as.number);
             break;
         case Value::Type::Integer:
-            printf("%d", value.as.integer);
+            snprintf(oStr.data(), oStr.capacity(), "%d", value.as.integer);
             break;
         case Value::Type::Object:
-            print(value.as.object);
+            switch(value.as.object->type)
+            {
+                case Object::Type::String:
+                {
+                    auto strObj = *value.as.object->asString();
+                    snprintf(oStr.data(), oStr.capacity(), "%.*s", (int)strObj.length, strObj.chars);
+                    break;
+                }
+                default:
+                    FAIL_MSG("UNDEFINED OBJECT TYPE(%d)", value.as.object->type);
+            }
             break;
         default:
             FAIL_MSG("UNDEFINED VALUE TYPE(%d)", value.type);
             break;
     }
+    oStr.resize(strlen(oStr.data())+1);
+}
+
+void printValue(const Value &value)
+{
+    constexpr size_t SIZE = 256;
+    std::string outStr;
+    outStr.resize(SIZE);
+    printValue(outStr, value);
+    printf("%s", outStr.c_str());
 }

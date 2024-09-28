@@ -5,9 +5,10 @@ https://craftinginterpreters.com/a-virtual-machine.html
 
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 
-#include "chunk.h"
 #include "common.h"
+#include "chunk.h"
 #include "compiler.h"
 #include "debug.h"
 
@@ -32,7 +33,11 @@ struct VirtualMachine
     ~VirtualMachine() {}
 
     result_t init() { return makeResult<result_t>(InterpretResult::Ok); }
-    result_t finish() { return makeResult<result_t>(InterpretResult::Ok); }
+    result_t finish()
+    {
+        _globalVariables.clear();
+        return makeResult<result_t>(InterpretResult::Ok);
+    }
 
     result_t run()
     {
@@ -51,6 +56,8 @@ struct VirtualMachine
 #if DEBUG_TRACE_EXECUTION
             printf("          ");
             stackPrint();
+            printf("          ");
+            PrintVariables();
             printf("          ");
             _chunk->printConstants();
             disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()));
@@ -83,7 +90,7 @@ struct VirtualMachine
                 case OpCode::False:
                     stackPush(Value::Create(false));
                     break;
-
+                
                 case OpCode::Equal:
                 {
                     const Value a = stackPop();
@@ -143,11 +150,13 @@ struct VirtualMachine
                         if (value.as.object->type == Object::Type::String)
                         {
                             ObjectString *string = static_cast<ObjectString *>(value.as.object);
-                            printf("%s", string->chars);
-                            break;
+                            printf("%.*s", (int)string->length, string->chars);
                         }
-                        printf("Print is not yet implemented for Object::Type(%d)", value.as.object->type);
-                        FAIL_MSG("Not implemented");
+                        else
+                        {
+                            printf("Print is not yet implemented for Object::Type(%d)", value.as.object->type);
+                            FAIL_MSG("Not implemented");
+                        }
                     }
                     else
                     {
@@ -169,6 +178,50 @@ struct VirtualMachine
                                 printf("Print is not yet implemented for type(%d)\n", value.type);
                                 FAIL_MSG("Not implemented");
                         }
+                    }
+                    break;
+                }
+                case OpCode::Variable:
+                {
+                    const Value constValue = READ_CONSTANT();
+                    ASSERT(constValue.type == Value::Type::Object &&
+                           constValue.as.object->type == Object::Type::String);
+                    const char* varName = constValue.as.object->asString()->chars;
+                    const Value& value = _globalVariables[varName];
+                    stackPush(value);
+                    break;
+                }
+                case OpCode::Assignment:
+                {
+                    const Value rvalue = stackPop();
+                    const Value lvalue = stackPop();
+                    ASSERT(lvalue.type == Value::Type::Object &&
+                           lvalue.as.object->type == Object::Type::String);
+                    const auto& varNameStr = lvalue.as.object->asString();
+                    const char *varName = varNameStr->chars;
+                    Value *varValue = nullptr;
+                    // check local variables
+                    // ...
+                    if (varValue == nullptr)
+                    {
+                        auto varIt = _globalVariables.find(varName);
+                        if (varIt != _globalVariables.end())
+                        {
+                            varValue = &varIt->second;
+                        }
+                    }
+                    if (varValue != nullptr)
+                    {
+                        *varValue = rvalue;
+                    }
+                    else
+                    {
+                        // allow dynamic creation ?
+                        _globalVariables[varName] = rvalue;
+                        std::string tempStr;
+                        printValue(tempStr, rvalue);
+                        DEBUGPRINT_EX("New var(%s)=%s\n", varName, tempStr.c_str());
+                        // return runtimeError("Variable(%s) not found", varName);
                     }
                     break;
                 }
@@ -281,6 +334,7 @@ struct VirtualMachine
                     printf("--------------------------------\n");
                     break;
                 }
+#if USING(DEBUG_BUILD)
                 else if (strstr(line, "debugbreak"))
                 {
                     const bool enable = strstr(line, "enable");
@@ -290,6 +344,7 @@ struct VirtualMachine
                     printf("--------------------------------\n");
                     continue;
                 }
+#endif  // #if !USING(DEBUG_BUILD)
             }
 
             result_t result = interpret(line);
@@ -333,9 +388,14 @@ struct VirtualMachine
     Value *_stackTop = &_stack[0];
 
     void stackReset() { _stackTop = &_stack[0]; }
-    void stackPush(Value value)
+    void stackPush(const Value& value)
     {
         *_stackTop = value;
+        ++_stackTop;
+    }
+    void stackPush(Value&& value)
+    {
+        *_stackTop = std::move(value);
         ++_stackTop;
     }
     Value stackPop()
@@ -356,11 +416,25 @@ struct VirtualMachine
         }
         printf("\n");
     }
+
+    void PrintVariables() const
+    {
+        printf(" Variables: ");
+        for (const auto it : _globalVariables)
+        {
+            printf("%s=[", it.first.c_str());
+            printValue(it.second);
+            printf("]");
+        }
+        printf("\n");
+    }
 #endif  // #if DEBUG_TRACE_EXECUTION
 
-   protected:
+   protected:  // STATE
     const Chunk *_chunk = nullptr;
     const uint8_t *_ip = nullptr;
+
+    std::unordered_map<std::string, Value> _globalVariables;
 
     Compiler _compiler;
 };
