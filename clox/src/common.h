@@ -8,10 +8,20 @@
 #include <string>
 #include <type_traits>
 
+#include "config.h"
 #include "assert.h"
 
-#define DEBUG_PRINT_CODE 0
-#define DEBUG_TRACE_EXECUTION 0
+#define ARRAY_SIZE(X) (sizeof(X) / sizeof(X[0]))
+
+////////////////////////////////////////////////////////////////////////////////
+
+#define DEBUG_PRINT_CODE        IN_USE
+#define DEBUG_TRACE_EXECUTION   NOT_IN_USE
+
+////////////////////////////////////////////////////////////////////////////////
+// Language features
+
+#define LANG_EXT_MUT            IN_USE // variables are const by default
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -49,7 +59,7 @@ void Log(LogLevel level, const char* fmt, Args... args)
             break;
         case LogLevel::Debug:
             outFile = stdout;
-            fprintf(outFile, "Warning: ");
+            fprintf(outFile, "Debug: ");
             break;
         default:
             break;
@@ -83,6 +93,7 @@ static std::string buildMessage(const char* fmt, ...)
 #define LOG_DEBUG(fmt, ...) LOG_BASE(LogLevel::Debug, fmt, ##__VA_ARGS__)
 
 #define DEBUGPRINT(fmt, ...) LOG_BASE(LogLevel::Debug, "DEBUG(line_%d): " #fmt, __LINE__, ##__VA_ARGS__)
+#define DEBUGPRINT_EX(fmt, ...) LOG_BASE(LogLevel::Debug, "[%s] " fmt, __FUNCTION__, ##__VA_ARGS__)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 

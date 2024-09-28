@@ -1,9 +1,12 @@
 #pragma once
 
-#include <debugbreak/debugbreak.h>
+#include "config.h"
+
+#if USING(DEBUG_BUILD)
 
 #include <cstdio>
 #include <utility>
+#include <debugbreak/debugbreak.h>
 
 namespace util
 {
@@ -13,7 +16,6 @@ bool IsDebugBreakEnabled();
 
 namespace detail
 {
-
 template <typename... Args>
 bool assert_handler(const char* condition, const char* file, int line, const char* fmt, Args... args)
 {
@@ -29,6 +31,7 @@ bool assert_handler(const char* condition, const char* file, int line, const cha
 }
 
 }  // namespace detail
+
 }  // namespace util
 
 #define ASSERT_MSG(X, fmt, ...)                                                         \
@@ -57,3 +60,12 @@ bool assert_handler(const char* condition, const char* file, int line, const cha
 
 #define FAIL_MSG(fmt, ...) ASSERT_MSG(0, fmt, __VA_ARGS__)
 #define FAIL() ASSERT(false)
+
+#else // #if USING(DEBUG_BUILD)
+
+#define ASSERT_MSG(X, fmt, ...)
+#define ASSERT(X)
+#define FAIL_MSG(fmt, ...)
+#define FAIL()
+
+#endif // #else // #if USING(DEBUG_BUILD)
