@@ -1,24 +1,81 @@
-#pragma once
-
 #include "value.h"
 
-#include <cstdlib>
-#include <vector>
+#include <cstring>
 
-ObjectString *ObjectString::Create(const char *begin, const char *end)
+Object *Object::s_allocatedList = nullptr;
+
+const char *Object::getString(Type type)
 {
-    const size_t length = end - begin;
-    char *newString = ALLOCATE(char, length + 1);
-    ASSERT(newString);
-    memcpy(newString, begin, length);
-    newString[length] = 0;
+    switch (type)
+    {
+        case Type::String:
+            return "String";
+        default:
+            return "Undefined type";
+    }
+}
+void Object::FreeObject(Object *obj)
+{
+    switch (obj->type)
+    {
+        case Type::String:
+        {
+            ObjectString *strObj = as<ObjectString>(obj);
+            DEALLOCATE_N(char, strObj->chars, strObj->length);
+            DEALLOCATE(ObjectString, strObj);
+        }
+    }
+}
+void Object::FreeObjects()
+{
+    Object *ptr = s_allocatedList;
+    while (ptr)
+    {
+        Object *next = ptr->_allocatedNext;
+        DEALLOCATE(Object, ptr);
+        ptr = next;
+    }
+}
 
+ObjectString *ObjectString::Create(char *ownedStr, size_t length)
+{
     ObjectString *newStringObj = Object::allocate<ObjectString>();
-    newStringObj->chars = newString;
+    newStringObj->chars = ownedStr;
     newStringObj->length = length;
     return newStringObj;
 }
 
+ObjectString *ObjectString::Create(const char *begin, const char *end)
+{
+    const size_t length = end - begin;
+    char *newString = ALLOCATE_N(char, length + 1);
+    ASSERT(newString);
+    memcpy(newString, begin, length);
+    newString[length] = 0;
+
+    return Create(newString, length);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+const char *Value::getString(Type type)
+{
+    switch (type)
+    {
+        case Type::Bool:
+            return "Boolean";
+        case Type::Null:
+            return "Null";
+        case Type::Number:
+            return "Number";
+        case Type::Integer:
+            return "Integer";
+        case Type::Object:
+            return "Object";
+        default:
+            return "Undefined type";
+    }
+}
 Value::operator bool() const
 {
     ASSERT(type == Type::Bool);
@@ -75,6 +132,15 @@ Value Value::Create(double value)
         .type = Type::Number,
     };
 }
+Value Value::Create(char *ownedStr, size_t length)
+{
+    return Value{
+        .as{
+            .object = ObjectString::Create(ownedStr, length),
+        },
+        .type = Type::Object,
+    };
+}
 Value Value::Create(const char *begin, const char *end)
 {
     return Value{
@@ -114,6 +180,56 @@ Value Value::operator-(const Value &a)
     }
 }
 
+Result<Value> operator+(const Object &a, const Object &b)
+{
+    switch (a.type)
+    {
+        case Object::Type::String:
+        {  // concatenate
+            const ObjectString *aStr = Object::as<ObjectString>(&a);
+            const ObjectString *bStr = Object::as<ObjectString>(&b);
+            if (aStr && bStr)
+            {
+                const size_t newLength = aStr->length + bStr->length;
+                char *newStr = (char *)malloc(newLength + 1);
+                memcpy(newStr, aStr->chars, aStr->length);
+                memcpy(newStr + aStr->length, bStr->chars, bStr->length);
+                newStr[newLength] = 0;
+                return Value::Create(newStr, newLength);
+            }
+        }
+        break;
+        default:
+            FAIL();
+    }
+    return Error_t(buildMessage("Undefined operation for objects of types: %s and %s", Object::getString(a.type),
+                                Object::getString(b.type)));
+}
+
+bool compareObject(const Object *a, const Object *b)
+{
+    ASSERT(b->type == a->type);
+
+    if (a == nullptr || b == nullptr)
+    {
+        FAIL();
+        return a == b;
+    }
+
+    switch (a->type)
+    {
+        case Object::Type::String:
+        {
+            const ObjectString *aStr = Object::as<ObjectString>(a);
+            const ObjectString *bStr = Object::as<ObjectString>(b);
+            return (aStr->length == bStr->length) && memcmp(aStr->chars, bStr->chars, aStr->length);
+        }
+        default:
+            FAIL();
+    }
+    return false;
+}
+
 bool operator==(const Value &a, const Value &b)
 {
     if (a.type != b.type)
@@ -128,6 +244,8 @@ bool operator==(const Value &a, const Value &b)
             return a.as.number == b.as.number;
         case Value::Type::Integer:
             return a.as.integer == b.as.integer;
+        case Value::Type::Object:
+            return compareObject(a.as.object, b.as.object);
         case Value::Type::Null:
             return true;
         default:

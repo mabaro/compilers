@@ -73,12 +73,12 @@ struct Compiler
     using error_t = Error<ErrorCode>;
     using result_t = Result<Chunk *, error_t>;
 
-    result_t compile(const char *source)
+    result_t compile(const char *source, const char* sourcePath)
     {
         populateParseRules();
 
         _scanner.init(source);
-        _compilingChunk = new Chunk();
+        _compilingChunk = new Chunk(sourcePath);
 
         _parser.optError = Optional<Parser::error_t>();
         _parser.panicMode = false;
@@ -325,15 +325,15 @@ struct Compiler
         char message[1024];
         if (token.type == TokenType::Eof)
         {
-            sprintf_s(message, " at end");
+            snprintf(message, sizeof(message)," at end");
         }
         else if (token.type == TokenType::Error)
         {
-            sprintf_s(message, " Error token!!!");
+            snprintf(message, sizeof(message)," Error token!!!");
         }
         else
         {
-            sprintf_s(message, " at '%.*s'", token.length, token.start);
+            snprintf(message, sizeof(message)," at '%.*s'", token.length, token.start);
         }
 
         _parser.optError =
@@ -381,6 +381,7 @@ struct Compiler
         _parseRules[(size_t)TokenType::Identifier] = {identifierFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::String] = {stringFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Number] = {numberFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::NumberFloat] = {numberFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::And] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Or] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Class] = {NULL, NULL, Precedence::NONE};

@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstdarg>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <functional>
@@ -81,10 +82,10 @@ static std::string buildMessage(const char* fmt, ...)
     return std::string(buff);
 }
 
-#define LOG_BASE(level, fmt, ...)             \
-    do                                        \
-    {                                         \
-        Logger::Log(level, fmt, __VA_ARGS__); \
+#define LOG_BASE(level, fmt, ...)               \
+    do                                          \
+    {                                           \
+        Logger::Log(level, fmt, ##__VA_ARGS__); \
     } while (0)
 
 #define LOG_ERROR(fmt, ...) LOG_BASE(LogLevel::Error, fmt, ##__VA_ARGS__)
@@ -145,6 +146,7 @@ struct Error
     const code_t _code = code_t::Undefined;
     const std::string _message = "Undefined";
 };
+using Error_t = Error<ErrorCode>;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 

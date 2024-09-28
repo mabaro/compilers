@@ -1,9 +1,10 @@
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "common.h"
 #include "value.h"
-
-#include <vector>
 
 enum class OpCode
 {
@@ -45,9 +46,10 @@ struct Chunk
 {
     using ValueArray = RandomAccessContainer<Value>;
 
-    Chunk() {}
+    Chunk(const char* sourcePath) : _sourcepath(sourcePath) {}
     ~Chunk() {}
 
+    const char* getSourcePath() const { return _sourcepath.c_str(); }
     const uint8_t* getCode() const { return _code.data(); }
     const uint16_t* getLines() const { return _lines.data(); }
     const uint16_t getLine(uint16_t index) const { return _lines[index]; }
@@ -88,6 +90,7 @@ struct Chunk
 #endif  // #if DEBUG_TRACE_EXECUTION
 
    protected:
+    std::string _sourcepath;
     std::vector<uint8_t> _code;
     std::vector<uint16_t> _lines;
     ValueArray _constants;

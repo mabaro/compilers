@@ -32,7 +32,7 @@ int main(int argc, char **argv)
         const char codeStr[] = "a = 1; print (\"Testing variables functionality: 'var a: \"); print(a); print(\"'\n\")";
         // const char codeStr[] = "print true";
         LOG_INFO("> Quick test: [%s]\n", codeStr);
-        auto result = VM.interpret(codeStr);
+        auto result = VM.interpret(codeStr, "QUICK_TESTS");
         if (!result.isOk())
         {
             LOG_ERROR("%s\n", result.error().message().c_str());

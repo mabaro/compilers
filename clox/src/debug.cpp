@@ -1,4 +1,5 @@
-#pragma once
+#include "debug.h"
+
 #include <cstdio>
 
 #include "chunk.h"

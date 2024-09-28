@@ -3,6 +3,10 @@
 #include "common.h"
 #include <cstring>
 
+#include <cstring>
+#include <stdio.h>
+
+
 enum class TokenType
 {
     LeftParen,
@@ -181,7 +185,7 @@ struct Scanner
                 break;
         }
 
-        return makeResultError<TokenResult_t>("Unexpected character.");
+        return makeResultError<TokenResult_t>(buildMessage("Unexpected character: '%c'", c));
     }
 
    protected:
@@ -207,7 +211,7 @@ struct Scanner
                 tokenLength = found - start;
             }
         }
-        sprintf_s(message, "%s at '%.*s' pos:%d in line %d\n", msg, (int)tokenLength, start, pos, line);
+        snprintf(message, sizeof(message), "%s at '%.*s' pos:%d in line %d\n", msg, (int)tokenLength, start, pos, line);
         return makeResultError<TokenResult_t>(TokenResult_t::error_t::code_t::SyntaxError, message);
     }
 
