@@ -7,8 +7,8 @@ https://craftinginterpreters.com/a-virtual-machine.html
 #include <cstring>
 #include <memory>
 
-#include "common.h"
 #include "chunk.h"
+#include "common.h"
 #include "compiler.h"
 #include "debug.h"
 
@@ -91,7 +91,7 @@ struct VirtualMachine
                 case OpCode::False:
                     stackPush(Value::Create(false));
                     break;
-                
+
                 case OpCode::Equal:
                 {
                     const Value b = stackPop();
@@ -188,7 +188,8 @@ struct VirtualMachine
                         }
                         else
                         {
-                            printf("Print is not yet implemented for Object::Type(%d)", value.as.object->type);
+                            printf("Print is not yet implemented for Object::Type(%d)",
+                                   static_cast<int>(value.as.object->type));
                             FAIL_MSG("Not implemented");
                         }
                     }
@@ -209,7 +210,7 @@ struct VirtualMachine
                                 printf("NULL");
                                 break;
                             default:
-                                printf("Print is not yet implemented for type(%d)\n", value.type);
+                                printf("Print is not yet implemented for type(%d)\n", static_cast<int>(value.type));
                                 FAIL_MSG("Not implemented");
                         }
                     }
@@ -220,8 +221,8 @@ struct VirtualMachine
                     const Value constValue = READ_CONSTANT();
                     ASSERT(constValue.type == Value::Type::Object &&
                            constValue.as.object->type == Object::Type::String);
-                    const char* varName = constValue.as.object->asString()->chars;
-                    const Value& value = _globalVariables[varName];
+                    const char *varName = constValue.as.object->asString()->chars;
+                    const Value &value = _globalVariables[varName];
                     stackPush(value);
                     break;
                 }
@@ -229,9 +230,8 @@ struct VirtualMachine
                 {
                     const Value rvalue = stackPop();
                     const Value lvalue = stackPop();
-                    ASSERT(lvalue.type == Value::Type::Object &&
-                           lvalue.as.object->type == Object::Type::String);
-                    const auto& varNameStr = lvalue.as.object->asString();
+                    ASSERT(lvalue.type == Value::Type::Object && lvalue.as.object->type == Object::Type::String);
+                    const auto &varNameStr = lvalue.as.object->asString();
                     const char *varName = varNameStr->chars;
                     Value *varValue = nullptr;
                     // check local variables
@@ -412,7 +412,8 @@ struct VirtualMachine
         const uint16_t instruction = static_cast<uint16_t>(this->_ip - chunk->getCode() - 1);
         const uint16_t line = chunk->getLine(instruction);
         char outputMessage[512];
-        snprintf(outputMessage, sizeof(outputMessage), "[%s:%d] Runtime error: %s\n", chunk->getSourcePath(), line, message);
+        snprintf(outputMessage, sizeof(outputMessage), "[%s:%d] Runtime error: %s\n", chunk->getSourcePath(), line,
+                 message);
         stackReset();
         return makeResultError<result_t>(result_t::error_t::code_t::RuntimeError, outputMessage);
     }
@@ -423,12 +424,12 @@ struct VirtualMachine
     Value *_stackTop = &_stack[0];
 
     void stackReset() { _stackTop = &_stack[0]; }
-    void stackPush(const Value& value)
+    void stackPush(const Value &value)
     {
         *_stackTop = value;
         ++_stackTop;
     }
-    void stackPush(Value&& value)
+    void stackPush(Value &&value)
     {
         *_stackTop = std::move(value);
         ++_stackTop;

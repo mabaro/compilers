@@ -20,6 +20,12 @@
 #define DEBUG_TRACE_EXECUTION   NOT_IN_USE
 
 ////////////////////////////////////////////////////////////////////////////////
+// Portability hacks
+#ifdef __unix
+#define fopen_s(pFile,filename,mode) ((*(pFile))=fopen((filename),(mode)))==NULL
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 // Language features
 
 #define LANG_EXT_MUT            IN_USE // variables are const by default
