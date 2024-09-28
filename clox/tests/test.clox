@@ -1,0 +1,9 @@
+var A=0;
+var B=1;
+var C=A+B;
+print("El resultado de sumar "); 
+print(A); 
+print(" + "); 
+print(B); 
+print(" = "); 
+print(C); 
