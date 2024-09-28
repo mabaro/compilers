@@ -8,13 +8,14 @@ on:
   pull_request:
     branches: [ "master" ]
 
+defaults:
+  run:
+    working-directory: ${{ github.workspace }}/clox/    
+
 jobs:
 
   build:
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}/clox/     
+    runs-on: ${{ matrix.os }} 
 
     strategy:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
