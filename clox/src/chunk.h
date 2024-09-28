@@ -34,6 +34,8 @@ enum class OpCode
     // Core methods
     Print,
 
+    Variable,
+    
     Skip,  // helper for semicolon
 
     Undefined = 0x0FF
@@ -52,7 +54,6 @@ struct Chunk
     const size_t getCodeSize() const { return _code.size(); }
 
     const ValueArray& getConstants() const { return _constants; }
-    const ValueArray& getVariables() const { return _variables; }
 
     void init()
     {
@@ -69,11 +70,6 @@ struct Chunk
     {
         _constants.write(value);
         return static_cast<int>(_constants.getSize()) - 1;
-    }
-    int addVariable(const Value& value)
-    {
-        _variables.write(value);
-        return static_cast<int>(_variables.getSize()) - 1;
     }
 
 #if DEBUG_TRACE_EXECUTION
@@ -95,5 +91,4 @@ struct Chunk
     std::vector<uint8_t> _code;
     std::vector<uint16_t> _lines;
     ValueArray _constants;
-    ValueArray _variables;
 };

@@ -27,7 +27,9 @@ int main(int argc, char **argv)
         // const char codeStr[] = "(-1 + 2) - 4 * 3 / ( -5 - 6 + 35)";
         // const char codeStr[] = "print !true";
         // const char codeStr[] = "!(5 - 4 > 0 * 2 == !false)";
-        const char codeStr[] = "print (\"true is: \"); print(true); print(\"\n\")";
+        // const char codeStr[] = "print (\"true is: \"); print(true); print(\"\n\")";
+        // const char codeStr[] = "var a = 1; print (\"var a: \"); print(a); print(\"\n\")";
+        const char codeStr[] = "a = 1; print (\"Testing variables functionality: 'var a: \"); print(a); print(\"'\n\")";
         // const char codeStr[] = "print true";
         LOG_INFO("> Quick test: [%s]\n", codeStr);
         auto result = VM.interpret(codeStr);

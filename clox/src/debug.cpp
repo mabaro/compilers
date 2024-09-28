@@ -2,7 +2,6 @@
 #include <cstdio>
 
 #include "chunk.h"
-#include "common.h"
 
 int simpleInstruction(const char* name, int offset)
 {
@@ -67,8 +66,10 @@ int disassembleInstruction(const Chunk& chunk, uint16_t offset)
             return simpleInstruction("OP_LESS", offset);
         case OpCode::Print:
             return simpleInstruction("OP_PRINT", offset);
+        case OpCode::Variable:
+            return simpleInstruction("OP_VARIABLE", offset);
         default:
-            printf("Unknown opcode %d\n", instruction);
+            printf("Unknown opcode %d\n", (int)instruction);
             return offset + 1;
     }
 }

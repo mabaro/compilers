@@ -1,15 +1,17 @@
 #pragma once
 
-#include "chunk.h"
 #include "common.h"
+#include "chunk.h"
 #include "scanner.h"
 #include "vm.h"
 
 #if DEBUG_PRINT_CODE
 #include "debug.h"
 #define MYPRINT(X, ...) printf("[%s] " X "\n", __FUNCTION__, ##__VA_ARGS__)
+#define MYPRINT_T() MYPRINT("prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start, _parser.current.length, _parser.current.start);
 #else
 #define MYPRINT(X, ...)
+#define MYPRINT_T(X, ...)
 #endif  // #if DEBUG_PRINT_CODE
 
 #include <functional>
@@ -73,7 +75,7 @@ struct Compiler
 
     result_t compile(const char *source)
     {
-        populateExpressions();
+        populateParseRules();
 
         _scanner.init(source);
         _compilingChunk = new Chunk();
@@ -100,28 +102,30 @@ struct Compiler
    protected:  // high level stuff
     void expression()
     {
-        MYPRINT("expression: prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
-                _parser.current.length, _parser.current.start);
+        MYPRINT_T();
         _lastExpressionLine = _parser.current.line;
         parsePrecedence(Precedence::ASSIGNMENT);
     }
     void skip()
     {
-        MYPRINT("skip:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start, _parser.current.length,
-                _parser.current.start);
+        MYPRINT_T();
         // nothing to do here
     }
     void grouping()
     {
-        MYPRINT("grouping:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
-                _parser.current.length, _parser.current.start);
+        MYPRINT_T();
         expression();
         consume(TokenType::RightParen, "Expected ')' after expression.");
     }
+    void identifier()
+    {
+        MYPRINT_T();
+        emitConstant(Value::Create(_parser.previous.start, _parser.previous.start + _parser.previous.length));
+        // Value::Create(_parser.previous.start + 1, _parser.previous.start + _parser.previous.length - 1));
+    }
     void literal()
     {
-        MYPRINT("literal:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
-                _parser.current.length, _parser.current.start);
+        MYPRINT_T();
 
         switch (_parser.previous.type)
         {
@@ -141,8 +145,7 @@ struct Compiler
     }
     void number()
     {
-        MYPRINT("number:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
-                _parser.current.length, _parser.current.start);
+        MYPRINT_T();
 
         Value value = Value::Create(strtod(_parser.previous.start, nullptr));
         emitConstant(value);
@@ -154,8 +157,7 @@ struct Compiler
     }
     void unary()
     {
-        MYPRINT("unary:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start, _parser.current.length,
-                _parser.current.start);
+        MYPRINT_T();
         const TokenType operatorType = _parser.previous.type;
 
         // parse expression
@@ -176,8 +178,7 @@ struct Compiler
     }
     void binary()
     {
-        MYPRINT("binary:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
-                _parser.current.length, _parser.current.start);
+        MYPRINT_T();
 
         const TokenType operatorType = _parser.previous.type;
         const ParseRule parseRule = getParseRule(operatorType);
@@ -228,10 +229,17 @@ struct Compiler
     }
     void print()
     {
-        MYPRINT("print:  prev[%.*s] cur[%.*s]", _parser.previous.length, _parser.previous.start,
-        _parser.current.length, _parser.current.start);
+        MYPRINT_T();
         expression();
         emitBytes(OpCode::Print);
+    }
+    void variableDeclaration()
+    {
+        MYPRINT_T();
+        advance();
+        identifier();
+        //check if assignment -> expression
+        emitBytes(OpCode::Variable);
     }
     const ParseRule &getParseRule(TokenType type) const { return _parseRules[(size_t)type]; }
     void parsePrecedence(Precedence precedence)
@@ -280,35 +288,6 @@ struct Compiler
         return constantId;
     }
     void emitConstant(const Value &value) { emitBytes(OpCode::Constant, makeConstant(value)); }
-
-    int makeVariable()
-    {
-        ASSERT(currentChunk());
-        Chunk &chunk = *currentChunk();
-
-        const int id = chunk.addVariable(Value::Create());
-        if (id > UINT8_MAX)
-        {
-            error(buildMessage("Max variables per chunk exceeded: %s", UINT8_MAX).c_str());
-        }
-        return id;
-    }
-    void emitVariable(const std::string &name)
-    {
-        int varIndex = -1;
-        auto it = _variables.find(name);
-        if (it == _variables.end())
-        {
-            varIndex = makeVariable();
-            _variables.insert(std::make_pair(name, varIndex));
-        }
-        else
-        {
-            varIndex = it->second;
-        }
-
-        // emitBytes(OpCode::Variable, varIndex);
-    }
 
     void emitReturn() { emitBytes((uint8_t)OperationType::Return); }
 
@@ -367,7 +346,7 @@ struct Compiler
     using token_result_t = Result<Token, error_t>;
     using expression_handler_t = std::function<void()>;
 
-    void populateExpressions()
+    void populateParseRules()
     {
         auto binaryFunc = [&] { binary(); };
         auto groupingFunc = [&] { grouping(); };
@@ -377,6 +356,8 @@ struct Compiler
         auto skipFunc = [&] { skip(); };
         auto unaryFunc = [&] { unary(); };
         auto printFunc = [&] { print(); };
+        auto varFunc = [&] { variableDeclaration(); };
+        auto identifierFunc = [&] { identifier(); };
 
         _parseRules[(size_t)TokenType::LeftParen] = {groupingFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::RightParen] = {NULL, NULL, Precedence::NONE};
@@ -397,7 +378,7 @@ struct Compiler
         _parseRules[(size_t)TokenType::GreaterEqual] = {NULL, binaryFunc, Precedence::COMPARISON};
         _parseRules[(size_t)TokenType::Less] = {NULL, binaryFunc, Precedence::COMPARISON};
         _parseRules[(size_t)TokenType::LessEqual] = {NULL, binaryFunc, Precedence::COMPARISON};
-        _parseRules[(size_t)TokenType::Identifier] = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Identifier] = {identifierFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::String] = {stringFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Number] = {numberFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::And] = {NULL, NULL, Precedence::NONE};
@@ -412,6 +393,7 @@ struct Compiler
         _parseRules[(size_t)TokenType::Else] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::If] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Print] = {printFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Var] = {varFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Return] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::While] = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::For] = {NULL, NULL, Precedence::NONE};
