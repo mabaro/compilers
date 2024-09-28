@@ -13,3 +13,8 @@ unary      -> ( "-" | "!" ) expression ;
 binary     -> expression operator expression ;
 operator   -> "==" | "!+" | "<" | "<=" | ">" | ">="
               "+" | "-" | "*" | "/" ;
+
+pending:
+- add mut/const modifiers (ideally const by default?)
+- validation of variables/scope...
+- so much more...
