@@ -17,7 +17,7 @@ struct Object
         COUNT
     };
     Type type = Type::COUNT;
-    static const char *getString(Type type);
+    static const char *getTypeName(Type type);
 
     template <typename ObjectT>
     static ObjectT *allocate()
@@ -47,7 +47,7 @@ struct Object
         {
             return static_cast<const T *>(obj);
         }
-        FAIL_MSG("Cannot cast %s -> %s", getString(obj->type), getString(T::obj_type));
+        FAIL_MSG("Cannot cast %s -> %s", getTypeName(obj->type), getTypeName(T::obj_type));
         return nullptr;
     }
     template <typename T>
@@ -58,7 +58,7 @@ struct Object
         {
             return static_cast<T *>(obj);
         }
-        FAIL_MSG("Cannot cast %s -> %s", getString(obj->type), getString(T::obj_type));
+        FAIL_MSG("Cannot cast %s -> %s", getTypeName(obj->type), getTypeName(T::obj_type));
         return nullptr;
     }
     ObjectString *asString()
@@ -86,8 +86,8 @@ struct ObjectString : public Object
 
     size_t length = 0;
     char *chars = nullptr;
-    static ObjectString *Create(char *ownedStr, size_t length);
-    static ObjectString *Create(const char *begin, const char *end);
+    static ObjectString *CreateByMove(char *str, size_t length);
+    static ObjectString *CreateByCopy(const char *str, size_t length);
 };
 
 struct Value
@@ -111,7 +111,7 @@ struct Value
         COUNT = Undefined
     };
     Type type = Type::Undefined;
-    static const char *getString(Type type);
+    static const char *getTypeName(Type type);
 
     static constexpr struct NullType
     {
@@ -131,8 +131,8 @@ struct Value
     static Value Create(bool value);
     static Value Create(int value);
     static Value Create(double value);
-    static Value Create(const char *begin, const char *end);
-    static Value Create(char *ownedStr, size_t length);
+    static Value CreateByMove(char *ownedStr, size_t length);
+    static Value CreateByCopy(const char *begin, size_t length);
 
     Value operator-() const;
     Value operator-(const Value &a);

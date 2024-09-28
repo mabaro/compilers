@@ -4,7 +4,7 @@
 
 Object *Object::s_allocatedList = nullptr;
 
-const char *Object::getString(Type type)
+const char *Object::getTypeName(Type type)
 {
     switch (type)
     {
@@ -40,28 +40,27 @@ void Object::FreeObjects()
     }
 }
 
-ObjectString *ObjectString::Create(char *ownedStr, size_t length)
+ObjectString *ObjectString::CreateByMove(char *str, size_t length)
 {
     ObjectString *newStringObj = Object::allocate<ObjectString>();
-    newStringObj->chars = ownedStr;
+    newStringObj->chars = str;
     newStringObj->length = length;
     return newStringObj;
 }
 
-ObjectString *ObjectString::Create(const char *begin, const char *end)
+ObjectString *ObjectString::CreateByCopy(const char *str, size_t length)
 {
-    const size_t length = end - begin;
     char *newString = ALLOCATE_N(char, length + 1);
     ASSERT(newString);
-    memcpy(newString, begin, length);
+    memcpy(newString, str, length);
     newString[length] = 0;
 
-    return Create(newString, length);
+    return CreateByMove(newString, length);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-const char *Value::getString(Type type)
+const char *Value::getTypeName(Type type)
 {
     switch (type)
     {
@@ -135,20 +134,20 @@ Value Value::Create(double value)
         .type = Type::Number,
     };
 }
-Value Value::Create(char *ownedStr, size_t length)
+Value Value::CreateByMove(char *str, size_t length)
 {
     return Value{
         .as{
-            .object = ObjectString::Create(ownedStr, length),
+            .object = ObjectString::CreateByMove(str, length),
         },
         .type = Type::Object,
     };
 }
-Value Value::Create(const char *begin, const char *end)
+Value Value::CreateByCopy(const char *str, size_t length)
 {
     return Value{
         .as{
-            .object = ObjectString::Create(begin, end),
+            .object = ObjectString::CreateByCopy(str, length),
         },
         .type = Type::Object,
     };
@@ -198,15 +197,15 @@ Result<Value> operator+(const Object &a, const Object &b)
                 memcpy(newStr, aStr->chars, aStr->length);
                 memcpy(newStr + aStr->length, bStr->chars, bStr->length);
                 newStr[newLength] = 0;
-                return Value::Create(newStr, newLength);
+                return Value::CreateByMove(newStr, newLength);
             }
         }
         break;
         default:
             FAIL();
     }
-    return Error_t(buildMessage("Undefined operation for objects of types: %s and %s", Object::getString(a.type),
-                                Object::getString(b.type)));
+    return Error_t(buildMessage("Undefined operation for objects of types: %s and %s", Object::getTypeName(a.type),
+                                Object::getTypeName(b.type)));
 }
 
 bool compareObject(const Object *a, const Object *b)
@@ -347,7 +346,7 @@ static void print(const Object *obj)
 
 void printValue(std::string& oStr, const Value &value)
 {
-    oStr.resize(256);
+    oStr.resize(64);
     switch (value.type)
     {
         case Value::Type::Bool:
@@ -368,6 +367,10 @@ void printValue(std::string& oStr, const Value &value)
                 case Object::Type::String:
                 {
                     auto strObj = *value.as.object->asString();
+                    if (oStr.size() < strObj.length)
+                    {
+                        oStr.resize(strObj.length);
+                    }
                     snprintf(oStr.data(), oStr.capacity(), "%.*s", (int)strObj.length, strObj.chars);
                     break;
                 }
@@ -376,17 +379,14 @@ void printValue(std::string& oStr, const Value &value)
             }
             break;
         default:
-            FAIL_MSG("UNDEFINED VALUE TYPE(%d)", value.type);
+            snprintf(oStr.data(), oStr.capacity(), "UNDEF");
             break;
     }
-    oStr.resize(strlen(oStr.data())+1);
 }
 
 void printValue(const Value &value)
 {
-    constexpr size_t SIZE = 256;
     std::string outStr;
-    outStr.resize(SIZE);
     printValue(outStr, value);
     printf("%s", outStr.c_str());
 }

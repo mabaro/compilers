@@ -6,8 +6,9 @@
 #include "common.h"
 #include "value.h"
 
-enum class OpCode
-{
+#include "named_enum.hpp"
+
+MAKE_NAMED_ENUM_CLASS_WITH_TYPE(OpCode, uint8_t,
     Return,
     Constant,
 
@@ -36,11 +37,16 @@ enum class OpCode
     Print,
 
     Variable,
+    GlobalVarDef,
+    GlobalVarGet,
+    GlobalVarSet,
+
+    Pop,
     
     Skip,  // helper for semicolon
 
-    Undefined = 0x0FF
-};
+    Undefined// = 0x0FF
+);
 
 struct Chunk
 {
