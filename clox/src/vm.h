@@ -41,6 +41,11 @@ struct VirtualMachine
     result_t init()
     {
         _environments.push_back(std::make_unique<Environment>());
+        for (auto &env : _environments)
+        {
+            env->Init();
+        }
+
         return makeResult<result_t>(InterpretResult::Ok);
     }
     result_t finish()
@@ -75,7 +80,7 @@ struct VirtualMachine
             printf("          ");
             stackPrint();
             printf("          ");
-            PrintVariables();
+            printVariables();
             printf("          ");
             _chunk->printConstants();
             disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()));
@@ -200,18 +205,21 @@ struct VirtualMachine
                 case OpCode::GlobalVarDef:
                 {
                     const char *varName = READ_STRING();
-                    Value *value = AddVariable(varName, kGlobalEnvironmentIndex);
+                    Value *value = addVariable(varName, kGlobalEnvironmentIndex);
                     *value = stackPop();  // null or expression :)
                     break;
                 }
                 case OpCode::GlobalVarGet:
                 {
                     const char *varName = READ_STRING();
-                    Value *value = FindVariable(varName, kGlobalEnvironmentIndex);
+                    Value *value = findVariable(varName, kGlobalEnvironmentIndex);
                     if (value == nullptr)
                     {
-                        return runtimeError("Trying to read undefined variable '%s'.",
-                                            value->as.object->asString()->chars);
+                        return runtimeError("Trying to read undeclared variable '%s'.", varName);
+                    }
+                    else if (value->is(Value::Type::Null))
+                    {
+                        return runtimeError("Trying to read undefined variable '%s'.", varName);
                     }
                     stackPush(*value);
                     break;
@@ -219,10 +227,17 @@ struct VirtualMachine
                 case OpCode::GlobalVarSet:
                 {
                     const char *varName = READ_STRING();
-                    Value *value = FindVariable(varName, kGlobalEnvironmentIndex);
+                    Value *value = findVariable(varName, kGlobalEnvironmentIndex);
                     if (value == nullptr)
                     {
-                        return runtimeError("Trying to write to undefined variable '%s'.", varName);
+                        if (_compiler.getConfiguration().allowDynamicVariables)
+                        {
+                            value = addVariable(varName, kGlobalEnvironmentIndex);
+                        }
+                        else
+                        {
+                            return runtimeError("Trying to write to undefined variable '%s'.", varName);
+                        }
                     }
                     *value = peek(0);
                     break;
@@ -236,11 +251,11 @@ struct VirtualMachine
                     // ...
                     if (varValue == nullptr)
                     {
-                        varValue = FindVariable(varName, kGlobalEnvironmentIndex);
+                        varValue = findVariable(varName, kGlobalEnvironmentIndex);
                     }
                     if (varValue == nullptr)
                     {  // allow dynamic creation ?
-                        varValue = AddVariable(varName, kGlobalEnvironmentIndex);
+                        varValue = addVariable(varName, kGlobalEnvironmentIndex);
                         DEBUGPRINT_EX("Dynamic var(%s) created\n", varName);
                     }
                     if (varValue != nullptr)
@@ -266,8 +281,14 @@ struct VirtualMachine
 #undef BINARY_OP
     }
 
-    result_t interpret(const char *source, const char *sourcePath)
+    result_t interpret(const char *source, const char *sourcePath,
+                       Optional<Compiler::Configuration> optConfiguration = none_t)
     {
+        if (optConfiguration.hasValue())
+        {
+            _compiler.setConfiguration(optConfiguration.value());
+        }
+
         Compiler::result_t result = _compiler.compile(source, sourcePath);
         if (!result.isOk())
         {
@@ -287,13 +308,13 @@ struct VirtualMachine
     Result<char *> readFile(const char *path)
     {
         using result_t = Result<char *>;
-        
+
         FILE *file = nullptr;
         fopen_s(&file, path, "rb");
         if (file == nullptr)
         {
             return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
-                                                   format("Couldn't open file '%s'\n", path));
+                                             format("Couldn't open file '%s'\n", path));
         }
         ScopedCallback closeFile([&file] { fclose(file); });
 
@@ -301,7 +322,7 @@ struct VirtualMachine
         const size_t fileSize = ftell(file);
         rewind(file);
 
-        char *buffer = (char *)malloc(fileSize+1);
+        char *buffer = (char *)malloc(fileSize + 1);
         if (buffer == nullptr)
         {
             char message[1024];
@@ -315,21 +336,21 @@ struct VirtualMachine
         {
             LOG_ERROR("Couldn't read the file '%s'\n", path);
             return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
-                                                   format("Couldn't read the file '%s'\n", path));
+                                             format("Couldn't read the file '%s'\n", path));
         }
         buffer[bytesRead] = '\0';
 
         return makeResult<result_t>(buffer);
     }
 
-    result_t runFromSource(const char *sourceCode)
+    result_t runFromSource(const char *sourceCode, Optional<Compiler::Configuration> optConfiguration = none_t)
     {
         LOG_INFO("Running from source...\n");
-        result_t result = interpret(sourceCode, "SOURCE");
+        result_t result = interpret(sourceCode, "SOURCE", optConfiguration);
         return result;
     }
 
-    result_t runFromFile(const char *path)
+    result_t runFromFile(const char *path, Optional<Compiler::Configuration> optConfiguration = none_t)
     {
         LOG_INFO("Running from file(%s)...\n", path);
         Result<char *> source = readFile(path);
@@ -340,7 +361,7 @@ struct VirtualMachine
         }
         char *buffer = source.value();
 
-        result_t result = interpret(buffer, path);
+        result_t result = interpret(buffer, path, optConfiguration);
         if (!result.isOk())
         {
             LOG_ERROR("%s", result.error().message().c_str());
@@ -349,7 +370,7 @@ struct VirtualMachine
         return result;
     }
 
-    result_t repl()
+    result_t repl(Optional<Compiler::Configuration> optConfiguration = none_t)
     {
         char line[1024];
         for (;;)
@@ -369,6 +390,10 @@ struct VirtualMachine
                     printf("--------------------------------\n");
                     printf("Commands(preceded with '!'):\n");
                     printf("\tdebugbreak <enable/disable>\n");
+#if USING(DEBUG_PRINT_CODE)
+                    printf("\tsetdebugprintlevel <N>\n");
+                    printf("\tgetdebugprintlevel\n");
+#endif  // #if USING(DEBUG_PRINT_CODE)
                     printf("\tquit\n");
                     printf("--------------------------------\n");
                     continue;
@@ -386,10 +411,33 @@ struct VirtualMachine
                     const bool enable = strstr(line, "enable");
                     util::SetDebugBreakEnabled(enable);
                     printf("--------------------------------\n");
-                    printf("DebugBreak %s\n", enable ? "enabled" : "disabled");
+                    printf("DebugBreak <- %s\n", enable ? "enabled" : "disabled");
                     printf("--------------------------------\n");
                     continue;
                 }
+#if USING(DEBUG_PRINT_CODE)
+                else if (strstr(line, "setdebugprintlevel"))
+                {
+                    char *secondArg = strstr(line, " ");
+                    if (secondArg != nullptr)
+                    {
+                        const int level = atoi(secondArg + 1);
+                        debug_print::SetLevel(level);
+                        printf("--------------------------------\n");
+                        printf("SetDebugPrintLevel <- %d\n", level);
+                        printf("--------------------------------\n");
+                    }
+                    continue;
+                }
+                else if (strstr(line, "getdebugprintlevel"))
+                {
+                    const int level = debug_print::GetLevel();
+                    printf("--------------------------------\n");
+                    printf("GetDebugPrintLevel -> %d\n", level);
+                    printf("--------------------------------\n");
+                    continue;
+                }
+#endif  // #if USING(DEBUG_PRINT_CODE)
 #endif  // #if !USING(DEBUG_BUILD)
             }
 
@@ -469,10 +517,10 @@ struct VirtualMachine
         printf("\n");
     }
 
-    void PrintVariables() const
+    void printVariables() const
     {
         printf(" Global variables: ");
-        _environments.front()->Print();
+        _environments.front()->print();
     }
 #endif  // #if DEBUG_TRACE_EXECUTION
 
@@ -480,20 +528,20 @@ struct VirtualMachine
     const Chunk *_chunk = nullptr;
     const uint8_t *_ip = nullptr;
 
-    Value *AddVariable(const char *name, int environmentIndex)
+    Value *addVariable(const char *name, int environmentIndex)
     {
         ASSERT(environmentIndex < _environments.size());
-        return _environments[environmentIndex]->AddVariable(name);
+        return _environments[environmentIndex]->addVariable(name);
     }
-    bool RemoveVariable(const char *name, int environmentIndex)
+    bool removeVariable(const char *name, int environmentIndex)
     {
         ASSERT(environmentIndex < _environments.size());
-        return _environments[environmentIndex]->RemoveVariable(name);
+        return _environments[environmentIndex]->removeVariable(name);
     }
-    Value *FindVariable(const char *name, int environmentIndex)
+    Value *findVariable(const char *name, int environmentIndex)
     {
         ASSERT(environmentIndex < _environments.size());
-        return _environments[environmentIndex]->FindVariable(name);
+        return _environments[environmentIndex]->findVariable(name);
     }
     std::vector<std::unique_ptr<Environment>> _environments;
 

@@ -5,18 +5,23 @@
 
 struct Environment
 {
+    bool Init()
+    {
+        ASSERT(_dict.empty());
+        return true;
+    }
     bool Reset()
     {
         _dict.clear();
         return true;
     }
-    Value *AddVariable(const char *varName)
+    Value *addVariable(const char *varName)
     {
         auto itPair = _dict.insert({varName, Value{}});
         ASSERT_MSG(itPair.second == true, "Trying to add variable(%s) twice", varName);
         return &(itPair.first->second);
     }
-    bool RemoveVariable(const char *varName)
+    bool removeVariable(const char *varName)
     {
         auto varIt = _dict.find(varName);
         if (varIt != _dict.end())
@@ -28,7 +33,7 @@ struct Environment
         FAIL_MSG("Variable '%s' not defined in this environment", varName);
         return false;
     }
-    Value *FindVariable(const char *varName)
+    Value *findVariable(const char *varName)
     {
         auto varIt = _dict.find(varName);
         if (varIt != _dict.end())
@@ -37,7 +42,7 @@ struct Environment
         }
         return nullptr;
     }
-    void Print() const
+    void print() const
     {
         for (const auto it : _dict)
         {
