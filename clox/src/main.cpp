@@ -23,7 +23,7 @@ int main(int argc, const char* argv[])
     VirtualMachine VM;
     VM.init();
     ScopedCallback vmFinish([&VM] { VM.finish(); });
-    
+
     Compiler::Configuration compilerConfiguration;
 
 #if USING(DEBUG_BUILD)
@@ -66,8 +66,8 @@ int main(int argc, const char* argv[])
             Type type;
             const char* params = nullptr;
         };
-#define ADD_PARAM(TYPE, DESC) {#TYPE, ##DESC, Param::Type::TYPE}
-#define ADD_PARAM_WITH_PARAMS(TYPE, DESC, PARAMS) {#TYPE, ##DESC, Param::Type::TYPE, ##PARAMS}
+#define ADD_PARAM(TYPE, DESC) {#TYPE, #DESC, Param::Type::TYPE}
+#define ADD_PARAM_WITH_PARAMS(TYPE, DESC, PARAMS) {#TYPE, #DESC, Param::Type::TYPE, ##PARAMS}
         const Param params[] = {
             ADD_PARAM_WITH_PARAMS(code, "Allows passing <source_code> as a character string", "<source_code>"),
             ADD_PARAM(allow_dynamic_variables,
