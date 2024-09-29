@@ -3,18 +3,21 @@
 #include "chunk.h"
 #include "common.h"
 #include "scanner.h"
-#include "vm.h"
 
-#if DEBUG_PRINT_CODE
+#if USING(DEBUG_PRINT_CODE)
 #include "debug.h"
-#define MYPRINT(X, ...) printf("[%s] " X "\n", __FUNCTION__, ##__VA_ARGS__)
-#define MYPRINT_T()                                                                                         \
-    MYPRINT("CUR[%.*s] NXT[%.*s]", _parser.previous.length, _parser.previous.start, _parser.current.length, \
-            _parser.current.start);
-#else
-#define MYPRINT(X, ...)
-#define MYPRINT_T()
-#endif  // #if DEBUG_PRINT_CODE
+#define CMP_DEBUGPRINT(LEVEL, X, ...)                        \
+    if (debug_print::GetLevel() >= LEVEL)                    \
+    {                                                        \
+        printf("[%s] " X "\n", __FUNCTION__, ##__VA_ARGS__); \
+    }
+#define CMP_DEBUGPRINT_PARSE(LEVEL)                                                               \
+    CMP_DEBUGPRINT(LEVEL, "CUR[%.*s] NXT[%.*s]", _parser.previous.length, _parser.previous.start, \
+                   _parser.current.length, _parser.current.start)
+#else  // #if USING(DEBUG_PRINT_CODE)
+#define CMP_DEBUGPRINT(...)
+#define CMP_DEBUGPRINT_PARSE(...)
+#endif  // #else // #if USING(DEBUG_PRINT_CODE)
 
 #include <functional>
 #include <unordered_map>
@@ -75,6 +78,19 @@ struct Compiler
     using error_t = Error<ErrorCode>;
     using result_t = Result<Chunk *, error_t>;
 
+    struct Configuration
+    {
+        bool allowDynamicVariables = false;  // no need to declare with <var>
+        bool defaultConstVariables = false;  // <mut> allows modifying variables
+    };
+
+   private:
+    Configuration _configuration;
+
+   public:
+    Configuration getConfiguration() const { return _configuration; }
+    void setConfiguration(const Configuration &config) { _configuration = config; }
+
     result_t compile(const char *source, const char *sourcePath)
     {
         populateParseRules();
@@ -133,7 +149,7 @@ struct Compiler
     {
         expression();
         consume(TokenType::Semicolon, "Expect ';' after value");
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(3);
         emitBytes(OpCode::Print);
     }
     void expressionStatement()
@@ -147,29 +163,29 @@ struct Compiler
    protected:
     void expression()
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(3);
         _lastExpressionLine = _parser.current.line;
         parsePrecedence(Precedence::ASSIGNMENT);
     }
     void skip()
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(3);
         // nothing to do here
     }
     void grouping()
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(3);
         expression();
         consume(TokenType::RightParen, "Expected ')' after expression.");
     }
     void variable()
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(3);
         namedVariable(_parser.previous);
     }
     void namedVariable(const Token &name)
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(3);
         const uint8_t varId = identifierConstant(name);
         if (match(TokenType::Equal))
         {
@@ -183,7 +199,7 @@ struct Compiler
     }
     void literal()
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(3);
 
         switch (_parser.previous.type)
         {
@@ -203,7 +219,7 @@ struct Compiler
     }
     void number()
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(3);
 
         Value value = Value::Create(strtod(_parser.previous.start, nullptr));
         emitConstant(value);
@@ -211,7 +227,7 @@ struct Compiler
     void string() { emitConstant(Value::CreateByCopy(_parser.previous.start + 1, _parser.previous.length - 1)); }
     void unary()
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(3);
         const TokenType operatorType = _parser.previous.type;
 
         // parse expression
@@ -232,7 +248,7 @@ struct Compiler
     }
     void binary()
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(3);
 
         const TokenType operatorType = _parser.previous.type;
         const ParseRule parseRule = getParseRule(operatorType);
@@ -283,7 +299,7 @@ struct Compiler
     }
     void variableDeclaration()
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(2);
 
         const uint8_t varId = parseVariable("Expected variable name.");
         if (match(TokenType::Equal))
@@ -327,7 +343,7 @@ struct Compiler
     void defineVariable(uint8_t id) { emitBytes(OpCode::GlobalVarDef, id); }
     uint8_t identifierConstant(const Token &token)
     {
-        MYPRINT_T();
+        CMP_DEBUGPRINT_PARSE(2);
         return makeConstant(Value::CreateByCopy(token.start, token.length));
     }
 
@@ -335,13 +351,13 @@ struct Compiler
     void finishCompilation()
     {
         emitReturn();
-#if DEBUG_PRINT_CODE
+#if USING(DEBUG_PRINT_CODE)
         if (!_parser.optError.hasValue())
         {
             ASSERT(currentChunk());
             disassemble(*currentChunk(), "code");
         }
-#endif  // #if DEBUG_PRINT_CODE
+#endif  // #if USING(DEBUG_PRINT_CODE)
     }
 
     int makeConstant(const Value &value)
@@ -354,9 +370,9 @@ struct Compiler
         {
             error(buildMessage("Max constants per chunk exceeded: %s", UINT8_MAX).c_str());
         }
-#if USING(DEBUG_TRACE_EXECUTION)
+#if USING(DEBUG_TRACE_EXECUTION) && USING(DEBUG_PRINT_CODE)
         chunk.printConstants();
-#endif  // #if USING(DEBUG_PRINT_CODE)
+#endif  // #if USING(DEBUG_TRACE_EXECUTION) && USING(DEBUG_PRINT_CODE)
         return constantId;
     }
     void emitConstant(const Value &value) { emitBytes(OpCode::Constant, makeConstant(value)); }
@@ -371,8 +387,7 @@ struct Compiler
     }
     void emitBytes(OpCode code)
     {
-        MYPRINT_T();
-        MYPRINT("emitOp: %s", named_enum::name(code));
+        CMP_DEBUGPRINT(1, "emitOp: %s", named_enum::name(code));
         emitBytes((uint8_t)code);
     }
     void emitBytes(int constantId)

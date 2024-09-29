@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <functional>
+#include <memory> // unique_ptr
 #include <string>
 #include <type_traits>
 
@@ -16,8 +17,16 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEBUG_PRINT_CODE NOT_IN_USE       // USING(DEBUG_BUILD)
-#define DEBUG_TRACE_EXECUTION NOT_IN_USE  // USING(DEBUG_BUILD)
+#define DEBUG_PRINT_CODE       USING(DEBUG_BUILD)
+#define DEBUG_TRACE_EXECUTION  USING(DEBUG_BUILD)
+
+#if USING(DEBUG_PRINT_CODE)
+namespace debug_print
+{
+int GetLevel();
+void SetLevel(int level);
+}  // namespace debug_print
+#endif // #if USING(DEBUG_PRINT_CODE)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Portability hacks
@@ -169,10 +178,14 @@ using Error_t = Error<ErrorCode>;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct none_type{};
+constexpr none_type none_t = none_type{};
+
 template <typename T>
 struct Optional
 {
     Optional() {}
+    Optional(none_type) {}
     Optional(const T& t) : _value(new T(t)) {}
     Optional(T&& t) : _value(new T(std::move(t))) {}
     Optional(const Optional& o) : _value(o._value ? new T(*o._value) : nullptr) { ASSERT(!hasValue() || _value); }

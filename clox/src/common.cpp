@@ -1,6 +1,16 @@
 #include "common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
+#if USING(DEBUG_PRINT_CODE)
+namespace debug_print
+{
+static int sDebugPrintLevel = 0;
+int GetLevel() { return sDebugPrintLevel; }
+void SetLevel(int level) { sDebugPrintLevel = level; }
+}  // namespace debug_print
+#endif // #if USING(DEBUG_PRINT_CODE)
+
+////////////////////////////////////////////////////////////////////////////////
 namespace Logger
 {
 namespace detail
