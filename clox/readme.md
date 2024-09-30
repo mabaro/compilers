@@ -19,3 +19,10 @@ pending:
 - add mut/const modifiers (ideally const by default?)
 - validation of variables/scope...
 - so much more...
+
+* creating portable executable
+https://alexm.ro/en/blog/build-the-smallest-portable-executable-with-assembly
+
+https://www.codeproject.com/Articles/24417/Portable-Executable-P-E-Code-Injection-Injecting-a
+
+https://www.archcloudlabs.com/projects/binary_loaders_1/
