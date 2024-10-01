@@ -20,7 +20,9 @@ pending:
 - validation of variables/scope...
 - so much more...
 
-* creating portable executable
+* creating portable executable:
+https://whereisr0da.github.io/blog/posts/2020-10-21-inject-code/
+
 https://alexm.ro/en/blog/build-the-smallest-portable-executable-with-assembly
 
 https://www.codeproject.com/Articles/24417/Portable-Executable-P-E-Code-Injection-Injecting-a
