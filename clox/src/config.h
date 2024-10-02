@@ -1,5 +1,7 @@
 #pragma once
 
+#define CONFIG_H_IS_INCLUDED
+
 #define IN_USE      1
 #define NOT_IN_USE  0
 #define USING(X)    ( X & X )

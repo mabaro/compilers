@@ -6,19 +6,19 @@
 #include <cstdint>
 #include <cstdio>
 #include <functional>
-#include <memory> // unique_ptr
+#include <memory>  // unique_ptr
 #include <string>
 #include <type_traits>
 
-#include "config.h"
 #include "assert.h"
+#include "config.h"
 
 #define ARRAY_SIZE(X) (sizeof(X) / sizeof(X[0]))
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEBUG_PRINT_CODE       USING(DEBUG_BUILD)
-#define DEBUG_TRACE_EXECUTION  USING(DEBUG_BUILD)
+#define DEBUG_PRINT_CODE USING(DEBUG_BUILD)
+#define DEBUG_TRACE_EXECUTION USING(DEBUG_BUILD)
 
 #if USING(DEBUG_PRINT_CODE)
 namespace debug_print
@@ -26,7 +26,7 @@ namespace debug_print
 int GetLevel();
 void SetLevel(int level);
 }  // namespace debug_print
-#endif // #if USING(DEBUG_PRINT_CODE)
+#endif  // #if USING(DEBUG_PRINT_CODE)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Portability hacks
@@ -99,8 +99,7 @@ static std::string buildMessage(const char* fmt, ...)
 }
 
 #define LOG_BASE(level, fmt, ...)               \
-    do                                          \
-    {                                           \
+    do {                                        \
         Logger::Log(level, fmt, ##__VA_ARGS__); \
     } while (0)
 
@@ -388,6 +387,11 @@ struct RandomAccessContainer
         return _values[index];
     }
 
+    const T* cbegin() const { return _values.data(); }
+    const T* cend() const { return _values.data() + _values.size(); }
+    T* begin() { return _values.data(); }
+    T* end() { return _values.data() + _values.size(); }
+
     const T& operator[](size_t index) const { return getValue(index); }
 
     void write(T value) { _values.push_back(value); }
@@ -398,6 +402,31 @@ struct RandomAccessContainer
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+namespace utils
+{
+template <typename T>
+bool is_sorted(const T* begin, const T* end)
+{
+    const T* lastValue = begin;
+    for (const T* it = begin + 1; it != end; ++it)
+    {
+        if (!(*lastValue < *it)) { return false; }
+    }
+    return true;
+}
+template <typename T>
+bool is_sorted_if(const T* begin, const T* end, std::function<bool(const T& a, const T& b)> compareOp)
+{
+    const T* lastValue = begin;
+    for (const T* it = begin + 1; it != end; ++it)
+    {
+        if (compareOp(*lastValue, *it)) { return false; }
+    }
+    return true;
+}
+}  // namespace utils
+
+////////////////////////////////////////////////////////////////////////////////
 namespace unit_tests
 {
 namespace common

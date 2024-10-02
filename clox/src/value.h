@@ -11,6 +11,13 @@ struct ObjectString;
 
 struct Object
 {
+#if USING(DEBUG_BUILD)
+    union
+    {
+        ObjectString *string;
+    } as;
+#endif // #if USING(DEBUG_BUILD)
+
     enum class Type
     {
         String,
@@ -40,7 +47,7 @@ struct Object
     }
 
     template <typename T>
-    static const T *as(const Object *obj)
+    static const T *castTo(const Object *obj)
     {
         ASSERT(obj);
         if (obj && T::obj_type == obj->type)
@@ -51,7 +58,7 @@ struct Object
         return nullptr;
     }
     template <typename T>
-    static T *as(Object *obj)
+    static T *castTo(Object *obj)
     {
         ASSERT(obj);
         if (obj && T::obj_type == obj->type)
@@ -73,6 +80,8 @@ struct Object
 
     static void FreeObjects();
 
+    static bool compare(const Object *a, const Object *b);
+
    protected:
     static void FreeObject(Object *obj);
 
@@ -88,6 +97,11 @@ struct ObjectString : public Object
     char *chars = nullptr;
     static ObjectString *CreateByMove(char *str, size_t length);
     static ObjectString *CreateByCopy(const char *str, size_t length);
+
+    static bool compare(const ObjectString &a, const ObjectString &b)
+    {
+        return a.length == b.length && (0 == memcmp(a.chars, b.chars, a.length));
+    }
 };
 
 struct Value

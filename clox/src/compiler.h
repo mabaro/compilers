@@ -250,7 +250,10 @@ struct Compiler
         Value value = Value::Create(strtod(_parser.previous.start, nullptr));
         emitConstant(value);
     }
-    void string() { emitConstant(Value::CreateByCopy(_parser.previous.start + 1, _parser.previous.length - 1)); }
+    void string()
+    {
+        emitConstant(Value::CreateByCopy(_parser.previous.start, _parser.previous.length));
+    }
     void unary()
     {
         CMP_DEBUGPRINT_PARSE(3);

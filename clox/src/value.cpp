@@ -20,7 +20,7 @@ void Object::FreeObject(Object *obj)
     {
         case Type::String:
         {
-            ObjectString *strObj = as<ObjectString>(obj);
+            ObjectString *strObj = castTo<ObjectString>(obj);
             DEALLOCATE_N(char, strObj->chars, strObj->length);
             DEALLOCATE(ObjectString, strObj);
         break;
@@ -45,6 +45,9 @@ ObjectString *ObjectString::CreateByMove(char *str, size_t length)
     ObjectString *newStringObj = Object::allocate<ObjectString>();
     newStringObj->chars = str;
     newStringObj->length = length;
+#if USING(DEBUG_BUILD)
+    newStringObj->as.string = newStringObj;
+#endif // #if USING(DEBUG_BUILD)
     return newStringObj;
 }
 
@@ -188,8 +191,8 @@ Result<Value> operator+(const Object &a, const Object &b)
     {
         case Object::Type::String:
         {  // concatenate
-            const ObjectString *aStr = Object::as<ObjectString>(&a);
-            const ObjectString *bStr = Object::as<ObjectString>(&b);
+            const ObjectString *aStr = Object::castTo<ObjectString>(&a);
+            const ObjectString *bStr = Object::castTo<ObjectString>(&b);
             if (aStr && bStr)
             {
                 const size_t newLength = aStr->length + bStr->length;
@@ -208,23 +211,18 @@ Result<Value> operator+(const Object &a, const Object &b)
                                 Object::getTypeName(b.type)));
 }
 
-bool compareObject(const Object *a, const Object *b)
+bool Object::compare(const Object *a, const Object *b)
 {
+    ASSERT(a != nullptr && b != nullptr);
     ASSERT(b->type == a->type);
-
-    if (a == nullptr || b == nullptr)
-    {
-        FAIL();
-        return a == b;
-    }
 
     switch (a->type)
     {
         case Object::Type::String:
         {
-            const ObjectString *aStr = Object::as<ObjectString>(a);
-            const ObjectString *bStr = Object::as<ObjectString>(b);
-            return (aStr->length == bStr->length) && memcmp(aStr->chars, bStr->chars, aStr->length);
+            const ObjectString *aStr = Object::castTo<ObjectString>(a);
+            const ObjectString *bStr = Object::castTo<ObjectString>(b);
+            return ObjectString::compare(*aStr, *bStr);
         }
         default:
             FAIL();
@@ -247,7 +245,7 @@ bool operator==(const Value &a, const Value &b)
         case Value::Type::Integer:
             return a.as.integer == b.as.integer;
         case Value::Type::Object:
-            return compareObject(a.as.object, b.as.object);
+            return Object::compare(a.as.object, b.as.object);
         case Value::Type::Null:
             return true;
         default:
