@@ -236,7 +236,7 @@ struct VirtualMachine
                         }
                         else
                         {
-                            return runtimeError("Trying to write to undefined variable '%s'.", varName);
+                            return runtimeError("Trying to write to undeclared variable '%s'.", varName);
                         }
                     }
                     *value = peek(0);

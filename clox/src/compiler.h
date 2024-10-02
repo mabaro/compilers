@@ -42,6 +42,7 @@ struct Parser
     Token previous;
 
     Optional<error_t> optError;
+    Optional<Token> optErrorToken;
     bool panicMode = false;
 };
 
@@ -62,7 +63,7 @@ enum class Precedence
 
 struct ParseRule
 {
-    using parse_func_t = std::function<void()>;
+    using parse_func_t = std::function<void(bool canAssign)>;
     parse_func_t prefix;
     parse_func_t infix;
     Precedence precedence;
@@ -98,7 +99,8 @@ struct Compiler
         _scanner.init(source);
         _compilingChunk = std::make_unique<Chunk>(sourcePath);
 
-        _parser.optError = Optional<Parser::error_t>();
+        _parser.optError.reset();
+        _parser.optErrorToken.reset();
         _parser.panicMode = false;
 
         advance();
@@ -110,7 +112,31 @@ struct Compiler
         consume(TokenType::Eof, "Expected end of expression");
         if (getCurrentError().hasValue())
         {
-            return makeResultError<result_t>(result_t::error_t::code_t::Undefined, getCurrentError().value().message());
+            char message[2048];
+            const char *lineEnd = strchr(_scanner.linePtr, '\n');
+            if (lineEnd == nullptr)
+            {
+                lineEnd = strchr(_scanner.linePtr, '\0');
+            }
+            if (lineEnd != nullptr)
+            {
+                const char *innerErrorMsg = getCurrentError().value().message().c_str();
+                const int lineLen = static_cast<int>(lineEnd - _scanner.linePtr);
+                snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, _scanner.linePtr);
+                char *messagePtr = message + strlen(message);
+
+                const size_t lenToToken = getCurrentErrorToken().hasValue()
+                                              ? getCurrentErrorToken().value().start - _scanner.linePtr
+                                              : strlen(_scanner.linePtr);
+                *messagePtr++ = '\n';
+                *messagePtr++ = '\t';
+                *messagePtr++ = ' ';  // extra <'>
+                memset(messagePtr, ' ', lenToToken);
+                messagePtr += lenToToken;
+                *messagePtr++ = '^';
+                *messagePtr++ = '\0';
+            }
+            return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
         }
 
         finishCompilation();
@@ -178,16 +204,16 @@ struct Compiler
         expression();
         consume(TokenType::RightParen, "Expected ')' after expression.");
     }
-    void variable()
+    void variable(bool canAssign)
     {
         CMP_DEBUGPRINT_PARSE(3);
-        namedVariable(_parser.previous);
+        namedVariable(_parser.previous, canAssign);
     }
-    void namedVariable(const Token &name)
+    void namedVariable(const Token &name, bool canAssign)
     {
         CMP_DEBUGPRINT_PARSE(3);
         const uint8_t varId = identifierConstant(name);
-        if (match(TokenType::Equal))
+        if (canAssign && match(TokenType::Equal))
         {
             expression();
             emitBytes(OpCode::GlobalVarSet, varId);
@@ -325,13 +351,19 @@ struct Compiler
             error("Expect expression.");
             return;
         }
-        parseRule.prefix();
+        const bool canAssign = precedence <= Precedence::ASSIGNMENT;
+        parseRule.prefix(canAssign);
 
         while (precedence <= getParseRule(_parser.current.type).precedence)
         {
             advance();
             ParseRule::parse_func_t infixRule = getParseRule(_parser.previous.type).infix;
-            infixRule();
+            infixRule(canAssign);
+        }
+
+        if (!canAssign && match(TokenType::Equal))
+        {
+            error("Invalid assignment target");
         }
     }
 
@@ -431,6 +463,7 @@ struct Compiler
         _parser.optError =
             Parser::error_t(Parser::error_t::code_t::Undefined,
                             buildMessage("[line %d] Error %s: %s", _parser.current.line, message, errorMsg));
+        _parser.optErrorToken = token;
         return _parser.optError.value();
     }
 
@@ -470,15 +503,15 @@ struct Compiler
 
     void populateParseRules()
     {
-        auto binaryFunc = [&] { binary(); };
-        auto groupingFunc = [&] { grouping(); };
-        auto literalFunc = [&] { literal(); };
-        auto numberFunc = [&] { number(); };
-        auto stringFunc = [&] { string(); };
-        auto skipFunc = [&] { skip(); };
-        auto unaryFunc = [&] { unary(); };
-        auto varFunc = [&] { variableDeclaration(); };
-        auto identifierFunc = [&] { variable(); };
+        auto binaryFunc = [&](bool canAssign) { binary(); };
+        auto groupingFunc = [&](bool canAssign) { grouping(); };
+        auto literalFunc = [&](bool canAssign) { literal(); };
+        auto numberFunc = [&](bool canAssign) { number(); };
+        auto stringFunc = [&](bool canAssign) { string(); };
+        auto skipFunc = [&](bool canAssign) { skip(); };
+        auto unaryFunc = [&](bool canAssign) { unary(); };
+        auto varFunc = [&](bool canAssign) { variableDeclaration(); };
+        auto identifierFunc = [&](bool canAssign) { variable(canAssign); };
 
         _parseRules[(size_t)TokenType::LeftParen] = {groupingFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::RightParen] = {NULL, NULL, Precedence::NONE};
@@ -525,6 +558,7 @@ struct Compiler
     }
 
     const Optional<Parser::error_t> &getCurrentError() const { return _parser.optError; }
+    const Optional<Token> &getCurrentErrorToken() const { return _parser.optErrorToken; }
     const Token &getCurrentToken() const { return _parser.current; }
 
     bool check(TokenType type) const { return getCurrentToken().type == type; }

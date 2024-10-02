@@ -92,6 +92,7 @@ struct Scanner
 
     const char* start = 0;
     const char* current = 0;
+    const char* linePtr = 0;
     int line = -1;
 
     result_t init(const char* source)
@@ -99,6 +100,7 @@ struct Scanner
         start = source;
         current = source;
         line = 0;
+        linePtr = source;
 
         return makeResultError<result_t>();
     }
@@ -221,6 +223,7 @@ struct Scanner
             if (peek() == '\n')
             {
                 ++line;
+                linePtr = this->current + 1;
             }
             advance();
         }
