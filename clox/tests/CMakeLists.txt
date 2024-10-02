@@ -2,7 +2,7 @@ set(ENV{CTEST_OUTPUT_ON_FAILURE}, 1)
 set(ENV{CTEST_OUTPUT_ON_SUCCESS}, 1)
 
 add_test(NAME no_args_fail COMMAND clox)
-add_test(NAME from_args_undeclared_var COMMAND clox -code "a;")
+add_test(NAME from_args_undeclared_var COMMAND clox -code "var a = b;")
 add_test(NAME from_arg_undefined_var_read COMMAND clox -code "var a; b=a;")
 add_test(NAME from_arg_undeclared_var_write COMMAND clox -code "a=1; b=a;")
 set_tests_properties(
@@ -11,6 +11,12 @@ set_tests_properties(
     from_arg_undefined_var_read
     from_arg_undeclared_var_write
     PROPERTIES WILL_FAIL TRUE)
+
+add_test(NAME invalidAssignTarget COMMAND clox -code "var a=2;var b=3; a*b=1;")
+set_tests_properties(
+    invalidAssignTarget
+    PROPERTIES WILL_FAIL TRUE)
+
 
 add_test(NAME help COMMAND clox -help)
 add_test(NAME from_arg COMMAND clox -code "var a=1; var b=2;var c=a+b;print(c);")
@@ -23,3 +29,4 @@ set_tests_properties(
 
 add_test(NAME from_file COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test.clox)
 add_test(NAME from_file2 COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test2.clox)
+add_test(NAME stringConcat COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test3.clox)
