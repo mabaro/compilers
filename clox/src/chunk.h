@@ -76,6 +76,15 @@ struct Chunk
     }
     int addConstant(const Value& value)
     {
+        auto constantIt = std::find_if(_constants.begin(), _constants.end(), [&value](const Value& constant){
+            return constant == value;
+        } );
+        if (constantIt != _constants.end())
+        {
+            const size_t constantIndex = std::distance(_constants.begin(), constantIt);
+            return static_cast<int>(constantIndex);
+        }
+
         _constants.write(value);
         return static_cast<int>(_constants.getSize()) - 1;
     }
