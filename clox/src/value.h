@@ -98,10 +98,7 @@ struct ObjectString : public Object
     static ObjectString *CreateByMove(char *str, size_t length);
     static ObjectString *CreateByCopy(const char *str, size_t length);
 
-    static bool compare(const ObjectString &a, const ObjectString &b)
-    {
-        return a.length == b.length && (0 == memcmp(a.chars, b.chars, a.length));
-    }
+    static bool compare(const ObjectString &a, const ObjectString &b);
 };
 
 struct Value

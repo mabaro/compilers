@@ -23,7 +23,7 @@ void Object::FreeObject(Object *obj)
             ObjectString *strObj = castTo<ObjectString>(obj);
             DEALLOCATE_N(char, strObj->chars, strObj->length);
             DEALLOCATE(ObjectString, strObj);
-        break;
+            break;
         }
         default:
             FAIL_MSG("Unsupported type: %d", obj->type);
@@ -47,7 +47,7 @@ ObjectString *ObjectString::CreateByMove(char *str, size_t length)
     newStringObj->length = length;
 #if USING(DEBUG_BUILD)
     newStringObj->as.string = newStringObj;
-#endif // #if USING(DEBUG_BUILD)
+#endif  // #if USING(DEBUG_BUILD)
     return newStringObj;
 }
 
@@ -59,6 +59,11 @@ ObjectString *ObjectString::CreateByCopy(const char *str, size_t length)
     newString[length] = 0;
 
     return CreateByMove(newString, length);
+}
+
+bool ObjectString::compare(const ObjectString &a, const ObjectString &b)
+{
+    return a.length == b.length && (0 == memcmp(a.chars, b.chars, a.length));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -342,7 +347,7 @@ static void print(const Object *obj)
     }
 }
 
-void printValue(std::string& oStr, const Value &value)
+void printValue(std::string &oStr, const Value &value)
 {
     oStr.resize(64);
     switch (value.type)
@@ -360,7 +365,7 @@ void printValue(std::string& oStr, const Value &value)
             snprintf(oStr.data(), oStr.capacity(), "%d", value.as.integer);
             break;
         case Value::Type::Object:
-            switch(value.as.object->type)
+            switch (value.as.object->type)
             {
                 case Object::Type::String:
                 {
