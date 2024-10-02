@@ -170,7 +170,7 @@ struct Scanner
                     return makeToken(TokenType::And);
                 }
                 break;
-            case '"':
+            case '\"':
                 return string();
             case ';':
                 return makeToken(TokenType::Semicolon);
@@ -190,12 +190,12 @@ struct Scanner
     }
 
    protected:
-    Token makeToken(TokenType type) const
+    Token makeToken(TokenType type, int ltrim=0, int rtrim=0) const
     {
         Token token;
         token.type = type;
-        token.start = start;
-        token.length = static_cast<int>(current - start);
+        token.start = start + ltrim;
+        token.length = static_cast<int>(current - token.start) - rtrim;
         token.line = line;
         return token;
     }
@@ -218,7 +218,7 @@ struct Scanner
 
     TokenResult_t string()
     {
-        while (peek() != '"' && !isAtEnd())
+        while (peek() != '\"' && !isAtEnd())
         {
             if (peek() == '\n')
             {
@@ -233,7 +233,7 @@ struct Scanner
         }
 
         advance();
-        return makeToken(TokenType::String);
+        return makeToken(TokenType::String, 1, 1);
     }
     Token number()
     {
@@ -261,7 +261,7 @@ struct Scanner
     {
         const ptrdiff_t startToCurr = this->current - this->start;
         const ptrdiff_t expectedSize = start + length;
-        if ((startToCurr == expectedSize) && memcmp(this->start + start, rest, length) == 0)
+        if ((startToCurr == expectedSize) && (0 == memcmp(this->start + start, rest, length)))
         {
             return true;
         }
@@ -306,23 +306,9 @@ struct Scanner
             ADD_KEYWORD(while, While),
             };
 #undef ADD_KEYWORD
-#if USING(DEBUG_BUILD)
-        // ensure keywords are sorted!
-        const char* lastStr = keywords[0].str;
-        for (const Keyword& keyword : keywords)
-        {
-            for (const char *prevCar = lastStr, *curCar = keyword.str; *prevCar != '\0' && *curCar != '\0';
-                 ++prevCar, ++curCar)
-            {
-                ASSERT(*prevCar <= *curCar);
-                if (*prevCar < *curCar)
-                {
-                    break;
-                }
-            }
-            lastStr = keyword.str;
-        }
-#endif  // #if USING(DEBUG_BUILD)
+        ASSERT(utils::is_sorted_if<Keyword>(&keywords[0], &keywords[0] + ARRAY_SIZE(keywords),
+                                            [](const Keyword& a, const Keyword& b)
+                                            { return memcmp(a.str, b.str, a.len) >= 0; }));
         const char* currentTokenStr = this->start;
         const size_t currentTokenLen = this->current - this->start;
         for (const auto& keyword : keywords)
@@ -355,6 +341,7 @@ struct Scanner
                     break;
                 case '\n':
                     ++line;
+                    linePtr = this->current + 1;
                     advance();
                     break;
                 default:
