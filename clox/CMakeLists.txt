@@ -14,6 +14,7 @@ set(SOURCES
     src/assert.h
     src/assert.cpp
     src/chunk.h
+    src/chunk.cpp
     src/common.h
     src/common.cpp
     src/compiler.h
@@ -21,9 +22,12 @@ set(SOURCES
     src/debug.h
     src/debug.cpp
     src/scanner.h
+    src/scanner.cpp
     src/value.h
     src/value.cpp
-    src/vm.h)
+    src/vm.h
+    src/vm.cpp
+    )
 add_library(clox_lib ${SOURCES})
 target_include_directories(clox_lib PUBLIC src thirdparty)
 target_compile_features(clox_lib PRIVATE cxx_std_20)

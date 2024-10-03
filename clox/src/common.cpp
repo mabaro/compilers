@@ -24,6 +24,52 @@ LogLevel GetLogLevel() { return detail::sLogLevel; }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+namespace utils
+{
+
+Result<CharBufferUPtr> readFile(const char* path)
+{
+    using result_t = Result<CharBufferUPtr>;
+
+    FILE* file = nullptr;
+    fopen_s(&file, path, "rb");
+    if (file == nullptr)
+    {
+        return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
+                                         format("Couldn't open file '%s'\n", path));
+    }
+    ScopedCallback closeFile([&file] { fclose(file); });
+
+    fseek(file, 0L, SEEK_END);
+    const size_t fileSize = ftell(file);
+    rewind(file);
+
+    CharBufferUPtr buffer = std::make_unique<char[]>(fileSize + 1);
+    if (buffer == nullptr)
+    {
+        char message[1024];
+        snprintf(message, sizeof(message), "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n",
+                 path, fileSize);
+        LOG_ERROR(message);
+        return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
+    }
+    const size_t bytesRead = fread(buffer.get(), sizeof(char), fileSize, file);
+    if (bytesRead < fileSize)
+    {
+        LOG_ERROR("Couldn't read the file '%s'\n", path);
+        return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
+                                         format("Couldn't read the file '%s'\n", path));
+    }
+    buffer[bytesRead] = '\0';
+
+    return std::move(buffer);
+}
+}  // namespace utils
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
 namespace unit_tests
 {
 namespace common

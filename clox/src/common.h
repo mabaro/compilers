@@ -99,7 +99,8 @@ static std::string buildMessage(const char* fmt, ...)
 }
 
 #define LOG_BASE(level, fmt, ...)               \
-    do {                                        \
+    do                                          \
+    {                                           \
         Logger::Log(level, fmt, ##__VA_ARGS__); \
     } while (0)
 
@@ -177,7 +178,9 @@ using Error_t = Error<ErrorCode>;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct none_type{};
+struct none_type
+{
+};
 constexpr none_type none_t = none_type{};
 
 template <typename T>
@@ -379,7 +382,12 @@ static ResultT makeResultError(std::string&& msg)
 template <typename T>
 struct RandomAccessContainer
 {
-    size_t getSize() const { return _values.size(); }
+    using type = T;
+
+    void resize(size_t size) { _values.resize(size); }
+    bool empty() const { return _values.empty(); }
+    size_t size() const { return _values.size(); }
+    const T* data() const { return _values.data(); }
     const T* getValues() const { return _values.data(); }
     const T& getValue(size_t index) const
     {
@@ -410,7 +418,10 @@ bool is_sorted(const T* begin, const T* end)
     const T* lastValue = begin;
     for (const T* it = begin + 1; it != end; ++it)
     {
-        if (!(*lastValue < *it)) { return false; }
+        if (!(*lastValue < *it))
+        {
+            return false;
+        }
     }
     return true;
 }
@@ -420,10 +431,23 @@ bool is_sorted_if(const T* begin, const T* end, std::function<bool(const T& a, c
     const T* lastValue = begin;
     for (const T* it = begin + 1; it != end; ++it)
     {
-        if (compareOp(*lastValue, *it)) { return false; }
+        if (compareOp(*lastValue, *it))
+        {
+            return false;
+        }
     }
     return true;
 }
+
+using CharBufferUPtr = std::unique_ptr<char[]>;
+Result<CharBufferUPtr> readFile(const char* path);
+
+inline bool isLittleEndian()
+{
+    constexpr uint32_t test = 0x01020304;
+    return *((uint8_t *)&test) == 0x04;
+}
+
 }  // namespace utils
 
 ////////////////////////////////////////////////////////////////////////////////
