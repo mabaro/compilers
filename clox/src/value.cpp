@@ -23,7 +23,7 @@ Result<void> Object::serialize(std::ostream &o_stream) const
     switch (type)
     {
         case Type::String:
-            return as.string->serialize(o_stream);
+          return asString()->serialize(o_stream);
         default:
             FAIL();
     }
@@ -56,7 +56,7 @@ void Object::FreeObject(Object *obj)
     {
         case Type::String:
         {
-            ObjectString *strObj = castTo<ObjectString>(obj);
+            ObjectString *strObj = obj->asString();
             DEALLOCATE_N(char, strObj->chars, strObj->length);
             DEALLOCATE(ObjectString, strObj);
             break;
@@ -310,8 +310,8 @@ Result<Value> operator+(const Object &a, const Object &b)
     {
         case Object::Type::String:
         {  // concatenate
-            const ObjectString *aStr = Object::castTo<ObjectString>(&a);
-            const ObjectString *bStr = Object::castTo<ObjectString>(&b);
+            const ObjectString *aStr = a.asString();
+            const ObjectString *bStr = b.asString();
             if (aStr && bStr)
             {
                 const size_t newLength = aStr->length + bStr->length;
@@ -339,8 +339,8 @@ bool Object::compare(const Object *a, const Object *b)
     {
         case Object::Type::String:
         {
-            const ObjectString *aStr = Object::castTo<ObjectString>(a);
-            const ObjectString *bStr = Object::castTo<ObjectString>(b);
+            const ObjectString *aStr = a->asString();
+            const ObjectString *bStr = b->asString();
             return ObjectString::compare(*aStr, *bStr);
         }
         default:

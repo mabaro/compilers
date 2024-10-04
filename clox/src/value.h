@@ -49,36 +49,15 @@ struct Object
         return newObject;
     }
 
-    template <typename T>
-    static const T *castTo(const Object *obj)
-    {
-        ASSERT(obj);
-        if (obj && T::obj_type == obj->type)
-        {
-            return static_cast<const T *>(obj);
-        }
-        FAIL_MSG("Cannot cast %s -> %s", getTypeName(obj->type), getTypeName(T::obj_type));
-        return nullptr;
-    }
-    template <typename T>
-    static T *castTo(Object *obj)
-    {
-        ASSERT(obj);
-        if (obj && T::obj_type == obj->type)
-        {
-            return static_cast<T *>(obj);
-        }
-        FAIL_MSG("Cannot cast %s -> %s", getTypeName(obj->type), getTypeName(T::obj_type));
-        return nullptr;
-    }
     ObjectString *asString()
     {
         ASSERT(type == Type::String);
-        if (type == Type::String)
-        {
-            return (ObjectString *)this;
-        }
-        return nullptr;
+        return (ObjectString *)this;
+    }
+    const ObjectString *asString() const
+    {
+        ASSERT(type == Type::String);
+        return (ObjectString *)this;
     }
 
     static void FreeObjects();
@@ -94,8 +73,6 @@ struct Object
 
 struct ObjectString : public Object
 {
-    static constexpr Type obj_type = Type::String;
-
     size_t length = 0;
     char *chars = nullptr;
 

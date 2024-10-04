@@ -31,5 +31,5 @@ add_test(NAME from_file COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test.clox)
 add_test(NAME from_file2 COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test2.clox)
 add_test(NAME stringConcat COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test3.clox)
 
-add_test(NAME serialize COMMAND clox -compile serialize.cloxbin ${PROJECT_SOURCE_DIR}/tests/test.clox)
+add_test(NAME serialize COMMAND clox -compile -output serialize.cloxbin ${PROJECT_SOURCE_DIR}/tests/test.clox)
 add_test(NAME deserialize COMMAND clox -run serialize.cloxbin )
