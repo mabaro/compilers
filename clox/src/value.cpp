@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include "utils/serialize.h"
+
 Object *Object::s_allocatedList = nullptr;
 
 const char *Object::getTypeName(Type type)
@@ -14,6 +16,40 @@ const char *Object::getTypeName(Type type)
             return "Undefined type";
     }
 }
+
+Result<void> Object::serialize(std::ostream &o_stream) const
+{
+    serialize::Serialize(o_stream, type);
+    switch (type)
+    {
+        case Type::String:
+            return as.string->serialize(o_stream);
+        default:
+            FAIL();
+    }
+    return Error<>(format("Unsupported type: %d\n", type));
+}
+
+Result<Object *> Object::deserialize(std::istream &i_stream)
+{
+    Object::Type type;
+    serialize::Deserialize(i_stream, type);
+    switch (type)
+    {
+        case Type::String:
+        {
+            serialize::size_t len;
+            serialize::Deserialize(i_stream, len);
+            char *newString = ALLOCATE_N(char, len);
+            serialize::DeserializeN(i_stream, newString, len);
+            return ObjectString::CreateByMove(newString, len);
+        }
+        default:
+            FAIL();
+    }
+    return Error<>(format("Unsupported type: %d\n", type));
+}
+
 void Object::FreeObject(Object *obj)
 {
     switch (obj->type)
@@ -38,6 +74,21 @@ void Object::FreeObjects()
         DEALLOCATE(Object, ptr);
         ptr = next;
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Result<void> ObjectString::serialize(std::ostream &o_stream) const
+{
+    serialize::Serialize(o_stream, this->length);
+    serialize::SerializeN(o_stream, this->chars, this->length);
+    return Result<void>();
+}
+Result<void> ObjectString::deserialize(std::istream &i_stream)
+{
+    serialize::Deserialize(i_stream, this->length);
+    serialize::DeserializeN(i_stream, this->chars, this->length);
+    return Result<void>();
 }
 
 ObjectString *ObjectString::CreateByMove(char *str, size_t length)
@@ -67,6 +118,69 @@ bool ObjectString::compare(const ObjectString &a, const ObjectString &b)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+
+Result<void> Value::serialize(std::ostream &o_stream) const
+{
+    static_assert(sizeof(type) == 1, "Check enum type");
+    serialize::Serialize(o_stream, type);
+    switch (type)
+    {
+        case Type::Bool:
+            serialize::Serialize(o_stream, as.boolean);
+            break;
+        case Type::Null:
+        case Type::Undefined:
+            break;
+        case Type::Number:
+            serialize::Serialize(o_stream, as.number);
+            break;
+        case Type::Integer:
+            serialize::Serialize(o_stream, as.integer);
+            break;
+        case Type::Object:
+            return as.object->serialize(o_stream);
+            break;
+        default:
+            FAIL_MSG("Unsupported type: %d\n", type);
+    }
+    return Result<void>();
+}
+Result<void> Value::deserialize(std::istream &i_stream)
+{
+    serialize::Deserialize(i_stream, type);
+    switch (type)
+    {
+        case Type::Bool:
+            serialize::Deserialize(i_stream, as.boolean);
+            break;
+        case Type::Null:
+        case Type::Undefined:
+            break;
+        case Type::Number:
+            serialize::Deserialize(i_stream, as.number);
+            break;
+        case Type::Integer:
+            serialize::Deserialize(i_stream, as.integer);
+            break;
+        case Type::Object:
+        {
+            auto result = Object::deserialize(i_stream);
+            ASSERT(result.isOk());
+            if (result.isOk())
+            {
+                as.object = result.extract();
+            }
+            else
+            {
+                return result.error();
+            }
+            break;
+        }
+        default:
+            FAIL_MSG("Unsupported type: %d\n", type);
+    }
+    return Result<void>();
+}
 
 const char *Value::getTypeName(Type type)
 {

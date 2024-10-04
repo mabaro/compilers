@@ -18,13 +18,16 @@ struct Object
     } as;
 #endif // #if USING(DEBUG_BUILD)
 
-    enum class Type
+    enum class Type : uint8_t
     {
         String,
         COUNT
     };
     Type type = Type::COUNT;
     static const char *getTypeName(Type type);
+
+    Result<void> serialize(std::ostream& o_stream) const;
+    static Result<Object*> deserialize(std::istream& i_stream);
 
     template <typename ObjectT>
     static ObjectT *allocate()
@@ -95,6 +98,10 @@ struct ObjectString : public Object
 
     size_t length = 0;
     char *chars = nullptr;
+
+    Result<void> serialize(std::ostream& o_stream) const;
+    Result<void> deserialize(std::istream& i_stream);
+
     static ObjectString *CreateByMove(char *str, size_t length);
     static ObjectString *CreateByCopy(const char *str, size_t length);
 
@@ -111,7 +118,7 @@ struct Value
         Object *object;
     } as;
 
-    enum class Type
+    enum class Type : uint8_t
     {
         Bool,
         Null,
@@ -127,6 +134,9 @@ struct Value
     static constexpr struct NullType
     {
     } Null = NullType{};
+
+    Result<void> serialize(std::ostream& o_stream) const;
+    Result<void> deserialize(std::istream& i_stream);
 
     bool is(Type t) const { return t == type; }
     bool isNumber() const { return type == Type::Integer || type == Type::Number; }

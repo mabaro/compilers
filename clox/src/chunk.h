@@ -54,12 +54,20 @@ struct Chunk
 
     Chunk(const char* sourcePath) : _sourcepath(sourcePath) {}
     ~Chunk() {}
+    Chunk& operator=(Chunk&& ) = delete;
+    Chunk& operator=(const Chunk& ) = delete;
+
+    void serialize(std::ostream& o_stream) const;
+    Result<void> deserialize(std::istream& i_stream);
 
     const char* getSourcePath() const { return _sourcepath.c_str(); }
+
     const uint8_t* getCode() const { return _code.data(); }
+    const size_t getCodeSize() const { return _code.size(); }
+
     const uint16_t* getLines() const { return _lines.data(); }
     const uint16_t getLine(uint16_t index) const { return _lines[index]; }
-    const size_t getCodeSize() const { return _code.size(); }
+    const size_t getLineCount() const { return _lines.size(); }
 
     const ValueArray& getConstants() const { return _constants; }
 
@@ -86,7 +94,7 @@ struct Chunk
         }
 
         _constants.write(value);
-        return static_cast<int>(_constants.getSize()) - 1;
+        return static_cast<int>(_constants.size()) - 1;
     }
 
 #if DEBUG_TRACE_EXECUTION
@@ -94,7 +102,7 @@ struct Chunk
     void printConstants() const
     {
         printf(" Constants: ");
-        for (size_t i = 0; i < getConstants().getSize(); ++i)
+        for (size_t i = 0; i < getConstants().size(); ++i)
         {
             printf("%zu[", i);
             printValue(getConstants()[i]);
