@@ -77,7 +77,7 @@ struct Compiler
         Undefined
     };
     using error_t = Error<ErrorCode>;
-    using result_t = Result<Chunk *, error_t>;
+    using result_t = Result<std::unique_ptr<Chunk>, error_t>;
 
     struct Configuration
     {
@@ -92,8 +92,17 @@ struct Compiler
     Configuration getConfiguration() const { return _configuration; }
     void setConfiguration(const Configuration &config) { _configuration = config; }
 
-    result_t compile(const char *source, const char *sourcePath)
+    result_t compileFromSource(const char *sourceCode, Optional<Compiler::Configuration> optConfiguration = none_t);
+    result_t compileFromFile(const char *path, Optional<Compiler::Configuration> optConfiguration = none_t);
+
+    result_t compile(const char *source, const char *sourcePath,
+                     const Optional<Configuration> &optConfiguration = none_t)
     {
+        if (optConfiguration.hasValue())
+        {
+            setConfiguration(optConfiguration.value());
+        }
+
         populateParseRules();
 
         _scanner.init(source);
@@ -140,7 +149,7 @@ struct Compiler
         }
 
         finishCompilation();
-        return makeResult<result_t>(std::move(currentChunk()));
+        return extractChunk();
     }
 
    protected:  // high level stuff
@@ -613,6 +622,7 @@ struct Compiler
 
     std::unique_ptr<Chunk> _compilingChunk = nullptr;
     Chunk *currentChunk() { return _compilingChunk.get(); }
+    std::unique_ptr<Chunk> extractChunk() { return std::move(_compilingChunk); }
 
     ParseRule _parseRules[(size_t)TokenType::COUNT];
 

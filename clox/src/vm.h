@@ -74,6 +74,7 @@ struct VirtualMachine
         stackPush(a op b);          \
     } while (false)
 
+        const bool linesAvailable = _chunk->getLineCount() > 0;
         for (;;)
         {
 #if DEBUG_TRACE_EXECUTION
@@ -83,7 +84,7 @@ struct VirtualMachine
             printVariables();
             printf("          ");
             _chunk->printConstants();
-            disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()));
+            disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable);
 #endif  // #if DEBUG_TRACE_EXECUTION
 
             const OpCode instruction = OpCode(READ_BYTE());
@@ -294,7 +295,7 @@ struct VirtualMachine
         {
             return makeResultError<result_t>(ErrorCode::CompileError, result.error().message());
         }
-        const Chunk *currentChunk = result.value();
+        const Chunk *currentChunk = result.value().get();
         _chunk = currentChunk;
         _ip = currentChunk->getCode();
 
@@ -303,44 +304,6 @@ struct VirtualMachine
         result_t runResult = run();
 
         return runResult;
-    }
-
-    Result<char *> readFile(const char *path)
-    {
-        using result_t = Result<char *>;
-
-        FILE *file = nullptr;
-        fopen_s(&file, path, "rb");
-        if (file == nullptr)
-        {
-            return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
-                                             format("Couldn't open file '%s'\n", path));
-        }
-        ScopedCallback closeFile([&file] { fclose(file); });
-
-        fseek(file, 0L, SEEK_END);
-        const size_t fileSize = ftell(file);
-        rewind(file);
-
-        char *buffer = (char *)malloc(fileSize + 1);
-        if (buffer == nullptr)
-        {
-            char message[1024];
-            snprintf(message, sizeof(message),
-                     "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n", path, fileSize);
-            LOG_ERROR(message);
-            return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
-        }
-        const size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
-        if (bytesRead < fileSize)
-        {
-            LOG_ERROR("Couldn't read the file '%s'\n", path);
-            return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
-                                             format("Couldn't read the file '%s'\n", path));
-        }
-        buffer[bytesRead] = '\0';
-
-        return makeResult<result_t>(buffer);
     }
 
     result_t runFromSource(const char *sourceCode, Optional<Compiler::Configuration> optConfiguration = none_t)
@@ -353,13 +316,12 @@ struct VirtualMachine
     result_t runFromFile(const char *path, Optional<Compiler::Configuration> optConfiguration = none_t)
     {
         LOG_INFO("Running from file(%s)...\n", path);
-        Result<char *> source = readFile(path);
-        ScopedCallback freeSource([&source] { free(source.extract()); });
+        Result<std::unique_ptr<char[]>> source = utils::readFile(path);
         if (!source.isOk())
         {
             return makeResultError<result_t>(source.error().message());
         }
-        char *buffer = source.value();
+        char *buffer = source.value().get();
 
         result_t result = interpret(buffer, path, optConfiguration);
         if (!result.isOk())
@@ -368,6 +330,13 @@ struct VirtualMachine
         }
 
         return result;
+    }
+
+    result_t runFromByteCode(const Chunk &bytecode)
+    {
+        _chunk = &bytecode;
+        _ip = bytecode.getCode();
+        return run();
     }
 
     result_t repl(Optional<Compiler::Configuration> optConfiguration = none_t)
