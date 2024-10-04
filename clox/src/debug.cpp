@@ -19,19 +19,21 @@ int constantInstruction(const char* name, const Chunk& chunk, int offset)
     return offset + 2;
 }
 
-int disassembleInstruction(const Chunk& chunk, uint16_t offset)
+int disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesAvailable)
 {
     ASSERT(offset < chunk.getCodeSize());
     printf("%04d ", offset);
-    if (offset > 0 && chunk.getLine(offset) == chunk.getLine(offset - 1))
+    if (linesAvailable)
     {
-        printf(" | ");
+        if (offset > 0 && chunk.getLine(offset) == chunk.getLine(offset - 1))
+        {
+            printf(" | ");
+        }
+        else
+        {
+            printf("%u ", chunk.getLine(offset));
+        }
     }
-    else
-    {
-        printf("%u ", chunk.getLine(offset));
-    }
-
     const OpCode instruction = OpCode(chunk.getCode()[offset]);
     switch (instruction)
     {
@@ -73,7 +75,7 @@ int disassembleInstruction(const Chunk& chunk, uint16_t offset)
             return constantInstruction("OP_GLOBAL_VAR_DEFINE", chunk, offset);
         case OpCode::GlobalVarGet:
             return constantInstruction("OP_GLOBAL_VAR_GET", chunk, offset);
-         case OpCode::GlobalVarSet:
+        case OpCode::GlobalVarSet:
             return constantInstruction("OP_GLOBAL_VAR_SET", chunk, offset);
         default:
             printf("Unknown opcode %d\n", (int)instruction);
@@ -85,8 +87,9 @@ void disassemble(const Chunk& chunk, const char* name)
 {
     printf("== %s ==\n", name);
 
+    const bool linesAvailable = chunk.getLineCount() > 0;
     for (int offset = 0; offset < chunk.getCodeSize();)
     {
-        offset = disassembleInstruction(chunk, offset);
+        offset = disassembleInstruction(chunk, offset, linesAvailable);
     }
 }
