@@ -382,7 +382,7 @@ static ResultT makeResultError(std::string&& msg)
 template <typename T>
 struct RandomAccessContainer
 {
-    using type = T;
+    using value_t = T;
 
     void resize(size_t size) { _values.resize(size); }
     bool empty() const { return _values.empty(); }
