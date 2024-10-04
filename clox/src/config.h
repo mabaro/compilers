@@ -20,3 +20,7 @@
 #endif // #if USING(RELEASE_BUILD)
 #define DEBUG_BUILD IN_USE
 #endif // #if DEBUG
+
+// PE build is intended for injecting bytecodes into a template VM binary
+#define PE_BUILD NOT_IN_USE
+static_assert(!USING(PE_BUILD) || !USING(DEBUG_BUILD));
