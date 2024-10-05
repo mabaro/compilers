@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-#include "utils/serialize.h"
+#include "utils/serde.h"
 
 Object *Object::s_allocatedList = nullptr;
 
@@ -19,7 +19,7 @@ const char *Object::getTypeName(Type type)
 
 Result<void> Object::serialize(std::ostream &o_stream) const
 {
-    serialize::Serialize(o_stream, type);
+    serde::Serialize(o_stream, type);
     switch (type)
     {
         case Type::String:
@@ -33,15 +33,15 @@ Result<void> Object::serialize(std::ostream &o_stream) const
 Result<Object *> Object::deserialize(std::istream &i_stream)
 {
     Object::Type type;
-    serialize::Deserialize(i_stream, type);
+    serde::Deserialize(i_stream, type);
     switch (type)
     {
         case Type::String:
         {
-            serialize::size_t len;
-            serialize::Deserialize(i_stream, len);
+            serde::size_t len;
+            serde::Deserialize(i_stream, len);
             char *newString = ALLOCATE_N(char, len+1);
-            serialize::DeserializeN(i_stream, newString, len);
+            serde::DeserializeN(i_stream, newString, len);
             newString[len] = '\0';
             return ObjectString::CreateByMove(newString, len);
         }
@@ -81,14 +81,14 @@ void Object::FreeObjects()
 
 Result<void> ObjectString::serialize(std::ostream &o_stream) const
 {
-    serialize::SerializeAs<serialize::size_t>(o_stream, this->length);
-    serialize::SerializeN(o_stream, this->chars, this->length);
+    serde::SerializeAs<serde::size_t>(o_stream, this->length);
+    serde::SerializeN(o_stream, this->chars, this->length);
     return Result<void>();
 }
 Result<void> ObjectString::deserialize(std::istream &i_stream)
 {
-    serialize::DeserializeAs<serialize::size_t>(i_stream, this->length);
-    serialize::DeserializeN(i_stream, this->chars, this->length);
+    serde::DeserializeAs<serde::size_t>(i_stream, this->length);
+    serde::DeserializeN(i_stream, this->chars, this->length);
     return Result<void>();
 }
 
@@ -123,20 +123,20 @@ bool ObjectString::compare(const ObjectString &a, const ObjectString &b)
 Result<void> Value::serialize(std::ostream &o_stream) const
 {
     static_assert(sizeof(type) == 1, "Check enum type");
-    serialize::Serialize(o_stream, type);
+    serde::Serialize(o_stream, type);
     switch (type)
     {
         case Type::Bool:
-            serialize::Serialize(o_stream, as.boolean);
+            serde::Serialize(o_stream, as.boolean);
             break;
         case Type::Null:
         case Type::Undefined:
             break;
         case Type::Number:
-            serialize::Serialize(o_stream, as.number);
+            serde::Serialize(o_stream, as.number);
             break;
         case Type::Integer:
-            serialize::Serialize(o_stream, as.integer);
+            serde::Serialize(o_stream, as.integer);
             break;
         case Type::Object:
             return as.object->serialize(o_stream);
@@ -148,20 +148,20 @@ Result<void> Value::serialize(std::ostream &o_stream) const
 }
 Result<void> Value::deserialize(std::istream &i_stream)
 {
-    serialize::Deserialize(i_stream, type);
+    serde::Deserialize(i_stream, type);
     switch (type)
     {
         case Type::Bool:
-            serialize::Deserialize(i_stream, as.boolean);
+            serde::Deserialize(i_stream, as.boolean);
             break;
         case Type::Null:
         case Type::Undefined:
             break;
         case Type::Number:
-            serialize::Deserialize(i_stream, as.number);
+            serde::Deserialize(i_stream, as.number);
             break;
         case Type::Integer:
-            serialize::Deserialize(i_stream, as.integer);
+            serde::Deserialize(i_stream, as.integer);
             break;
         case Type::Object:
         {
