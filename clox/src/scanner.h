@@ -90,280 +90,46 @@ struct Scanner
     using result_t = result_base_t<void>;
     using TokenResult_t = result_base_t<Token>;
 
-    const char* start = 0;
-    const char* current = 0;
-    const char* linePtr = 0;
-    int line = -1;
+    const char* _start = 0;
+    const char* _current = 0;
+    const char* _linePtr = 0;
+    int _line = -1;
+    std::vector<std::string> _escapedStrings;
 
-    result_t init(const char* source)
-    {
-        start = source;
-        current = source;
-        line = 0;
-        linePtr = source;
+    result_t init(const char* source);
+    result_t finish();
 
-        return makeResultError<result_t>();
-    }
-
-    TokenResult_t scanToken()
-    {
-        Token token;
-
-        skipWhitespace();
-
-        start = current;
-
-        if (isAtEnd())
-        {
-            return makeToken(TokenType::Eof);
-        }
-
-        const char c = advance();
-        switch (c)
-        {
-            case '(':
-                return makeToken(TokenType::LeftParen);
-            case ')':
-                return makeToken(TokenType::RightParen);
-            case '{':
-                return makeToken(TokenType::LeftBrace);
-            case '}':
-                return makeToken(TokenType::RightBrace);
-            case '-':
-                return makeToken(TokenType::Minus);
-            case '+':
-                return makeToken(TokenType::Plus);
-            case '/':
-                if (match('/'))
-                {  // comment
-                    while (peek() != '\n' && !isAtEnd())
-                    {
-                        advance();
-                    }
-                    return makeToken(TokenType::Comment);
-                }
-                else if (match('*'))
-                {  // comment
-                    while (!(match('*') && match('/')) && !isAtEnd())
-                    {
-                        advance();
-                    }
-                    return makeToken(TokenType::Comment);
-                }
-                else
-                {
-                    return makeToken(TokenType::Slash);
-                }
-            case '*':
-                return makeToken(TokenType::Star);
-            case '!':
-                return makeToken(match('=') ? TokenType::BangEqual : TokenType::Bang);
-            case '=':
-                return makeToken(match('=') ? TokenType::EqualEqual : TokenType::Equal);
-            case '<':
-                return makeToken(match('=') ? TokenType::LessEqual : TokenType::Less);
-            case '>':
-                return makeToken(match('=') ? TokenType::GreaterEqual : TokenType::Greater);
-            case '&':
-                if (match('&'))
-                {
-                    return makeToken(TokenType::And);
-                }
-                break;
-            case '\"':
-                return string();
-            case ';':
-                return makeToken(TokenType::Semicolon);
-            default:
-                if (isDigit(c))
-                {
-                    return number();
-                }
-                if (isAlpha(c))
-                {
-                    return identifier();
-                }
-                break;
-        }
-
-        return makeResultError<TokenResult_t>(buildMessage("Unexpected character: '%c'", c));
-    }
+    TokenResult_t scanToken();
 
    protected:
-    Token makeToken(TokenType type, int ltrim=0, int rtrim=0) const
-    {
-        Token token;
-        token.type = type;
-        token.start = start + ltrim;
-        token.length = static_cast<int>(current - token.start) - rtrim;
-        token.line = line;
-        return token;
-    }
-    TokenResult_t makeTokenError(TokenType type, const char* msg, int64_t tokenLength = -1)
-    {
-        char message[1024];
-        const int pos = (int)(current - start);
-        if (tokenLength <= 0)
-        {
-            tokenLength = 0;
-            const char* found = strchr(start, '\n');
-            if (found != nullptr)
-            {
-                tokenLength = found - start;
-            }
-        }
-        snprintf(message, sizeof(message), "%s at '%.*s' pos:%d in line %d\n", msg, (int)tokenLength, start, pos, line);
-        return makeResultError<TokenResult_t>(TokenResult_t::error_t::code_t::SyntaxError, message);
-    }
+    Token makeToken(TokenType type, int ltrim=0, int rtrim=0) const;
+    Token makeToken(TokenType type, const std::string& escapedString) const;
+    TokenResult_t makeTokenError(TokenType type, const char* msg, int64_t tokenLength = -1);
 
-    TokenResult_t string()
+    TokenResult_t string();
+    Token number();
+    Token identifier();
+    bool checkKeyword(int start, int length, const char* rest);
+    TokenType checkKeyword(int start, int length, const char* rest, TokenType type);
+    TokenType identifierType();
+    inline bool isDigit(const char c) const { return c >= '0' && c <= '9'; }
+    inline bool isAlpha(const char c) const { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'); }
+    void skipWhitespace();
+    inline char peek() { return *_current; }
+    inline char peekNext() { return isAtEnd() ? '\0' : _current[1]; }
+    inline char advance()
     {
-        while (peek() != '\"' && !isAtEnd())
-        {
-            if (peek() == '\n')
-            {
-                ++line;
-                linePtr = this->current + 1;
-            }
-            advance();
-        }
-        if (isAtEnd())
-        {
-            return makeTokenError(TokenType::String, "Unterminated string");
-        }
-
-        advance();
-        return makeToken(TokenType::String, 1, 1);
+        ++_current;
+        return _current[-1];
     }
-    Token number()
+    inline bool match(char expected)
     {
-        while (isDigit(peek()))
-        {
-            advance();
-        }
-        if (peek() == '.' && isDigit(peekNext()))
-        {
-            advance();
-            while (isDigit(peek()))
-            {
-                advance();
-            }
-            return makeToken(TokenType::NumberFloat);
-        }
-        return makeToken(TokenType::Number);
-    }
-    Token identifier()
-    {
-        while (isAlpha(peek()) || isDigit(peek())) advance();
-        return makeToken(identifierType());
-    }
-    bool checkKeyword(int start, int length, const char* rest)
-    {
-        const ptrdiff_t startToCurr = this->current - this->start;
-        const ptrdiff_t expectedSize = start + length;
-        if ((startToCurr == expectedSize) && (0 == memcmp(this->start + start, rest, length)))
-        {
-            return true;
-        }
-
-        return false;
-    }
-    TokenType checkKeyword(int start, int length, const char* rest, TokenType type)
-    {
-        if (checkKeyword(start, length, rest))
-        {
-            // current += length;
-            return type;
-        }
-
-        return TokenType::Identifier;
-    }
-    TokenType identifierType()
-    {
-        struct Keyword
-        {
-            const char* str;
-            int len;
-            TokenType type;
-        };
-#define ADD_KEYWORD(STR, TYPE) {#STR, (int)strlen(#STR), TokenType::TYPE}
-        static const Keyword keywords[] = {
-            ADD_KEYWORD(class, Class),
-            ADD_KEYWORD(else, Else),
-            ADD_KEYWORD(exit, Exit),
-            ADD_KEYWORD(false, False),
-            ADD_KEYWORD(for, For),
-            ADD_KEYWORD(if, If),
-#if USING(LANG_EXT_MUT)
-            ADD_KEYWORD(mut, Mut ),
-#endif  // #if USING(LANG_EXT_MUT)
-            ADD_KEYWORD(null, Null ),
-            ADD_KEYWORD(print, Print ),
-            ADD_KEYWORD(return, Return ),
-            ADD_KEYWORD(super, Super ),
-            ADD_KEYWORD(true, True),
-            ADD_KEYWORD(var, Var),
-            ADD_KEYWORD(while, While),
-            };
-#undef ADD_KEYWORD
-        ASSERT(utils::is_sorted_if<Keyword>(&keywords[0], &keywords[0] + ARRAY_SIZE(keywords),
-                                            [](const Keyword& a, const Keyword& b)
-                                            { return memcmp(a.str, b.str, a.len) >= 0; }));
-        const char* currentTokenStr = this->start;
-        const size_t currentTokenLen = this->current - this->start;
-        for (const auto& keyword : keywords)
-        {
-            if ((keyword.len == currentTokenLen) && 0 == memcmp(keyword.str, currentTokenStr, currentTokenLen))
-            {
-                return keyword.type;
-            }
-            if (keyword.str[0] > currentTokenStr[0])
-            {  // requires keywords being sorted
-                break;
-            }
-        }
-
-        return TokenType::Identifier;
-    }
-    bool isDigit(const char c) const { return c >= '0' && c <= '9'; }
-    bool isAlpha(const char c) const { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'); }
-    void skipWhitespace()
-    {
-        while (1)
-        {
-            const char c = peek();
-            switch (c)
-            {
-                case ' ':
-                case '\t':
-                case '\r':
-                    advance();
-                    break;
-                case '\n':
-                    ++line;
-                    linePtr = this->current + 1;
-                    advance();
-                    break;
-                default:
-                    return;
-            }
-        }
-    }
-    char peek() { return *current; }
-    char peekNext() { return isAtEnd() ? '\0' : current[1]; }
-    char advance()
-    {
-        ++current;
-        return current[-1];
-    }
-    bool match(char expected)
-    {
-        if (isAtEnd() || *current != expected)
+        if (isAtEnd() || *_current != expected)
         {
             return false;
         }
-        ++current;
+        ++_current;
         return true;
     }
-    bool isAtEnd() const { return *current == '\0'; }
+    inline bool isAtEnd() const { return *_current == '\0'; }
 };
