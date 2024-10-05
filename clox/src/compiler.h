@@ -83,14 +83,15 @@ struct Compiler
     {
         bool allowDynamicVariables = false;  // no need to declare with <var>
         bool defaultConstVariables = false;  // <mut> allows modifying variables
+        bool disassemble = false;
     };
 
    private:
     Configuration _configuration;
 
    public:
-    Configuration getConfiguration() const { return _configuration; }
-    void setConfiguration(const Configuration &config) { _configuration = config; }
+    inline const Configuration& getConfiguration() const { return _configuration; }
+    inline void setConfiguration(const Configuration &config) { _configuration = config; }
 
     result_t compileFromSource(const char *sourceCode, Optional<Compiler::Configuration> optConfiguration = none_t);
     result_t compileFromFile(const char *path, Optional<Compiler::Configuration> optConfiguration = none_t);
@@ -396,7 +397,7 @@ struct Compiler
     {
         emitReturn();
 #if USING(DEBUG_PRINT_CODE)
-        if (!_parser.optError.hasValue())
+        if (_configuration.disassemble && !_parser.optError.hasValue())
         {
             ASSERT(currentChunk());
             disassemble(*currentChunk(), "code");

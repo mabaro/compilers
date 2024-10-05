@@ -1,6 +1,6 @@
 #include <fstream>
-#include <sstream>
 #include <iostream>
+#include <sstream>
 
 #include "common.h"
 #include "vm.h"
@@ -104,6 +104,7 @@ int main(int argc, const char* argv[])
                 repl,
                 compile,
                 run,
+                disassemble,
                 output,
             };
             Type type;
@@ -121,6 +122,7 @@ int main(int argc, const char* argv[])
             ADD_PARAM(compile, "Compiles into bytecode and outputs the result to console or the output_file defined"),
             ADD_PARAM_WITH_PARAMS(output, "Allows defining the output file for -compile", "<output_file>"),
             ADD_PARAM(run, "Runs the code in the <bytecode_file> through the VM"),
+            ADD_PARAM(disassemble, "Show disassembled code"),
             ADD_PARAM_WITH_PARAMS(code, "Allows passing <source_code> as a character string", "<source_code>"),
         };
 #undef ADD_PARAM
@@ -160,6 +162,7 @@ int main(int argc, const char* argv[])
             bool hasToShowHelp = false;
             const char* srcCodeOrFile = nullptr;
             bool isCodeOrFile = false;
+            bool disassemble = false;
             ExecutionMode mode = ExecutionMode::Interpret;
             const char* compileOutputPath = nullptr;
         } config;
@@ -219,6 +222,9 @@ int main(int argc, const char* argv[])
                                 break;
                             case Param::Type::run:
                                 config.mode = ExecutionMode::Run;
+                                break;
+                            case Param::Type::disassemble:
+                                compilerConfiguration.disassemble = true;
                                 break;
                             default:
                                 LOG_ERROR("Invalid parameter: %s", argv);
@@ -349,7 +355,10 @@ int main(int argc, const char* argv[])
                         if (ifs.good())
                         {
                             code.deserialize(ifs);
-                            disassemble(code, config.srcCodeOrFile);
+                            if (compilerConfiguration.disassemble)
+                            {
+                                disassemble(code, config.srcCodeOrFile);
+                            }
                         }
                         else
                         {

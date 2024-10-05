@@ -63,6 +63,7 @@ struct VirtualMachine
 
     result_t run()
     {
+
 #define READ_BYTE() (*_ip++)
 #define READ_CONSTANT() (_chunk->getConstants()[READ_BYTE()])
 #define READ_STRING() (READ_CONSTANT().as.object->asString()->chars)
@@ -78,13 +79,16 @@ struct VirtualMachine
         for (;;)
         {
 #if DEBUG_TRACE_EXECUTION
-            printf("          ");
-            stackPrint();
-            printf("          ");
-            printVariables();
-            printf("          ");
-            _chunk->printConstants();
-            disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable);
+            if (_compiler.getConfiguration().disassemble)
+            {
+                printf("          ");
+                stackPrint();
+                printf("          ");
+                printVariables();
+                printf("          ");
+                _chunk->printConstants();
+                disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable);
+            }
 #endif  // #if DEBUG_TRACE_EXECUTION
 
             const OpCode instruction = OpCode(READ_BYTE());
