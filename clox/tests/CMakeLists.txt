@@ -1,41 +1,58 @@
 set(ENV{CTEST_OUTPUT_ON_FAILURE}, 1)
 set(ENV{CTEST_OUTPUT_ON_SUCCESS}, 1)
 
-add_test(NAME no_args_fail COMMAND clox)
-add_test(NAME from_args_undeclared_var COMMAND clox -code "var a = b;")
-add_test(NAME from_arg_undefined_var_read COMMAND clox -code "var a; b=a;")
-add_test(NAME from_arg_undeclared_var_write COMMAND clox -code "a=1; b=a;")
+# Command line tests
+add_test(NAME cmd_help COMMAND clox -help)
+add_test(NAME cmd_fail_no_args COMMAND clox)
 set_tests_properties(
-    no_args_fail
-    from_args_undeclared_var
-    from_arg_undefined_var_read
-    from_arg_undeclared_var_write
+    cmd_fail_no_args
+    PROPERTIES WILL_FAIL TRUE)
+add_test(NAME cmd_interpret_from_code COMMAND clox -code "print \"hello world\";")
+add_test(NAME cmd_interpret_from_file COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test.clox)
+add_test(NAME cmd_compile_from_code COMMAND clox -compile -code "print \"hello world\";")
+add_test(NAME cmd_compile_from_file COMMAND clox -compile -code "print \"hello world\";" -output ${PROJECT_SOURCE_DIR}/tests/helloworld.cloxbin)
+add_test(NAME cmd_run_from_file COMMAND clox -run ${PROJECT_SOURCE_DIR}/tests/helloworld.cloxbin)
+
+# Compiler features
+add_test(NAME lang_print COMMAND clox -code "print \"hello world\";")
+add_test(NAME lang_escape_text COMMAND clox -code "print 1+1; print \"\nthis is a \\\"escape\\\" 'test' \n\";")
+add_test(NAME lang_string_concat COMMAND clox -code "var a=\"hello\"; var b=\"world\"; print a + \" \" + b;")
+
+# > Using dynamic variables
+add_test(NAME lang_dyn_var_fail_undefined COMMAND clox -allow_dynamic_variables -code "var a; b=a;")
+add_test(NAME lang_dyn_var_undeclared COMMAND clox -allow_dynamic_variables -code "a = 1;")
+add_test(NAME lang_dyn_var_assignment COMMAND clox -allow_dynamic_variables -code "a=1; b=a;")
+add_test(NAME lang_dyn_var_arithmetic COMMAND clox -allow_dynamic_variables -code "a=1; b=a;print(a+b);")
+set_tests_properties(
+    lang_dyn_var_fail_undefined
     PROPERTIES WILL_FAIL TRUE)
 
-add_test(NAME invalidAssignTarget COMMAND clox -code "var a=2;var b=3; a*b=1;")
+# < Using dynamic variables
+
+# > Not using dynamic variables
+add_test(NAME lang_var_declaration COMMAND clox -code "var a;")
+add_test(NAME lang_assignment COMMAND clox -code "var a=1; var b=2;var c=a+b; print(c);")
+add_test(NAME lang_arithmetic_and_strings COMMAND clox -code "var A=0;var B=1;var C=A+B;print(\"Sum of \"); print(A); print(\" + \"); print(B); print(\" = \"); print(C);")
+add_test(NAME lang_fail_var_undefined_read COMMAND clox -code "a; b=a;")
+add_test(NAME lang_fail_invalid_assign_target COMMAND clox -code "var a=2;var b=3; a*b=1;")
+add_test(NAME lang_fail_undeclared_var COMMAND clox -code "a = 1;")
+add_test(NAME lang_fail_undefined_var_read COMMAND clox -code "var a; b=a;")
 set_tests_properties(
-    invalidAssignTarget
+    lang_fail_var_undefined_read
+    lang_fail_invalid_assign_target
+    lang_fail_undeclared_var
+    lang_fail_undefined_var_read
     PROPERTIES WILL_FAIL TRUE)
 
+add_test(NAME lang_from_file_print COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test.clox)
+add_test(NAME lang_from_file_arith_and_print COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test2.clox)
+add_test(NAME lang_from_file_stringConcat COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test3.clox)
 
-add_test(NAME help COMMAND clox -help)
-add_test(NAME from_arg COMMAND clox -code "var a=1; var b=2;var c=a+b;print(c);")
-add_test(NAME from_arg2 COMMAND clox -code "var A=0;var B=1;var C=A+B;print(\"Sum of \"); print(A); print(\" + \"); print(B); print(\" = \"); print(C);")
-add_test(NAME from_arg_dynamic_var_write COMMAND clox -allow_dynamic_variables -code "a=1; b=a;")
-add_test(NAME from_arg_dynamic_var_undefined_read COMMAND clox -allow_dynamic_variables -code "a; b=a;")
-set_tests_properties(
-    from_arg_dynamic_var_undefined_read
-    PROPERTIES WILL_FAIL TRUE)
+add_test(NAME lang_serialize COMMAND clox -compile -output test.cloxbin ${PROJECT_SOURCE_DIR}/tests/test.clox)
+add_test(NAME lang_deserialize COMMAND clox -run test.cloxbin)
 
-add_test(NAME from_file COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test.clox)
-add_test(NAME from_file2 COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test2.clox)
-add_test(NAME stringConcat COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test3.clox)
+add_test(NAME lang_serialize2 COMMAND clox -compile -output test2.cloxbin ${PROJECT_SOURCE_DIR}/tests/test2.clox)
+add_test(NAME lang_deserialize2 COMMAND clox -run test2.cloxbin)
 
-add_test(NAME serialize COMMAND clox -compile -output test.cloxbin ${PROJECT_SOURCE_DIR}/tests/test.clox)
-add_test(NAME deserialize COMMAND clox -run test.cloxbin )
-
-add_test(NAME serialize2 COMMAND clox -compile -output test2.cloxbin ${PROJECT_SOURCE_DIR}/tests/test2.clox)
-add_test(NAME deserialize2 COMMAND clox -run test2.cloxbin )
-
-add_test(NAME serialize3 COMMAND clox -compile -output test3.cloxbin ${PROJECT_SOURCE_DIR}/tests/test3.clox)
-add_test(NAME deserialize3 COMMAND clox -run test3.cloxbin )
+add_test(NAME lang_serialize3 COMMAND clox -compile -output test3.cloxbin ${PROJECT_SOURCE_DIR}/tests/test3.clox)
+add_test(NAME lang_deserialize3 COMMAND clox -run test3.cloxbin)

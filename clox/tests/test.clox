@@ -1,10 +1,1 @@
-var A=15;
-var B=37;
-var C=A+B;
-print("El resultado de sumar "); 
-print(A); 
-print(" + "); 
-print(B); 
-print(" es "); 
-print(C);
-print "\n";
+print "hello world";

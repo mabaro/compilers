@@ -1,1 +1,10 @@
-print("hola");
+var A=15;
+var B=37;
+var C=A+B;
+print("The result of adding "); 
+print(A); 
+print(" + "); 
+print(B); 
+print(" is "); 
+print(C);
+print "\n";
