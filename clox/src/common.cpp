@@ -5,10 +5,10 @@
 namespace debug_print
 {
 static int sDebugPrintLevel = 0;
-int GetLevel() { return sDebugPrintLevel; }
-void SetLevel(int level) { sDebugPrintLevel = level; }
+int        GetLevel() { return sDebugPrintLevel; }
+void       SetLevel(int level) { sDebugPrintLevel = level; }
 }  // namespace debug_print
-#endif // #if USING(DEBUG_PRINT_CODE)
+#endif  // #if USING(DEBUG_PRINT_CODE)
 
 ////////////////////////////////////////////////////////////////////////////////
 namespace Logger
@@ -17,13 +17,12 @@ namespace detail
 {
 static LogLevel sLogLevel = LogLevel::All;
 }  // namespace detail
-void SetLogLevel(LogLevel level) { detail::sLogLevel = level; }
+void     SetLogLevel(LogLevel level) { detail::sLogLevel = level; }
 LogLevel GetLogLevel() { return detail::sLogLevel; }
 }  // namespace Logger
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 namespace utils
 {
@@ -85,12 +84,12 @@ namespace common
 {
 struct Dummy
 {
-    int a = -1;
+    int  a = -1;
     bool b = false;
 };
 static bool test_result()
 {
-    int a = 0;
+    int         a   = 0;
     Result<int> res = makeResult<int>(a);
     ASSERT(res.value() == a);
     Result<Dummy> res2 = makeResult(Dummy{});
@@ -101,8 +100,8 @@ static bool test_result()
     ASSERT(res4.value().a == res2.value().a && !res3.isOk());
     Result<Dummy> res5 = makeResultError<Result<Dummy>>();
     ASSERT(!res5.isOk() && res5.error() == Error<>{});
-    char* buffer = (char*)malloc(512);
-    Result<char*> res6 = makeResult<Result<char*>>(buffer);
+    char*         buffer = (char*)malloc(512);
+    Result<char*> res6   = makeResult<Result<char*>>(buffer);
     free(buffer);
 
     return true;
@@ -135,8 +134,8 @@ void run()
     success &= test_result();
 
     const char* message = "Unit tests finished";
-    const char* result = success ? "Succeeded" : "Failed";
-    auto msg = buildMessage("[LINE %d] %s. Result: %s\n", 3, message, result);
+    const char* result  = success ? "Succeeded" : "Failed";
+    auto        msg     = buildMessage("[LINE %d] %s. Result: %s\n", 3, message, result);
     printf("%s\n", msg.c_str());
 }
 }  // namespace common

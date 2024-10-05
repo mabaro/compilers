@@ -1,6 +1,6 @@
 #include "compiler.h"
 
-Compiler::result_t Compiler::compileFromSource(const char *sourceCode,
+Compiler::result_t Compiler::compileFromSource(const char                       *sourceCode,
                                                Optional<Compiler::Configuration> optConfiguration)
 {
     LOG_INFO("Compiling from source...\n");

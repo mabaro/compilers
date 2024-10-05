@@ -1,8 +1,8 @@
 #pragma once
 #include <cstdio>
 
-#include "common.h"
 #include "chunk.h"
+#include "common.h"
 
 int disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesAvailable);
 

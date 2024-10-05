@@ -3,7 +3,6 @@ IndentWidth: 4
 ColumnLimit: 120
 BreakBeforeBraces: Allman
 AllowShortFunctionsOnASingleLine: All
-AlwaysBreakAfterReturnType: All
 BraceWrapping: {AfterFunction: true}
 AllowShortCaseLabelsOnASingleLine:  true
 IndentCaseLabels:   true

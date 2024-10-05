@@ -16,18 +16,18 @@ struct Object
     {
         ObjectString *string;
     } as;
-#endif // #if USING(DEBUG_BUILD)
+#endif  // #if USING(DEBUG_BUILD)
 
     enum class Type : uint8_t
     {
         String,
         COUNT
     };
-    Type type = Type::COUNT;
+    Type               type = Type::COUNT;
     static const char *getTypeName(Type type);
 
-    Result<void> serialize(std::ostream& o_stream) const;
-    static Result<Object*> deserialize(std::istream& i_stream);
+    Result<void>            serialize(std::ostream &o_stream) const;
+    static Result<Object *> deserialize(std::istream &i_stream);
 
     template <typename ObjectT>
     static ObjectT *allocate()
@@ -37,14 +37,14 @@ struct Object
         ObjectT *newObject = nullptr;
         if (std::is_same_v<ObjectString, ObjectT>)
         {
-            newObject = ALLOCATE(ObjectT);
+            newObject       = ALLOCATE(ObjectT);
             newObject->type = ObjectT::Type::String;
         }
         ////////////////////////////////////////////////////////////////////////////////
         if (newObject)
         {
             newObject->_allocatedNext = s_allocatedList;
-            s_allocatedList = newObject;
+            s_allocatedList           = newObject;
         }  ////////////////////////////////////////////////////////////////////////////////
         return newObject;
     }
@@ -67,17 +67,17 @@ struct Object
    protected:
     static void FreeObject(Object *obj);
 
-    Object *_allocatedNext = nullptr;
+    Object        *_allocatedNext = nullptr;
     static Object *s_allocatedList;
 };
 
 struct ObjectString : public Object
 {
     size_t length = 0;
-    char *chars = nullptr;
+    char  *chars  = nullptr;
 
-    Result<void> serialize(std::ostream& o_stream) const;
-    Result<void> deserialize(std::istream& i_stream);
+    Result<void> serialize(std::ostream &o_stream) const;
+    Result<void> deserialize(std::istream &i_stream);
 
     static ObjectString *CreateByMove(char *str, size_t length);
     static ObjectString *CreateByCopy(const char *str, size_t length);
@@ -89,9 +89,9 @@ struct Value
 {
     union
     {
-        bool boolean;
-        double number;
-        int integer;
+        bool    boolean;
+        double  number;
+        int     integer;
         Object *object;
     } as;
 
@@ -105,15 +105,15 @@ struct Value
         Undefined,
         COUNT = Undefined
     };
-    Type type = Type::Undefined;
+    Type               type = Type::Undefined;
     static const char *getTypeName(Type type);
 
     static constexpr struct NullType
     {
     } Null = NullType{};
 
-    Result<void> serialize(std::ostream& o_stream) const;
-    Result<void> deserialize(std::istream& i_stream);
+    Result<void> serialize(std::ostream &o_stream) const;
+    Result<void> deserialize(std::istream &i_stream);
 
     bool is(Type t) const { return t == type; }
     bool isNumber() const { return type == Type::Integer || type == Type::Number; }

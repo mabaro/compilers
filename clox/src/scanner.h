@@ -71,10 +71,10 @@ enum class TokenType
 };
 struct Token
 {
-    int line = -1;
-    int length = 0;
-    const char* start = nullptr;
-    TokenType type = TokenType::Eof;
+    int         line   = -1;
+    int         length = 0;
+    const char* start  = nullptr;
+    TokenType   type   = TokenType::Eof;
 };
 
 struct Scanner
@@ -87,13 +87,13 @@ struct Scanner
     using error_t = Error<ErrorCode>;
     template <typename T = void>
     using result_base_t = Result<T, error_t>;
-    using result_t = result_base_t<void>;
+    using result_t      = result_base_t<void>;
     using TokenResult_t = result_base_t<Token>;
 
-    const char* _start = 0;
-    const char* _current = 0;
-    const char* _linePtr = 0;
-    int _line = -1;
+    const char*              _start   = 0;
+    const char*              _current = 0;
+    const char*              _linePtr = 0;
+    int                      _line    = -1;
     std::vector<std::string> _escapedStrings;
 
     result_t init(const char* source);
@@ -102,22 +102,22 @@ struct Scanner
     TokenResult_t scanToken();
 
    protected:
-    Token makeToken(TokenType type, int ltrim=0, int rtrim=0) const;
-    Token makeToken(TokenType type, const std::string& escapedString) const;
+    Token         makeToken(TokenType type, int ltrim = 0, int rtrim = 0) const;
+    Token         makeToken(TokenType type, const std::string& escapedString) const;
     TokenResult_t makeTokenError(TokenType type, const char* msg, int64_t tokenLength = -1);
 
     TokenResult_t string();
-    Token number();
-    Token identifier();
-    bool checkKeyword(int start, int length, const char* rest);
-    TokenType checkKeyword(int start, int length, const char* rest, TokenType type);
-    TokenType identifierType();
-    inline bool isDigit(const char c) const { return c >= '0' && c <= '9'; }
-    inline bool isAlpha(const char c) const { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'); }
-    void skipWhitespace();
-    inline char peek() { return *_current; }
-    inline char peekNext() { return isAtEnd() ? '\0' : _current[1]; }
-    inline char advance()
+    Token         number();
+    Token         identifier();
+    bool          checkKeyword(int start, int length, const char* rest);
+    TokenType     checkKeyword(int start, int length, const char* rest, TokenType type);
+    TokenType     identifierType();
+    inline bool   isDigit(const char c) const { return c >= '0' && c <= '9'; }
+    inline bool   isAlpha(const char c) const { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'); }
+    void          skipWhitespace();
+    inline char   peek() { return *_current; }
+    inline char   peekNext() { return isAtEnd() ? '\0' : _current[1]; }
+    inline char   advance()
     {
         ++_current;
         return _current[-1];

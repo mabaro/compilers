@@ -2,8 +2,7 @@
 
 #include <sstream>
 
-Scanner::result_t
-Scanner::init(const char* source)
+Scanner::result_t Scanner::init(const char* source)
 {
     ASSERT_MSG(_line == -1, "Need to call finish() before init()");
     _start   = source;
@@ -13,8 +12,7 @@ Scanner::init(const char* source)
 
     return makeResultError<result_t>();
 }
-Scanner::result_t
-Scanner::finish()
+Scanner::result_t Scanner::finish()
 {
     _line = -1;
     _escapedStrings.clear();
@@ -22,8 +20,7 @@ Scanner::finish()
     return makeResultError<result_t>();
 }
 
-Scanner::TokenResult_t
-Scanner::scanToken()
+Scanner::TokenResult_t Scanner::scanToken()
 {
     Token token;
 
@@ -94,8 +91,7 @@ Scanner::scanToken()
     return makeResultError<TokenResult_t>(buildMessage("Unexpected character: '%c'", c));
 }
 
-Token
-Scanner::makeToken(TokenType type, int ltrim, int rtrim) const
+Token Scanner::makeToken(TokenType type, int ltrim, int rtrim) const
 {
     Token token;
     token.type   = type;
@@ -104,8 +100,7 @@ Scanner::makeToken(TokenType type, int ltrim, int rtrim) const
     token.line   = _line;
     return token;
 }
-Token
-Scanner::makeToken(TokenType type, const std::string& escapedString) const
+Token Scanner::makeToken(TokenType type, const std::string& escapedString) const
 {
     Token token;
     token.type   = type;
@@ -114,8 +109,7 @@ Scanner::makeToken(TokenType type, const std::string& escapedString) const
     token.line   = _line;
     return token;
 }
-Scanner::TokenResult_t
-Scanner::makeTokenError(TokenType type, const char* msg, int64_t tokenLength)
+Scanner::TokenResult_t Scanner::makeTokenError(TokenType type, const char* msg, int64_t tokenLength)
 {
     char      message[1024];
     const int pos = (int)(_current - _start);
@@ -132,8 +126,7 @@ Scanner::makeTokenError(TokenType type, const char* msg, int64_t tokenLength)
     return makeResultError<TokenResult_t>(TokenResult_t::error_t::code_t::SyntaxError, message);
 }
 
-Scanner::TokenResult_t
-Scanner::string()
+Scanner::TokenResult_t Scanner::string()
 {
     bool hasEscapedChars = false;
     bool prevWasEscape   = false;
@@ -190,8 +183,7 @@ Scanner::string()
 
     return makeToken(TokenType::String, 1, 1);
 }
-Token
-Scanner::number()
+Token Scanner::number()
 {
     while (isDigit(peek()))
     {
@@ -208,14 +200,12 @@ Scanner::number()
     }
     return makeToken(TokenType::Number);
 }
-Token
-Scanner::identifier()
+Token Scanner::identifier()
 {
     while (isAlpha(peek()) || isDigit(peek())) advance();
     return makeToken(identifierType());
 }
-bool
-Scanner::checkKeyword(int start, int length, const char* rest)
+bool Scanner::checkKeyword(int start, int length, const char* rest)
 {
     const ptrdiff_t startToCurr  = this->_current - this->_start;
     const ptrdiff_t expectedSize = start + length;
@@ -226,8 +216,7 @@ Scanner::checkKeyword(int start, int length, const char* rest)
 
     return false;
 }
-TokenType
-Scanner::checkKeyword(int start, int length, const char* rest, TokenType type)
+TokenType Scanner::checkKeyword(int start, int length, const char* rest, TokenType type)
 {
     if (checkKeyword(start, length, rest))
     {
@@ -237,8 +226,7 @@ Scanner::checkKeyword(int start, int length, const char* rest, TokenType type)
 
     return TokenType::Identifier;
 }
-TokenType
-Scanner::identifierType()
+TokenType Scanner::identifierType()
 {
     struct Keyword
     {
@@ -285,8 +273,7 @@ Scanner::identifierType()
 
         return TokenType::Identifier;
 }
-void
-Scanner::skipWhitespace()
+void Scanner::skipWhitespace()
 {
     while (1)
     {
@@ -314,8 +301,7 @@ namespace unit_tests
 {
 namespace scanner
 {
-void
-run()
+void run()
 {
     Token t1{};
     t1.line = 15;

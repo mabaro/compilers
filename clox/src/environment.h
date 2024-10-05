@@ -1,7 +1,7 @@
 #pragma once
 
-#include "value.h"
 #include "common.h"
+#include "value.h"
 
 struct Environment
 {

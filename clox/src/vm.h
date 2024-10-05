@@ -63,7 +63,6 @@ struct VirtualMachine
 
     result_t run()
     {
-
 #define READ_BYTE() (*_ip++)
 #define READ_CONSTANT() (_chunk->getConstants()[READ_BYTE()])
 #define READ_STRING() (READ_CONSTANT().as.object->asString()->chars)
@@ -94,8 +93,7 @@ struct VirtualMachine
             const OpCode instruction = OpCode(READ_BYTE());
             switch (instruction)
             {
-                case OpCode::Return:
-                    return InterpretResult::Ok;
+                case OpCode::Return: return InterpretResult::Ok;
                 case OpCode::Constant:
                 {
                     const Value constant = READ_CONSTANT();
@@ -103,15 +101,9 @@ struct VirtualMachine
                 }
                 break;
 
-                case OpCode::Null:
-                    stackPush(Value::Create(Value::Null));
-                    break;
-                case OpCode::True:
-                    stackPush(Value::Create(true));
-                    break;
-                case OpCode::False:
-                    stackPush(Value::Create(false));
-                    break;
+                case OpCode::Null: stackPush(Value::Create(Value::Null)); break;
+                case OpCode::True: stackPush(Value::Create(true)); break;
+                case OpCode::False: stackPush(Value::Create(false)); break;
 
                 case OpCode::Equal:
                 {
@@ -171,15 +163,9 @@ struct VirtualMachine
                     }
                 }
                 break;
-                case OpCode::Divide:
-                    BINARY_OP(/);
-                    break;
-                case OpCode::Multiply:
-                    BINARY_OP(*);
-                    break;
-                case OpCode::Subtract:
-                    BINARY_OP(-);
-                    break;
+                case OpCode::Divide: BINARY_OP(/); break;
+                case OpCode::Multiply: BINARY_OP(*); break;
+                case OpCode::Subtract: BINARY_OP(-); break;
                 case OpCode::Negate:
                 {
                     const Value &value = peek(0);
@@ -194,9 +180,7 @@ struct VirtualMachine
                     }
                 }
                 break;
-                case OpCode::Not:
-                    stackPush(Value::Create(stackPop().isFalsey()));
-                    break;
+                case OpCode::Not: stackPush(Value::Create(stackPop().isFalsey())); break;
                 case OpCode::Print:
                 {
                     printValue(stackPop());
@@ -210,14 +194,14 @@ struct VirtualMachine
                 case OpCode::GlobalVarDef:
                 {
                     const char *varName = READ_STRING();
-                    Value *value = addVariable(varName, kGlobalEnvironmentIndex);
-                    *value = stackPop();  // null or expression :)
+                    Value      *value   = addVariable(varName, kGlobalEnvironmentIndex);
+                    *value              = stackPop();  // null or expression :)
                     break;
                 }
                 case OpCode::GlobalVarGet:
                 {
                     const char *varName = READ_STRING();
-                    Value *value = findVariable(varName, kGlobalEnvironmentIndex);
+                    Value      *value   = findVariable(varName, kGlobalEnvironmentIndex);
                     if (value == nullptr)
                     {
                         return runtimeError("Trying to read undeclared variable '%s'.", varName);
@@ -232,7 +216,7 @@ struct VirtualMachine
                 case OpCode::GlobalVarSet:
                 {
                     const char *varName = READ_STRING();
-                    Value *value = findVariable(varName, kGlobalEnvironmentIndex);
+                    Value      *value   = findVariable(varName, kGlobalEnvironmentIndex);
                     if (value == nullptr)
                     {
                         if (_compiler.getConfiguration().allowDynamicVariables)
@@ -249,9 +233,9 @@ struct VirtualMachine
                 }
                 case OpCode::Assignment:
                 {
-                    const Value rvalue = stackPop();
-                    const char *varName = READ_STRING();
-                    Value *varValue = nullptr;
+                    const Value rvalue   = stackPop();
+                    const char *varName  = READ_STRING();
+                    Value      *varValue = nullptr;
                     // check local variables
                     // ...
                     if (varValue == nullptr)
@@ -274,8 +258,7 @@ struct VirtualMachine
                     }
                     break;
                 }
-                default:
-                    break;
+                default: break;
             }
         }
 
@@ -300,8 +283,8 @@ struct VirtualMachine
             return makeResultError<result_t>(ErrorCode::CompileError, result.error().message());
         }
         const Chunk *currentChunk = result.value().get();
-        _chunk = currentChunk;
-        _ip = currentChunk->getCode();
+        _chunk                    = currentChunk;
+        _ip                       = currentChunk->getCode();
 
         result_t runResult = run();
 
@@ -335,7 +318,7 @@ struct VirtualMachine
     result_t runFromByteCode(const Chunk &bytecode)
     {
         _chunk = &bytecode;
-        _ip = bytecode.getCode();
+        _ip    = bytecode.getCode();
         return run();
     }
 
@@ -430,16 +413,16 @@ struct VirtualMachine
 
     result_t runtimeError(const char *format, ...)
     {
-        char message[256];
+        char    message[256];
         va_list args;
         va_start(args, format);
         vsnprintf(message, sizeof(message), format, args);
         va_end(args);
 
-        const Chunk *chunk = this->_chunk;
+        const Chunk   *chunk       = this->_chunk;
         const uint16_t instruction = static_cast<uint16_t>(this->_ip - chunk->getCode() - 1);
-        const uint16_t line = chunk->getLine(instruction);
-        char outputMessage[512];
+        const uint16_t line        = chunk->getLine(instruction);
+        char           outputMessage[512];
         snprintf(outputMessage, sizeof(outputMessage), "[%s:%d] Runtime error: %s\n", chunk->getSourcePath(), line,
                  message);
         stackReset();
@@ -448,8 +431,8 @@ struct VirtualMachine
 
    protected:  // Stack
     static constexpr size_t STACK_SIZE = 1024;
-    Value _stack[STACK_SIZE];
-    Value *_stackTop = &_stack[0];
+    Value                   _stack[STACK_SIZE];
+    Value                  *_stackTop = &_stack[0];
 
     void stackReset() { _stackTop = &_stack[0]; }
     void stackPush(const Value &value)
@@ -494,8 +477,8 @@ struct VirtualMachine
 #endif  // #if DEBUG_TRACE_EXECUTION
 
    protected:  // STATE
-    const Chunk *_chunk = nullptr;
-    const uint8_t *_ip = nullptr;
+    const Chunk   *_chunk = nullptr;
+    const uint8_t *_ip    = nullptr;
 
     Value *addVariable(const char *name, int environmentIndex)
     {

@@ -22,7 +22,7 @@ int main(int argc, const char* argv[])
     printf("<<<<<< Unit tests\n");
 #endif  // #if 0
 
-    Compiler compiler;
+    Compiler                compiler;
     Compiler::Configuration compilerConfiguration;
 
     auto errorReportFunc =
@@ -118,7 +118,7 @@ int main(int argc, const char* argv[])
                 run,
                 output,
             };
-            Type type;
+            Type        type;
             const char* params = nullptr;
         };
 #define ADD_PARAM(TYPE, DESC) {#TYPE, DESC, Param::Type::TYPE}
@@ -176,12 +176,12 @@ int main(int argc, const char* argv[])
         };
         struct
         {
-            bool hasToShowHelp = false;
-            const char* srcCodeOrFile = nullptr;
-            bool isCodeOrFile = false;
-            bool disassemble = false;
-            ExecutionMode mode = ExecutionMode::Interpret;
-            const char* compileOutputPath = nullptr;
+            bool          hasToShowHelp     = false;
+            const char*   srcCodeOrFile     = nullptr;
+            bool          isCodeOrFile      = false;
+            bool          disassemble       = false;
+            ExecutionMode mode              = ExecutionMode::Interpret;
+            const char*   compileOutputPath = nullptr;
         } config;
 
         auto isArgFunc = [](const char* arg) { return (arg[0] == '-'); };
@@ -229,24 +229,12 @@ int main(int argc, const char* argv[])
                             case Param::Type::default_const_variables:
                                 compilerConfiguration.defaultConstVariables = true;
                                 break;
-                            case Param::Type::repl:
-                                config.mode = ExecutionMode::REPL;
-                                break;
-                            case Param::Type::help:
-                                config.hasToShowHelp = true;
-                                break;
-                            case Param::Type::compile:
-                                config.mode = ExecutionMode::Compile;
-                                break;
-                            case Param::Type::run:
-                                config.mode = ExecutionMode::Run;
-                                break;
-                            case Param::Type::disassemble:
-                                compilerConfiguration.disassemble = true;
-                                break;
-                            default:
-                                validParam = false;
-                                break;
+                            case Param::Type::repl: config.mode = ExecutionMode::REPL; break;
+                            case Param::Type::help: config.hasToShowHelp = true; break;
+                            case Param::Type::compile: config.mode = ExecutionMode::Compile; break;
+                            case Param::Type::run: config.mode = ExecutionMode::Run; break;
+                            case Param::Type::disassemble: compilerConfiguration.disassemble = true; break;
+                            default: validParam = false; break;
                         }
                     }
                 }
@@ -357,7 +345,7 @@ int main(int argc, const char* argv[])
                     if (config.isCodeOrFile)
                     {
                         std::istringstream is(config.srcCodeOrFile);
-                        auto loadResult = code.deserialize(is);
+                        auto               loadResult = code.deserialize(is);
                         if (!loadResult.isOk())
                         {
                             return errorReportFunc(

@@ -4,9 +4,10 @@
 
 #if USING(DEBUG_BUILD)
 
+#include <debugbreak/debugbreak.h>
+
 #include <cstdio>
 #include <utility>
-#include <debugbreak/debugbreak.h>
 
 namespace util
 {
@@ -34,16 +35,16 @@ bool assert_handler(const char* condition, const char* file, int line, const cha
 
 }  // namespace util
 
-#define ASSERT_MSG(X, fmt, ...)                                                         \
-    do                                                                                  \
-    {                                                                                   \
-        if (!(X))                                                                       \
-        {                                                                               \
+#define ASSERT_MSG(X, fmt, ...)                                                           \
+    do                                                                                    \
+    {                                                                                     \
+        if (!(X))                                                                         \
+        {                                                                                 \
             if (util::detail::assert_handler(#X, __FILE__, __LINE__, fmt, ##__VA_ARGS__)) \
-            {                                                                           \
-                debug_break();                                                          \
-            }                                                                           \
-        }                                                                               \
+            {                                                                             \
+                debug_break();                                                            \
+            }                                                                             \
+        }                                                                                 \
     } while (0)
 
 #define ASSERT(X)                                                              \
@@ -61,11 +62,11 @@ bool assert_handler(const char* condition, const char* file, int line, const cha
 #define FAIL_MSG(fmt, ...) ASSERT_MSG(0, fmt, ##__VA_ARGS__)
 #define FAIL() ASSERT(false)
 
-#else // #if USING(DEBUG_BUILD)
+#else  // #if USING(DEBUG_BUILD)
 
 #define ASSERT_MSG(X, fmt, ...)
 #define ASSERT(X)
 #define FAIL_MSG(fmt, ...)
 #define FAIL()
 
-#endif // #else // #if USING(DEBUG_BUILD)
+#endif  // #else // #if USING(DEBUG_BUILD)

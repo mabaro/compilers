@@ -17,13 +17,13 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEBUG_PRINT_CODE NOT_INT_USE //USING(DEBUG_BUILD)
+#define DEBUG_PRINT_CODE NOT_INT_USE  // USING(DEBUG_BUILD)
 #define DEBUG_TRACE_EXECUTION USING(DEBUG_BUILD)
 
 #if USING(DEBUG_PRINT_CODE)
 namespace debug_print
 {
-int GetLevel();
+int  GetLevel();
 void SetLevel(int level);
 }  // namespace debug_print
 #endif  // #if USING(DEBUG_PRINT_CODE)
@@ -44,16 +44,16 @@ void SetLevel(int level);
 
 enum class LogLevel
 {
-    Error = 1 << 0,
+    Error   = 1 << 0,
     Warning = 1 << 1,
-    Info = 1 << 2,
-    Debug = 1 << 3,
+    Info    = 1 << 2,
+    Debug   = 1 << 3,
 
     All = 0xFF
 };
 namespace Logger
 {
-void SetLogLevel(LogLevel level);
+void     SetLogLevel(LogLevel level);
 LogLevel GetLogLevel();
 
 template <typename... Args>
@@ -78,8 +78,7 @@ void Log(LogLevel level, const char* fmt, Args... args)
             outFile = stdout;
             fprintf(outFile, "Debug: ");
             break;
-        default:
-            break;
+        default: break;
     }
     if (outFile)
     {
@@ -93,7 +92,7 @@ static std::string buildMessage(const char* fmt, ...)
     va_list args;
     va_start(args, fmt);
     char buff[1000];
-    int len = vsnprintf(buff, 1000, fmt, args);
+    int  len = vsnprintf(buff, 1000, fmt, args);
     va_end(args);
     return std::string(buff);
 }
@@ -116,7 +115,7 @@ static std::string buildMessage(const char* fmt, ...)
 
 static std::string format(const char* format, ...)
 {
-    char message[256];
+    char    message[256];
     va_list args;
     va_start(args, format);
     vsnprintf(message, sizeof(message), format, args);
@@ -156,22 +155,22 @@ struct Error
     Error(Error&& e) : _code(e._code), _message(std::move(e._message)) {}
     Error& operator=(const Error& e)
     {
-        _code = e;
+        _code    = e;
         _message = e.msg;
     }
     Error& operator=(Error&& e)
     {
-        _code = std::move(e);
+        _code    = std::move(e);
         _message = std::move(e.msg);
     }
 
     bool operator==(const Error& e) const { return e._code == _code && !e._message.compare(_message); }
 
-    code_t code() const { return _code; }
+    code_t             code() const { return _code; }
     const std::string& message() const { return _message; }
 
    protected:
-    const code_t _code = code_t::Undefined;
+    const code_t      _code    = code_t::Undefined;
     const std::string _message = "Undefined";
 };
 using Error_t = Error<ErrorCode>;
@@ -210,9 +209,9 @@ struct Optional
         ASSERT(hasValue());
         return *_value;
     }
-    T& value() { return *_value; }
+    T&   value() { return *_value; }
     bool hasValue() const { return _value != nullptr; }
-    T extract()
+    T    extract()
     {
         ASSERT(hasValue());
         T temp = std::move(*_value);
@@ -244,9 +243,9 @@ struct Result
     Result(const Result& r) : _value(r._value), _error(r._error) {}
     Result(Result&& r) : _value(std::move(r._value)), _error(std::move(r._error)) {}
     Result& operator=(const Result&) = delete;
-    Result& operator=(Result&&) = delete;
+    Result& operator=(Result&&)      = delete;
 
-    bool isOk() const { return !_error.hasValue() && _value.hasValue(); }
+    bool   isOk() const { return !_error.hasValue() && _value.hasValue(); }
     ErrorT error() const
     {
         ASSERT(!isOk());
@@ -273,15 +272,15 @@ struct Result
     }
 
    protected:
-    Optional<T> _value;
+    Optional<T>      _value;
     Optional<ErrorT> _error;
 };
 
 template <typename ErrorT>
 struct Result<void, ErrorT>
 {
-    using value_t = void;
-    using error_t = ErrorT;
+    using value_t      = void;
+    using error_t      = ErrorT;
     using error_code_t = typename ErrorT::code_t;
 
     Result() {}
@@ -291,9 +290,9 @@ struct Result<void, ErrorT>
     Result(const Result& r) : _error(r._error) {}
     Result(Result&& r) : _error(std::move(r._error)) {}
     Result& operator=(const Result&) = delete;
-    Result& operator=(Result&&) = delete;
+    Result& operator=(Result&&)      = delete;
 
-    bool isOk() const { return !_error.hasValue(); }
+    bool           isOk() const { return !_error.hasValue(); }
     const error_t& error() const
     {
         ASSERT(_error.hasValue());
@@ -384,9 +383,9 @@ struct RandomAccessContainer
 {
     using value_t = T;
 
-    void resize(size_t size) { _values.resize(size); }
-    bool empty() const { return _values.empty(); }
-    size_t size() const { return _values.size(); }
+    void     resize(size_t size) { _values.resize(size); }
+    bool     empty() const { return _values.empty(); }
+    size_t   size() const { return _values.size(); }
     const T* data() const { return _values.data(); }
     const T* getValues() const { return _values.data(); }
     const T& getValue(size_t index) const
@@ -397,8 +396,8 @@ struct RandomAccessContainer
 
     const T* cbegin() const { return _values.data(); }
     const T* cend() const { return _values.data() + _values.size(); }
-    T* begin() { return _values.data(); }
-    T* end() { return _values.data() + _values.size(); }
+    T*       begin() { return _values.data(); }
+    T*       end() { return _values.data() + _values.size(); }
 
     const T& operator[](size_t index) const { return getValue(index); }
 
@@ -445,7 +444,7 @@ Result<CharBufferUPtr> readFile(const char* path, bool binaryMode = true);
 inline bool isLittleEndian()
 {
     constexpr uint32_t test = 0x01020304;
-    return *((uint8_t *)&test) == 0x04;
+    return *((uint8_t*)&test) == 0x04;
 }
 
 }  // namespace utils

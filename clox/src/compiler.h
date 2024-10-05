@@ -43,12 +43,12 @@ struct Parser
 
     struct ErrorInfo
     {
-        error_t error;
-        Token token;
+        error_t     error;
+        Token       token;
         const char *linePtr;
     };
     Optional<ErrorInfo> optError;
-    bool panicMode = false;
+    bool                panicMode = false;
 };
 
 enum class Precedence
@@ -71,7 +71,7 @@ struct ParseRule
     using parse_func_t = std::function<void(bool canAssign)>;
     parse_func_t prefix;
     parse_func_t infix;
-    Precedence precedence;
+    Precedence   precedence;
 };
 
 struct Compiler
@@ -81,14 +81,14 @@ struct Compiler
         ScannerError,
         Undefined
     };
-    using error_t = Error<ErrorCode>;
+    using error_t  = Error<ErrorCode>;
     using result_t = Result<std::unique_ptr<Chunk>, error_t>;
 
     struct Configuration
     {
         bool allowDynamicVariables = false;  // no need to declare with <var>
         bool defaultConstVariables = false;  // <mut> allows modifying variables
-        bool disassemble = false;
+        bool disassemble           = false;
     };
 
    private:
@@ -96,7 +96,7 @@ struct Compiler
 
    public:
     inline const Configuration &getConfiguration() const { return _configuration; }
-    inline void setConfiguration(const Configuration &config) { _configuration = config; }
+    inline void                 setConfiguration(const Configuration &config) { _configuration = config; }
 
     result_t compileFromSource(const char *sourceCode, Optional<Compiler::Configuration> optConfiguration = none_t);
     result_t compileFromFile(const char *path, Optional<Compiler::Configuration> optConfiguration = none_t);
@@ -126,10 +126,10 @@ struct Compiler
         consume(TokenType::Eof, "Expected end of expression");
         if (getCurrentError().hasValue())
         {
-            const Parser::ErrorInfo &errorInfo = getCurrentError().value();
-            const char* errorLinePtr = errorInfo.linePtr;
+            const Parser::ErrorInfo &errorInfo    = getCurrentError().value();
+            const char              *errorLinePtr = errorInfo.linePtr;
 
-            char message[2048];
+            char        message[2048];
             const char *lineEnd = strchr(errorLinePtr, '\n');
             if (lineEnd == nullptr)
             {
@@ -138,16 +138,15 @@ struct Compiler
             if (lineEnd != nullptr)
             {
                 const char *innerErrorMsg = errorInfo.error.message().c_str();
-                const int lineLen = static_cast<int>(lineEnd - errorLinePtr);
+                const int   lineLen       = static_cast<int>(lineEnd - errorLinePtr);
                 snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, errorInfo.linePtr);
                 char *messagePtr = message + strlen(message);
 
                 const Token *errorToken = errorInfo.token.type != TokenType::COUNT ? &errorInfo.token : nullptr;
-                const size_t lenToToken =
-                    errorToken ? errorToken->start - errorInfo.linePtr : strlen(errorLinePtr);
-                *messagePtr++ = '\n';
-                *messagePtr++ = '\t';
-                *messagePtr++ = ' ';  // extra <'>
+                const size_t lenToToken = errorToken ? errorToken->start - errorInfo.linePtr : strlen(errorLinePtr);
+                *messagePtr++           = '\n';
+                *messagePtr++           = '\t';
+                *messagePtr++           = ' ';  // extra <'>
                 memset(messagePtr, ' ', lenToToken);
                 messagePtr += lenToToken;
                 *messagePtr++ = '^';
@@ -247,18 +246,10 @@ struct Compiler
 
         switch (_parser.previous.type)
         {
-            case TokenType::Null:
-                emitBytes(OpCode::Null);
-                break;
-            case TokenType::False:
-                emitBytes(OpCode::False);
-                break;
-            case TokenType::True:
-                emitBytes(OpCode::True);
-                break;
-            default:
-                ASSERT(false);
-                return;
+            case TokenType::Null: emitBytes(OpCode::Null); break;
+            case TokenType::False: emitBytes(OpCode::False); break;
+            case TokenType::True: emitBytes(OpCode::True); break;
+            default: ASSERT(false); return;
         }
     }
     void number()
@@ -280,14 +271,9 @@ struct Compiler
         // Emit the operator instruction.
         switch (operatorType)
         {
-            case TokenType::Minus:
-                emitBytes(OpCode::Negate);
-                break;
-            case TokenType::Bang:
-                emitBytes(OpCode::Not);
-                break;
-            default:
-                return;
+            case TokenType::Minus: emitBytes(OpCode::Negate); break;
+            case TokenType::Bang: emitBytes(OpCode::Not); break;
+            default: return;
         }
     }
     void binary()
@@ -295,47 +281,25 @@ struct Compiler
         CMP_DEBUGPRINT_PARSE(3);
 
         const TokenType operatorType = _parser.previous.type;
-        const ParseRule parseRule = getParseRule(operatorType);
+        const ParseRule parseRule    = getParseRule(operatorType);
         // left-associative: 1+2+3+4 = ((1 + 2) + 3) + 4
         // right-associative: a=b=c=d -> a = (b = (c = d))
         parsePrecedence(Precedence((int)parseRule.precedence + 1));
 
         switch (operatorType)
         {
-            case TokenType::Plus:
-                emitBytes(OpCode::Add);
-                break;
-            case TokenType::Minus:
-                emitBytes(OpCode::Subtract);
-                break;
-            case TokenType::Star:
-                emitBytes(OpCode::Multiply);
-                break;
-            case TokenType::Slash:
-                emitBytes(OpCode::Divide);
-                break;
+            case TokenType::Plus: emitBytes(OpCode::Add); break;
+            case TokenType::Minus: emitBytes(OpCode::Subtract); break;
+            case TokenType::Star: emitBytes(OpCode::Multiply); break;
+            case TokenType::Slash: emitBytes(OpCode::Divide); break;
 
-            case TokenType::BangEqual:
-                emitBytes(OpCode::Equal, OpCode::Not);
-                break;
-            case TokenType::EqualEqual:
-                emitBytes(OpCode::Equal);
-                break;
-            case TokenType::Greater:
-                emitBytes(OpCode::Greater);
-                break;
-            case TokenType::GreaterEqual:
-                emitBytes(OpCode::Equal, OpCode::Not);
-                break;
-            case TokenType::Less:
-                emitBytes(OpCode::Less);
-                break;
-            case TokenType::LessEqual:
-                emitBytes(OpCode::Greater, OpCode::Not);
-                break;
-            case TokenType::Equal:
-                emitBytes(OpCode::Assignment);
-                break;
+            case TokenType::BangEqual: emitBytes(OpCode::Equal, OpCode::Not); break;
+            case TokenType::EqualEqual: emitBytes(OpCode::Equal); break;
+            case TokenType::Greater: emitBytes(OpCode::Greater); break;
+            case TokenType::GreaterEqual: emitBytes(OpCode::Equal, OpCode::Not); break;
+            case TokenType::Less: emitBytes(OpCode::Less); break;
+            case TokenType::LessEqual: emitBytes(OpCode::Greater, OpCode::Not); break;
+            case TokenType::Equal: emitBytes(OpCode::Assignment); break;
             default:
                 FAIL_MSG("Unreachable symbol while parsing [%.*s]", _parser.previous.length, _parser.previous.start);
                 return;  // Unreachable.
@@ -359,7 +323,7 @@ struct Compiler
         defineVariable(varId);
     }
     const ParseRule &getParseRule(TokenType type) const { return _parseRules[(size_t)type]; }
-    void parsePrecedence(Precedence precedence)
+    void             parsePrecedence(Precedence precedence)
     {
         advance();
 
@@ -390,7 +354,7 @@ struct Compiler
         consume(TokenType::Identifier, errorMessage);
         return identifierConstant(_parser.previous);
     }
-    void defineVariable(uint8_t id) { emitBytes(OpCode::GlobalVarDef, id); }
+    void    defineVariable(uint8_t id) { emitBytes(OpCode::GlobalVarDef, id); }
     uint8_t identifierConstant(const Token &token)
     {
         CMP_DEBUGPRINT_PARSE(2);
@@ -505,10 +469,8 @@ struct Compiler
                 case TokenType::If:
                 case TokenType::While:
                 case TokenType::Print:
-                case TokenType::Return:
-                    return;
-                default:
-                    break;
+                case TokenType::Return: return;
+                default: break;
             }
 
             advance();
@@ -516,70 +478,67 @@ struct Compiler
     }
 
    protected:
-    using token_result_t = Result<Token, error_t>;
+    using token_result_t       = Result<Token, error_t>;
     using expression_handler_t = std::function<void()>;
 
     void populateParseRules()
     {
-        auto binaryFunc = [&](bool canAssign) { binary(); };
-        auto groupingFunc = [&](bool canAssign) { grouping(); };
-        auto literalFunc = [&](bool canAssign) { literal(); };
-        auto numberFunc = [&](bool canAssign) { number(); };
-        auto stringFunc = [&](bool canAssign) { string(); };
-        auto skipFunc = [&](bool canAssign) { skip(); };
-        auto unaryFunc = [&](bool canAssign) { unary(); };
-        auto varFunc = [&](bool canAssign) { variableDeclaration(); };
+        auto binaryFunc     = [&](bool canAssign) { binary(); };
+        auto groupingFunc   = [&](bool canAssign) { grouping(); };
+        auto literalFunc    = [&](bool canAssign) { literal(); };
+        auto numberFunc     = [&](bool canAssign) { number(); };
+        auto stringFunc     = [&](bool canAssign) { string(); };
+        auto skipFunc       = [&](bool canAssign) { skip(); };
+        auto unaryFunc      = [&](bool canAssign) { unary(); };
+        auto varFunc        = [&](bool canAssign) { variableDeclaration(); };
         auto identifierFunc = [&](bool canAssign) { variable(canAssign); };
 
-        _parseRules[(size_t)TokenType::LeftParen] = {groupingFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::RightParen] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::LeftBrace] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::RightBrace] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Semicolon] = {skipFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Comma] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Dot] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Minus] = {unaryFunc, binaryFunc, Precedence::TERM};
-        _parseRules[(size_t)TokenType::Plus] = {NULL, binaryFunc, Precedence::TERM};
-        _parseRules[(size_t)TokenType::Slash] = {NULL, binaryFunc, Precedence::FACTOR};
-        _parseRules[(size_t)TokenType::Star] = {NULL, binaryFunc, Precedence::FACTOR};
-        _parseRules[(size_t)TokenType::Bang] = {unaryFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::BangEqual] = {NULL, binaryFunc, Precedence::EQUALITY};
-        _parseRules[(size_t)TokenType::Equal] = {NULL, binaryFunc, Precedence::EQUALITY};
-        _parseRules[(size_t)TokenType::EqualEqual] = {NULL, binaryFunc, Precedence::COMPARISON};
-        _parseRules[(size_t)TokenType::Greater] = {NULL, binaryFunc, Precedence::COMPARISON};
+        _parseRules[(size_t)TokenType::LeftParen]    = {groupingFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::RightParen]   = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::LeftBrace]    = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::RightBrace]   = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Semicolon]    = {skipFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Comma]        = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Dot]          = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Minus]        = {unaryFunc, binaryFunc, Precedence::TERM};
+        _parseRules[(size_t)TokenType::Plus]         = {NULL, binaryFunc, Precedence::TERM};
+        _parseRules[(size_t)TokenType::Slash]        = {NULL, binaryFunc, Precedence::FACTOR};
+        _parseRules[(size_t)TokenType::Star]         = {NULL, binaryFunc, Precedence::FACTOR};
+        _parseRules[(size_t)TokenType::Bang]         = {unaryFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::BangEqual]    = {NULL, binaryFunc, Precedence::EQUALITY};
+        _parseRules[(size_t)TokenType::Equal]        = {NULL, binaryFunc, Precedence::EQUALITY};
+        _parseRules[(size_t)TokenType::EqualEqual]   = {NULL, binaryFunc, Precedence::COMPARISON};
+        _parseRules[(size_t)TokenType::Greater]      = {NULL, binaryFunc, Precedence::COMPARISON};
         _parseRules[(size_t)TokenType::GreaterEqual] = {NULL, binaryFunc, Precedence::COMPARISON};
-        _parseRules[(size_t)TokenType::Less] = {NULL, binaryFunc, Precedence::COMPARISON};
-        _parseRules[(size_t)TokenType::LessEqual] = {NULL, binaryFunc, Precedence::COMPARISON};
-        _parseRules[(size_t)TokenType::Identifier] = {identifierFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::String] = {stringFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Number] = {numberFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::NumberFloat] = {numberFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::And] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Or] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Class] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Super] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Null] = {literalFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::True] = {literalFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::False] = {literalFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Var] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::This] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Else] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::If] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Print] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Var] = {varFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Return] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::While] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::For] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Func] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Error] = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Eof] = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Less]         = {NULL, binaryFunc, Precedence::COMPARISON};
+        _parseRules[(size_t)TokenType::LessEqual]    = {NULL, binaryFunc, Precedence::COMPARISON};
+        _parseRules[(size_t)TokenType::Identifier]   = {identifierFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::String]       = {stringFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Number]       = {numberFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::NumberFloat]  = {numberFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::And]          = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Or]           = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Class]        = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Super]        = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Null]         = {literalFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::True]         = {literalFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::False]        = {literalFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Var]          = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::This]         = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Else]         = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::If]           = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Print]        = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Var]          = {varFunc, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Return]       = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::While]        = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::For]          = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Func]         = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Error]        = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Eof]          = {NULL, NULL, Precedence::NONE};
     }
 
-    const Optional<Parser::ErrorInfo> &getCurrentError() const
-    {
-        return _parser.optError;
-    }
-    const Token &getCurrentToken() const { return _parser.current; }
+    const Optional<Parser::ErrorInfo> &getCurrentError() const { return _parser.optError; }
+    const Token                       &getCurrentToken() const { return _parser.current; }
 
     bool check(TokenType type) const { return getCurrentToken().type == type; }
     bool match(TokenType type)
@@ -625,11 +584,11 @@ struct Compiler
 
    protected:
     Scanner _scanner;
-    Parser _parser;
-    int _lastExpressionLine = -1;
+    Parser  _parser;
+    int     _lastExpressionLine = -1;
 
     std::unique_ptr<Chunk> _compilingChunk = nullptr;
-    Chunk *currentChunk() { return _compilingChunk.get(); }
+    Chunk                 *currentChunk() { return _compilingChunk.get(); }
     std::unique_ptr<Chunk> extractChunk() { return std::move(_compilingChunk); }
 
     ParseRule _parseRules[(size_t)TokenType::COUNT];

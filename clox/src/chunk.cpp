@@ -8,8 +8,8 @@ struct Version
 {
     uint8_t major;
     uint8_t minor;
-    bool operator==(const Version& other) const { return major == other.major && minor == other.minor; }
-    bool operator<=(const Version& other) const
+    bool    operator==(const Version& other) const { return major == other.major && minor == other.minor; }
+    bool    operator<=(const Version& other) const
     {
         return major < other.major || (major == other.major && minor <= other.minor);
     }
@@ -23,9 +23,9 @@ static const char* DATA_SEG = ".DATA";
 Result<void> Chunk::serialize(std::ostream& o_stream) const
 {
     ASSERT_MSG(utils::isLittleEndian(), "not supported, need reverting bytes");
-    using len_t = serde::size_t;
+    using len_t          = serde::size_t;
     const size_t lenSize = sizeof(len_t);
-    len_t len = 0;
+    len_t        len     = 0;
 
     serde::SerializeN(o_stream, MAGIC_ID, strlen(MAGIC_ID));
     serde::Serialize(o_stream, VERSION);
@@ -47,10 +47,10 @@ Result<void> Chunk::serialize(std::ostream& o_stream) const
 }
 Result<void> Chunk::deserialize(std::istream& i_stream)
 {
-    using len_t = serde::size_t;
+    using len_t          = serde::size_t;
     const size_t lenSize = sizeof(len_t);
-    len_t len = 0;
-    char tempStr[32];
+    len_t        len     = 0;
+    char         tempStr[32];
 
     serde::DeserializeN(i_stream, &tempStr[0], strlen(MAGIC_ID));
     if (0 != strncmp(MAGIC_ID, tempStr, strlen(MAGIC_ID)))

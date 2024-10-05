@@ -6,9 +6,9 @@
 namespace serde
 {
 using constants_len_t = uint8_t;
-using code_len_t = uint16_t;
-using string_len_t = uint8_t;
-using size_t = uint32_t;
+using code_len_t      = uint16_t;
+using string_len_t    = uint8_t;
+using size_t          = uint32_t;
 
 template <typename T, size_t TSIZE = sizeof(T)>
 void Serialize(std::ostream& ostr, const T& i_value)
