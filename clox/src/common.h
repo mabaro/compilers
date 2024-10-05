@@ -440,7 +440,7 @@ bool is_sorted_if(const T* begin, const T* end, std::function<bool(const T& a, c
 }
 
 using CharBufferUPtr = std::unique_ptr<char[]>;
-Result<CharBufferUPtr> readFile(const char* path);
+Result<CharBufferUPtr> readFile(const char* path, bool binaryMode = true);
 
 inline bool isLittleEndian()
 {

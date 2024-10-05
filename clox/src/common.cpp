@@ -28,12 +28,12 @@ LogLevel GetLogLevel() { return detail::sLogLevel; }
 namespace utils
 {
 
-Result<CharBufferUPtr> readFile(const char* path)
+Result<CharBufferUPtr> readFile(const char* path, bool binaryMode)
 {
     using result_t = Result<CharBufferUPtr>;
 
     FILE* file = nullptr;
-    fopen_s(&file, path, "rb");
+    fopen_s(&file, path, binaryMode ? "rb" : "r");
     if (file == nullptr)
     {
         return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
@@ -54,7 +54,16 @@ Result<CharBufferUPtr> readFile(const char* path)
         LOG_ERROR(message);
         return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
     }
-    const size_t bytesRead = fread(buffer.get(), sizeof(char), fileSize, file);
+    size_t bytesRead = 0;
+    do
+    {
+        const size_t count = fread(buffer.get(), sizeof(char), fileSize, file);
+        if (count == 0)
+        {
+            break;
+        }
+        bytesRead += count;
+    } while (bytesRead < fileSize);
     if (bytesRead < fileSize)
     {
         LOG_ERROR("Couldn't read the file '%s'\n", path);
