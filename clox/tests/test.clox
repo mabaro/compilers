@@ -1,9 +1,10 @@
-var A=0;
-var B=1;
+var A=15;
+var B=37;
 var C=A+B;
 print("El resultado de sumar "); 
 print(A); 
 print(" + "); 
 print(B); 
-print(" = "); 
-print(C); 
+print(" es "); 
+print(C);
+print "\n";
