@@ -25,6 +25,18 @@ int main(int argc, const char* argv[])
     Compiler compiler;
     Compiler::Configuration compilerConfiguration;
 
+    auto errorReportFunc =
+        [&resultCode](const char* errorMessage, int errorCode = -1, std::function<void()> postErrorCallback = nullptr)
+    {
+        resultCode = errorCode;
+        LOG_ERROR("(CODE: %d) %s\n", errorCode, errorMessage);
+        if (postErrorCallback)
+        {
+            postErrorCallback();
+        }
+        return resultCode;
+    };
+
 #if USING(PE_BUILD)
     if (1)
     {
@@ -57,7 +69,7 @@ int main(int argc, const char* argv[])
         auto result = VM.interpret(codeStr, "APP_NAME", compilerConfiguration);
         if (!result.isOk())
         {
-            LOG_ERROR("%s\n", result.error().message().c_str());
+            return errorReportFunc(result.error().message().c_str());
         }
     }
     else
@@ -84,9 +96,8 @@ int main(int argc, const char* argv[])
         auto result = VM.interpret(codeStr, "QUICK_TESTS", compilerConfiguration);
         if (!result.isOk())
         {
-            LOG_ERROR("%s\n", result.error().message().c_str());
+            return errorReportFunc(result.error().message().c_str());
         }
-        LOG_INFO("< Quick test\n");
     }
     else
 #endif  // #else  // #if USING(DEBUG_BUILD)
@@ -122,13 +133,13 @@ int main(int argc, const char* argv[])
             ADD_PARAM(repl, "Enters interactive mode(i.e. REPL)"),
             ADD_PARAM(compile, "Compiles into bytecode and outputs the result to console or the output_file defined"),
             ADD_PARAM_WITH_PARAMS(output, "Allows defining the output file for -compile", "<output_file>"),
-            ADD_PARAM(run, "Runs the code in the <bytecode_file> through the VM"),
+            ADD_PARAM(run, "Runs the input code through the VM"),
             ADD_PARAM_WITH_PARAMS(code, "Allows passing <source_code> as a character string", "<source_code>"),
         };
 #undef ADD_PARAM
-        auto showHelpFunc = [&]()
+        auto showHelpFunc = [&](std::ostream& ostr)
         {
-            fprintf(stderr, "Usage: %s [arguments...] [source_path.clox]\n", argv[0]);
+            ostr << format("Usage: %s [arguments] [filepath]\n", argv[0]);
             size_t longerArg = 0;
             for (const Param& param : params)
             {
@@ -138,9 +149,15 @@ int main(int argc, const char* argv[])
             {
                 const size_t spaceCount =
                     longerArg - (strlen(param.arg) + (param.params ? strlen(param.params) + 1 : 0));
-                fprintf(stderr, "\t-%s%s%s", param.arg, param.params ? " " : "", param.params ? param.params : "");
-                fprintf(stderr, "%*s\t%s\n", (int)spaceCount, " ", param.desc);
+                ostr << format("\t-%s%s%s", param.arg, param.params ? " " : "", param.params ? param.params : "");
+                ostr << format("%*s\t%s\n", (int)spaceCount, " ", param.desc);
             }
+        };
+        auto errorReportWithHelpFunc = [&](const char* msg, int32_t errCode = -1)
+        {
+            auto result = errorReportFunc(msg, errCode);
+            showHelpFunc(std::cerr);
+            return result;
         };
 
         /////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +212,8 @@ int main(int argc, const char* argv[])
                             {
                                 if (config.mode != ExecutionMode::Compile)
                                 {
-                                    LOG_ERROR("Unexpected output file. Only used with -compile: %s", argv);
+                                    return errorReportWithHelpFunc(
+                                        format("Unexpected output file. Only used with -compile: %s", argv).c_str());
                                     validParam = false;
                                     break;
                                 }
@@ -227,7 +245,6 @@ int main(int argc, const char* argv[])
                                 compilerConfiguration.disassemble = true;
                                 break;
                             default:
-                                LOG_ERROR("Invalid parameter: %s", argv);
                                 validParam = false;
                                 break;
                         }
@@ -235,21 +252,17 @@ int main(int argc, const char* argv[])
                 }
                 if (!validParam)
                 {
-                    LOG_ERROR("Invalid parameter: %s\n", argv);
-                    config.hasToShowHelp = true;
-                    resultCode = -1;
-                    break;
+                    return errorReportWithHelpFunc(format("Invalid parameter: %s\n", argv).c_str());
                 }
             }
             else
             {
                 if (config.srcCodeOrFile != nullptr)
                 {
-                    LOG_ERROR("Parameter '%s' is unexpected, <%s> is already defined: '%s'\n", argv,
-                              config.isCodeOrFile ? "source_code" : "source_path", config.srcCodeOrFile);
-                    config.hasToShowHelp = true;
-                    resultCode = -1;
-                    break;
+                    return errorReportWithHelpFunc(
+                        format("Parameter '%s' is unexpected, <%s> is already defined: '%s'\n", argv,
+                               config.isCodeOrFile ? "source_code" : "source_path", config.srcCodeOrFile)
+                            .c_str());
                 }
                 config.srcCodeOrFile = *argvPtr;
             }
@@ -257,7 +270,7 @@ int main(int argc, const char* argv[])
 
         if (config.hasToShowHelp)
         {
-            showHelpFunc();
+            showHelpFunc(std::cout);
         }
         else if (config.mode == ExecutionMode::REPL)
         {
@@ -271,100 +284,106 @@ int main(int argc, const char* argv[])
             auto result = VM.repl(compilerConfiguration);
             if (!result.isOk())
             {
-                resultCode = -1;
-                LOG_ERROR("%s\n", result.error().message().c_str());
+                return errorReportWithHelpFunc(format("%s\n", result.error().message().c_str()).c_str());
             }
         }
         else
         {
             if (config.srcCodeOrFile == nullptr)
             {
-                resultCode = -1;
-                LOG_ERROR("Missing %s\n", config.isCodeOrFile ? "source_code parameter" : "source_path");
-                showHelpFunc();
+                return errorReportWithHelpFunc(
+                    format("Missing %s\n", config.isCodeOrFile ? "source_code parameter" : "source_path").c_str());
+            }
+            if (config.mode == ExecutionMode::Compile)
+            {
+                std::unique_ptr<Chunk> compiledChunk = nullptr;
+                if (config.isCodeOrFile)
+                {
+                    auto result = compiler.compileFromSource(config.srcCodeOrFile, compilerConfiguration);
+                    if (!result.isOk())
+                    {
+                        return errorReportFunc(result.error().message().c_str());
+                    }
+                    compiledChunk = result.extract();
+                }
+                else
+                {
+                    auto result = compiler.compileFromFile(config.srcCodeOrFile, compilerConfiguration);
+                    if (!result.isOk())
+                    {
+                        return errorReportFunc(result.error().message().c_str());
+                    }
+                    compiledChunk = result.extract();
+                }
+                ASSERT(compiledChunk != nullptr);
+
+                if (config.compileOutputPath != nullptr)
+                {
+                    std::ofstream ofs(config.compileOutputPath,
+                                      std::ofstream::binary | std::ofstream::trunc | std::ofstream::out);
+                    if (ofs.bad())
+                    {
+                        return errorReportFunc(
+                            format("Failed to open file '%s' for writing\n", config.compileOutputPath).c_str());
+                    }
+                    auto serializeResult = compiledChunk->serialize(ofs);
+                    if (!serializeResult.isOk())
+                    {
+                        return errorReportFunc(format("Failed serializing to file '%s': %s \n",
+                                                      config.compileOutputPath,
+                                                      serializeResult.error().message().c_str())
+                                                   .c_str());
+                    }
+                }
+                else
+                {
+                    auto serializeResult = compiledChunk->serialize(std::cout);
+                    if (!serializeResult.isOk())
+                    {
+                        return errorReportFunc(
+                            format("Failed serializing: %s \n", serializeResult.error().message().c_str()).c_str());
+                    }
+                }
             }
             else
             {
-                if (config.mode == ExecutionMode::Compile)
-                {
-                    auto checkResult = [&resultCode](const Compiler::result_t& result) -> bool
-                    {
-                        if (!result.isOk())
-                        {
-                            resultCode = -1;
-                            LOG_ERROR(result.error().message().c_str());
-                            return false;
-                        }
-                        return true;
-                    };
-                    std::unique_ptr<Chunk> compiledChunk = nullptr;
-                    if (config.isCodeOrFile)
-                    {
-                        auto result = compiler.compileFromSource(config.srcCodeOrFile, compilerConfiguration);
-                        if (checkResult(result))
-                        {
-                            compiledChunk = result.extract();
-                        }
-                    }
-                    else
-                    {
-                        auto result = compiler.compileFromFile(config.srcCodeOrFile, compilerConfiguration);
-                        if (checkResult(result))
-                        {
-                            compiledChunk = result.extract();
-                        };
-                    }
+                VirtualMachine VM;
+                VM.init();
+                ScopedCallback vmFinish([&VM] { VM.finish(); });
 
-                    if (compiledChunk != nullptr)
-                    {
-                        if (config.compileOutputPath != nullptr)
-                        {
-                            std::ofstream ofs(config.compileOutputPath,
-                                              std::ofstream::binary | std::ofstream::trunc | std::ofstream::out);
-                            if (ofs.bad())
-                            {
-                                LOG_ERROR("Failed to open file '%s' for writing\n", config.compileOutputPath);
-                                return -1;
-                            }
-                            else
-                            {
-                                compiledChunk->serialize(ofs);
-                            }
-                        }
-                        else
-                        {
-                            compiledChunk->serialize(std::cout);
-                        }
-                    }
-                }
-                else if (config.mode == ExecutionMode::Run)
+                if (config.mode == ExecutionMode::Run)
                 {
-                    VirtualMachine VM;
-                    VM.init();
-                    ScopedCallback vmFinish([&VM] { VM.finish(); });
-
                     Chunk code(config.isCodeOrFile ? "CODE" : config.srcCodeOrFile);
                     if (config.isCodeOrFile)
                     {
                         std::istringstream is(config.srcCodeOrFile);
-                        code.deserialize(is);
+                        auto loadResult = code.deserialize(is);
+                        if (!loadResult.isOk())
+                        {
+                            return errorReportFunc(
+                                format("Failed loading bytecode: %s \n", loadResult.error().message().c_str()).c_str());
+                        }
                     }
                     else
                     {
                         std::ifstream ifs(config.srcCodeOrFile, std::ifstream::binary);
-                        if (ifs.good())
+                        if (!ifs.is_open() || !ifs.good())
                         {
-                            code.deserialize(ifs);
-                            if (compilerConfiguration.disassemble)
-                            {
-                                disassemble(code, config.srcCodeOrFile);
-                            }
+                            return errorReportFunc(
+                                format("Failed to open file '%s' for reading\n", config.compileOutputPath).c_str());
                         }
-                        else
+                        auto deserializeResult = code.deserialize(ifs);
+                        if (!deserializeResult.isOk())
                         {
-                            LOG_ERROR("Failed to open file '%s' for reading\n", config.compileOutputPath);
-                            resultCode = -1;
+                            return errorReportFunc(
+                                format("Failed loading bytecode: %s \n", deserializeResult.error().message().c_str())
+                                    .c_str());
                         }
+                    }
+
+                    if (compilerConfiguration.disassemble)
+                    {
+                        disassemble(code, config.srcCodeOrFile);
                     }
 
                     auto result = VM.runFromByteCode(code);
@@ -376,10 +395,6 @@ int main(int argc, const char* argv[])
                 }
                 else if (config.mode == ExecutionMode::Interpret)
                 {
-                    VirtualMachine VM;
-                    VM.init();
-                    ScopedCallback vmFinish([&VM] { VM.finish(); });
-
                     auto result = config.isCodeOrFile ? VM.runFromSource(config.srcCodeOrFile, compilerConfiguration)
                                                       : VM.runFromFile(config.srcCodeOrFile, compilerConfiguration);
                     if (!result.isOk())
