@@ -21,6 +21,8 @@ pending:
 - so much more...
 
 * creating portable executable:
+https://github.com/evilsocket/libpe/blob/master/peview/peview.cpp
+
 https://whereisr0da.github.io/blog/posts/2020-10-21-inject-code/
 
 https://alexm.ro/en/blog/build-the-smallest-portable-executable-with-assembly
