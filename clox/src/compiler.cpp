@@ -3,13 +3,11 @@
 Compiler::result_t Compiler::compileFromSource(const char                       *sourceCode,
                                                Optional<Compiler::Configuration> optConfiguration)
 {
-    LOG_INFO("Compiling from source...\n");
     return compile(sourceCode, "SOURCE", optConfiguration);
 }
 
 Compiler::result_t Compiler::compileFromFile(const char *path, Optional<Compiler::Configuration> optConfiguration)
 {
-    LOG_INFO("Compiling from file(%s)...\n", path);
     Result<std::unique_ptr<char[]>> source = utils::readFile(path);
     if (!source.isOk())
     {
