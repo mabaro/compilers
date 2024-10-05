@@ -17,7 +17,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEBUG_PRINT_CODE USING(DEBUG_BUILD)
+#define DEBUG_PRINT_CODE NOT_INT_USE //USING(DEBUG_BUILD)
 #define DEBUG_TRACE_EXECUTION USING(DEBUG_BUILD)
 
 #if USING(DEBUG_PRINT_CODE)

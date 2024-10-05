@@ -303,8 +303,6 @@ struct VirtualMachine
         _chunk = currentChunk;
         _ip = currentChunk->getCode();
 
-        printf("--------------------------------------\n");
-        printf("* Executing code...\n");
         result_t runResult = run();
 
         return runResult;
@@ -312,14 +310,12 @@ struct VirtualMachine
 
     result_t runFromSource(const char *sourceCode, Optional<Compiler::Configuration> optConfiguration = none_t)
     {
-        LOG_INFO("Running from source...\n");
         result_t result = interpret(sourceCode, "SOURCE", optConfiguration);
         return result;
     }
 
     result_t runFromFile(const char *path, Optional<Compiler::Configuration> optConfiguration = none_t)
     {
-        LOG_INFO("Running from file(%s)...\n", path);
         Result<std::unique_ptr<char[]>> source = utils::readFile(path);
         if (!source.isOk())
         {
