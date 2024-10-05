@@ -101,10 +101,10 @@ int main(int argc, const char* argv[])
                 code,
                 default_const_variables,
                 allow_dynamic_variables,
+                disassemble,
                 repl,
                 compile,
                 run,
-                disassemble,
                 output,
             };
             Type type;
@@ -118,11 +118,11 @@ int main(int argc, const char* argv[])
                       "Allows dynamic creation of variables on use (i.e., variable declaration not required)"),
             ADD_PARAM(default_const_variables,
                       "Variables are const by default, requiring <mut> modifier to be writable"),
+            ADD_PARAM(disassemble, "Show disassembled code"),
             ADD_PARAM(repl, "Enters interactive mode(i.e. REPL)"),
             ADD_PARAM(compile, "Compiles into bytecode and outputs the result to console or the output_file defined"),
             ADD_PARAM_WITH_PARAMS(output, "Allows defining the output file for -compile", "<output_file>"),
             ADD_PARAM(run, "Runs the code in the <bytecode_file> through the VM"),
-            ADD_PARAM(disassemble, "Show disassembled code"),
             ADD_PARAM_WITH_PARAMS(code, "Allows passing <source_code> as a character string", "<source_code>"),
         };
 #undef ADD_PARAM
