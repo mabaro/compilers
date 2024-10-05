@@ -4,7 +4,7 @@
 
 namespace serialize
 {
-using size_t = uint32_t;
+using size_t = uint8_t;
 
 template <typename T, size_t TSIZE=sizeof(T)>
 void Serialize(std::ostream& ostr, const T& i_value)
