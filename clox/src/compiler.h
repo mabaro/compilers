@@ -41,8 +41,13 @@ struct Parser
     Token current;
     Token previous;
 
-    Optional<error_t> optError;
-    Optional<Token> optErrorToken;
+    struct ErrorInfo
+    {
+        error_t error;
+        Token token;
+        const char *linePtr;
+    };
+    Optional<ErrorInfo> optError;
     bool panicMode = false;
 };
 
@@ -90,7 +95,7 @@ struct Compiler
     Configuration _configuration;
 
    public:
-    inline const Configuration& getConfiguration() const { return _configuration; }
+    inline const Configuration &getConfiguration() const { return _configuration; }
     inline void setConfiguration(const Configuration &config) { _configuration = config; }
 
     result_t compileFromSource(const char *sourceCode, Optional<Compiler::Configuration> optConfiguration = none_t);
@@ -110,7 +115,6 @@ struct Compiler
         _compilingChunk = std::make_unique<Chunk>(sourcePath);
 
         _parser.optError.reset();
-        _parser.optErrorToken.reset();
         _parser.panicMode = false;
 
         advance();
@@ -122,28 +126,32 @@ struct Compiler
         consume(TokenType::Eof, "Expected end of expression");
         if (getCurrentError().hasValue())
         {
+            const Parser::ErrorInfo &errorInfo = getCurrentError().value();
+            const char* errorLinePtr = errorInfo.linePtr;
+
             char message[2048];
-            const char *lineEnd = strchr(_scanner._linePtr, '\n');
+            const char *lineEnd = strchr(errorLinePtr, '\n');
             if (lineEnd == nullptr)
             {
-                lineEnd = strchr(_scanner._linePtr, '\0');
+                lineEnd = strchr(errorLinePtr, '\0');
             }
             if (lineEnd != nullptr)
             {
-                const char *innerErrorMsg = getCurrentError().value().message().c_str();
-                const int lineLen = static_cast<int>(lineEnd - _scanner._linePtr);
-                snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, _scanner._linePtr);
+                const char *innerErrorMsg = errorInfo.error.message().c_str();
+                const int lineLen = static_cast<int>(lineEnd - errorLinePtr);
+                snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, errorInfo.linePtr);
                 char *messagePtr = message + strlen(message);
 
-                const size_t lenToToken = getCurrentErrorToken().hasValue()
-                                              ? getCurrentErrorToken().value().start - _scanner._linePtr
-                                              : strlen(_scanner._linePtr);
+                const Token *errorToken = errorInfo.token.type != TokenType::COUNT ? &errorInfo.token : nullptr;
+                const size_t lenToToken =
+                    errorToken ? errorToken->start - errorInfo.linePtr : strlen(errorLinePtr);
                 *messagePtr++ = '\n';
                 *messagePtr++ = '\t';
                 *messagePtr++ = ' ';  // extra <'>
                 memset(messagePtr, ' ', lenToToken);
                 messagePtr += lenToToken;
                 *messagePtr++ = '^';
+                *messagePtr++ = '\n';
                 *messagePtr++ = '\0';
             }
             return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
@@ -260,10 +268,7 @@ struct Compiler
         Value value = Value::Create(strtod(_parser.previous.start, nullptr));
         emitConstant(value);
     }
-    void string()
-    {
-        emitConstant(Value::CreateByCopy(_parser.previous.start, _parser.previous.length));
-    }
+    void string() { emitConstant(Value::CreateByCopy(_parser.previous.start, _parser.previous.length)); }
     void unary()
     {
         CMP_DEBUGPRINT_PARSE(3);
@@ -448,9 +453,9 @@ struct Compiler
     }
 
    protected:
-    Parser::error_t errorAtCurrent(const char *errorMsg) { return errorAt(_parser.current, errorMsg); }
-    Parser::error_t error(const char *errorMsg) { return errorAt(_parser.previous, errorMsg); }
-    Parser::error_t errorAt(const Token &token, const char *errorMsg)
+    Parser::ErrorInfo errorAtCurrent(const char *errorMsg) { return errorAt(_parser.current, errorMsg); }
+    Parser::ErrorInfo error(const char *errorMsg) { return errorAt(_parser.previous, errorMsg); }
+    Parser::ErrorInfo errorAt(const Token &token, const char *errorMsg)
     {
         FAIL_MSG(errorMsg);
         if (_parser.panicMode)
@@ -473,10 +478,10 @@ struct Compiler
             snprintf(message, sizeof(message), " at '%.*s'", token.length, token.start);
         }
 
-        _parser.optError =
+        _parser.optError = Parser::ErrorInfo{
             Parser::error_t(Parser::error_t::code_t::Undefined,
-                            buildMessage("[line %d] Error %s: %s", _parser.current.line, message, errorMsg));
-        _parser.optErrorToken = token;
+                            buildMessage("[line %d] Error %s: %s", _parser.current.line, message, errorMsg)),
+            token, _scanner._linePtr};
         return _parser.optError.value();
     }
 
@@ -570,8 +575,10 @@ struct Compiler
         _parseRules[(size_t)TokenType::Eof] = {NULL, NULL, Precedence::NONE};
     }
 
-    const Optional<Parser::error_t> &getCurrentError() const { return _parser.optError; }
-    const Optional<Token> &getCurrentErrorToken() const { return _parser.optErrorToken; }
+    const Optional<Parser::ErrorInfo> &getCurrentError() const
+    {
+        return _parser.optError;
+    }
     const Token &getCurrentToken() const { return _parser.current; }
 
     bool check(TokenType type) const { return getCurrentToken().type == type; }
@@ -611,7 +618,7 @@ struct Compiler
             }
             else
             {
-                errorAt(_parser.current, tokenResult.error().message().c_str()).message();
+                errorAt(_parser.current, tokenResult.error().message().c_str());
             }
         }
     }
