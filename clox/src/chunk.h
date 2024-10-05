@@ -57,7 +57,7 @@ struct Chunk
     Chunk& operator=(Chunk&& ) = delete;
     Chunk& operator=(const Chunk& ) = delete;
 
-    void serialize(std::ostream& o_stream) const;
+    Result<void> serialize(std::ostream& o_stream) const;
     Result<void> deserialize(std::istream& i_stream);
 
     const char* getSourcePath() const { return _sourcepath.c_str(); }

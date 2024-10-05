@@ -6,9 +6,9 @@ Scanner::result_t
 Scanner::init(const char* source)
 {
     ASSERT_MSG(_line == -1, "Need to call finish() before init()");
-    _start = source;
+    _start   = source;
     _current = source;
-    _line = 0;
+    _line    = 0;
     _linePtr = source;
 
     return makeResultError<result_t>();
@@ -98,30 +98,30 @@ Token
 Scanner::makeToken(TokenType type, int ltrim, int rtrim) const
 {
     Token token;
-    token.type = type;
-    token.start = _start + ltrim;
+    token.type   = type;
+    token.start  = _start + ltrim;
     token.length = static_cast<int>(_current - token.start) - rtrim;
-    token.line = _line;
+    token.line   = _line;
     return token;
 }
 Token
 Scanner::makeToken(TokenType type, const std::string& escapedString) const
 {
     Token token;
-    token.type = type;
-    token.start = escapedString.data();
+    token.type   = type;
+    token.start  = escapedString.data();
     token.length = static_cast<int>(escapedString.size());
-    token.line = _line;
+    token.line   = _line;
     return token;
 }
 Scanner::TokenResult_t
 Scanner::makeTokenError(TokenType type, const char* msg, int64_t tokenLength)
 {
-    char message[1024];
+    char      message[1024];
     const int pos = (int)(_current - _start);
     if (tokenLength <= 0)
     {
-        tokenLength = 0;
+        tokenLength       = 0;
         const char* found = strchr(_start, '\n');
         if (found != nullptr)
         {
@@ -136,11 +136,11 @@ Scanner::TokenResult_t
 Scanner::string()
 {
     bool hasEscapedChars = false;
-    bool prevWasEscape = false;
+    bool prevWasEscape   = false;
     while ((prevWasEscape || peek() != '\"') && !isAtEnd())
     {
-        const char c = peek();
-        prevWasEscape = c == '\\';
+        const char c    = peek();
+        prevWasEscape   = c == '\\';
         hasEscapedChars = hasEscapedChars || c == '\\';
         if (c == '\n')
         {
@@ -158,8 +158,8 @@ Scanner::string()
     if (hasEscapedChars)
     {
         std::ostringstream ostr;
-        const char* ptr = _start + 1;
-        const char* endPtr = _current - 1;
+        const char*        ptr    = _start + 1;
+        const char*        endPtr = _current - 1;
         while (ptr != endPtr)
         {
             if (*ptr != '\\')
@@ -174,8 +174,8 @@ Scanner::string()
                     case '\\': ostr << '\\'; break;
                     case '0': ostr << '\0'; break;
                     case '\"': ostr << '\"'; break;
-                    case 'b': ostr << 'b'; break;
-                    case 'f': ostr << 'f'; break;
+                    case 'b': ostr << '\b'; break;
+                    case 'f': ostr << '\f'; break;
                     case 'n': ostr << '\n'; break;
                     case 'r': ostr << '\r'; break;
                     case 't': ostr << '\t'; break;
@@ -217,7 +217,7 @@ Scanner::identifier()
 bool
 Scanner::checkKeyword(int start, int length, const char* rest)
 {
-    const ptrdiff_t startToCurr = this->_current - this->_start;
+    const ptrdiff_t startToCurr  = this->_current - this->_start;
     const ptrdiff_t expectedSize = start + length;
     if ((startToCurr == expectedSize) && (0 == memcmp(this->_start + start, rest, length)))
     {
@@ -243,8 +243,8 @@ Scanner::identifierType()
     struct Keyword
     {
         const char* str;
-        int len;
-        TokenType type;
+        int         len;
+        TokenType   type;
     };
 #define ADD_KEYWORD(STR, TYPE) {#STR, (int)strlen(#STR), TokenType::TYPE}
         static const Keyword keywords[] = {
@@ -269,7 +269,7 @@ Scanner::identifierType()
         ASSERT(utils::is_sorted_if<Keyword>(&keywords[0], &keywords[0] + ARRAY_SIZE(keywords),
                                             [](const Keyword& a, const Keyword& b)
                                             { return memcmp(a.str, b.str, a.len) >= 0; }));
-        const char* currentTokenStr = this->_start;
+        const char*  currentTokenStr = this->_start;
         const size_t currentTokenLen = this->_current - this->_start;
         for (const auto& keyword : keywords)
         {
@@ -320,7 +320,7 @@ run()
     Token t1{};
     t1.line = 15;
     Token t2;
-    auto tokenResult = makeResult<Token>(t1);
+    auto  tokenResult = makeResult<Token>(t1);
     ASSERT(tokenResult.value().line == t1.line);
 }
 }  // namespace scanner

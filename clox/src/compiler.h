@@ -123,21 +123,21 @@ struct Compiler
         if (getCurrentError().hasValue())
         {
             char message[2048];
-            const char *lineEnd = strchr(_scanner.linePtr, '\n');
+            const char *lineEnd = strchr(_scanner._linePtr, '\n');
             if (lineEnd == nullptr)
             {
-                lineEnd = strchr(_scanner.linePtr, '\0');
+                lineEnd = strchr(_scanner._linePtr, '\0');
             }
             if (lineEnd != nullptr)
             {
                 const char *innerErrorMsg = getCurrentError().value().message().c_str();
-                const int lineLen = static_cast<int>(lineEnd - _scanner.linePtr);
-                snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, _scanner.linePtr);
+                const int lineLen = static_cast<int>(lineEnd - _scanner._linePtr);
+                snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, _scanner._linePtr);
                 char *messagePtr = message + strlen(message);
 
                 const size_t lenToToken = getCurrentErrorToken().hasValue()
-                                              ? getCurrentErrorToken().value().start - _scanner.linePtr
-                                              : strlen(_scanner.linePtr);
+                                              ? getCurrentErrorToken().value().start - _scanner._linePtr
+                                              : strlen(_scanner._linePtr);
                 *messagePtr++ = '\n';
                 *messagePtr++ = '\t';
                 *messagePtr++ = ' ';  // extra <'>
