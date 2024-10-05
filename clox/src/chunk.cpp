@@ -1,5 +1,6 @@
 #include "chunk.h"
 #include "utils/serde.h"
+#include <cstring>
 
 static const int16_t VERSION = 0x01;
 
