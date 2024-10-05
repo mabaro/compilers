@@ -40,8 +40,9 @@ Result<Object *> Object::deserialize(std::istream &i_stream)
         {
             serialize::size_t len;
             serialize::Deserialize(i_stream, len);
-            char *newString = ALLOCATE_N(char, len);
+            char *newString = ALLOCATE_N(char, len+1);
             serialize::DeserializeN(i_stream, newString, len);
+            newString[len] = '\0';
             return ObjectString::CreateByMove(newString, len);
         }
         default:
@@ -80,13 +81,13 @@ void Object::FreeObjects()
 
 Result<void> ObjectString::serialize(std::ostream &o_stream) const
 {
-    serialize::Serialize(o_stream, this->length);
+    serialize::SerializeAs<serialize::size_t>(o_stream, this->length);
     serialize::SerializeN(o_stream, this->chars, this->length);
     return Result<void>();
 }
 Result<void> ObjectString::deserialize(std::istream &i_stream)
 {
-    serialize::Deserialize(i_stream, this->length);
+    serialize::DeserializeAs<serialize::size_t>(i_stream, this->length);
     serialize::DeserializeN(i_stream, this->chars, this->length);
     return Result<void>();
 }
