@@ -72,7 +72,7 @@ struct Chunk
     }
     int addConstant(const Value& value)
     {
-        ASSERT(_constants.size() < (1 << MAX_OPCODE_BYTES));
+        ASSERT(_constants.size() < (1LL << MAX_OPCODE_BYTES));
         auto constantIt = std::find_if(_constants.begin(), _constants.end(),
                                        [&value](const Value& constant) { return constant == value; });
         if (constantIt != _constants.end())
