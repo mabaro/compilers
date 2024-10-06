@@ -69,7 +69,7 @@ else()
 
     # disable warnings
     ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-gnu-zero-variadic-macro-arguments")
-    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-format-security")
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-error=format-security")
 
     string(REPLACE ";" " " CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT}")
     string(REPLACE ";" " " CMAKE_CXX_FLAGS_DEBUG_INIT "${CMAKE_CXX_FLAGS_INIT}")
