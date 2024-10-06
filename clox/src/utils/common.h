@@ -32,7 +32,7 @@ void SetLevel(int level);
 // Portability hacks
 
 #ifdef __unix
-#define fopen_s(pFile, filename, mode) ((*(pFile)) = fopen((filename), (mode))) == NULL
+#define fopen_s(pFile, filename, mode) ((*pFile = fopen(filename, mode)) == NULL)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

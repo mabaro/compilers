@@ -117,7 +117,6 @@ static bool test_optional()
         ASSERT(opt.hasValue());
     }
     {
-        using T = Dummy;
         Optional<Dummy> opt(Dummy{});
         Optional<Dummy> opt2(opt);
         ASSERT(opt.hasValue());
