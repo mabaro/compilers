@@ -68,8 +68,8 @@ else()
     endif()
 
     # disable warnings
-    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-gnu-zero-variadic-macro-arguments")
-    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-error=error=format-security")
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-error=gnu-zero-variadic-macro-arguments")
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-error=format-security")
     ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-error=unused-function")
 
     string(REPLACE ";" " " CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT}")
