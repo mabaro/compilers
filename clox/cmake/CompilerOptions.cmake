@@ -67,6 +67,11 @@ else()
         list(APPEND CMAKE_CXX_FLAGS_RELEASE_INIT "-O3" "-Wno-unused")
     endif()
 
+    # disable warnings
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-gnu-zero-variadic-macro-arguments")
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-Wformat-security")
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-Wformat-security")
+
     string(REPLACE ";" " " CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT}")
     string(REPLACE ";" " " CMAKE_CXX_FLAGS_DEBUG_INIT "${CMAKE_CXX_FLAGS_INIT}")
     string(REPLACE ";" " " CMAKE_CXX_FLAGS_RELEASE_INIT "${CMAKE_CXX_FLAGS_INIT}")
