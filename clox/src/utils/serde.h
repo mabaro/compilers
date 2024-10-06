@@ -10,6 +10,12 @@ using code_len_t      = uint16_t;
 using string_len_t    = uint8_t;
 using size_t          = uint32_t;
 
+inline bool isLittleEndian()
+{
+    constexpr uint32_t test = 0x01020304;
+    return *((uint8_t*)&test) == 0x04;
+}
+
 template <typename T, size_t TSIZE = sizeof(T)>
 void Serialize(std::ostream& ostr, const T& i_value)
 {

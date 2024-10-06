@@ -10,7 +10,7 @@
 #include <string>
 #include <type_traits>
 
-#include "assert.h"
+#include "utils/assert.h"
 #include "config.h"
 
 #define ARRAY_SIZE(X) (sizeof(X) / sizeof(X[0]))
@@ -440,12 +440,6 @@ bool is_sorted_if(const T* begin, const T* end, std::function<bool(const T& a, c
 
 using CharBufferUPtr = std::unique_ptr<char[]>;
 Result<CharBufferUPtr> readFile(const char* path, bool binaryMode = true);
-
-inline bool isLittleEndian()
-{
-    constexpr uint32_t test = 0x01020304;
-    return *((uint8_t*)&test) == 0x04;
-}
 
 }  // namespace utils
 

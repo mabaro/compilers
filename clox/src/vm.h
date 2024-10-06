@@ -8,10 +8,10 @@ https://craftinginterpreters.com/a-virtual-machine.html
 #include <memory>
 
 #include "chunk.h"
-#include "common.h"
 #include "compiler.h"
 #include "debug.h"
 #include "environment.h"
+#include "utils/common.h"
 
 struct VirtualMachine
 {

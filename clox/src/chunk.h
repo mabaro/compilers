@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-#include "common.h"
 #include "third_party/named_enum.hpp"
+#include "utils/common.h"
 #include "value.h"
 
 MAKE_NAMED_ENUM_CLASS_WITH_TYPE(OpCode, uint8_t, Return, Constant,

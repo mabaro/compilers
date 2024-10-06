@@ -2,7 +2,7 @@
 #include <cstdio>
 
 #include "chunk.h"
-#include "common.h"
+#include "utils/common.h"
 
 int disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesAvailable);
 

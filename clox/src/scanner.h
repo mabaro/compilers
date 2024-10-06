@@ -1,10 +1,9 @@
 #pragma once
 
-#include <stdio.h>
-
+#include <cstdio>
 #include <cstring>
 
-#include "common.h"
+#include "utils/common.h"
 
 enum class TokenType
 {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "chunk.h"
-#include "common.h"
+#include "utils/common.h"
 #include "scanner.h"
 
 #if USING(DEBUG_PRINT_CODE)

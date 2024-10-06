@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.h"
+#include "utils/common.h"
 
 #define ALLOCATE(Type) (Type *)malloc(sizeof(Type))
 #define ALLOCATE_N(Type, count) (Type *)malloc(sizeof(Type) * count)
