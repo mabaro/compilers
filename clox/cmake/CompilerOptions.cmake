@@ -51,7 +51,8 @@ if(MSVC)
 # /woNNNN # notify only once for warning NNNN
 # message("[DEBUG] CMAKE_CXX_FLAGS_INIT = ${CMAKE_CXX_FLAGS_INIT}")
 else()
-    list(APPEND CMAKE_CXX_FLAGS_INIT "-fPIC" "-Wall" "-Werror" "-pedantic")
+    list(APPEND CMAKE_CXX_FLAGS_INIT "-fPIC" "-Wall" "-Werror" )
+    # "-pedantic")
 
     if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
         list(APPEND CMAKE_CXX_FLAGS_INIT "-fno-rtti" "-fno-exceptions")
