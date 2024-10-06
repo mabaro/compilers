@@ -23,7 +23,6 @@ static const char* DATA_SEG = ".DATA";
 Result<void> Chunk::serialize(std::ostream& o_stream) const
 {
     ASSERT_MSG(serde::isLittleEndian(), "not supported, need reverting bytes");
-    using len_t          = serde::size_t;
 
     serde::SerializeN(o_stream, MAGIC_ID, strlen(MAGIC_ID));
     serde::Serialize(o_stream, VERSION);
