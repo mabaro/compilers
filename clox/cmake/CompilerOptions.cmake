@@ -2,11 +2,10 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# log all *_INIT variables
-get_cmake_property(_varNames VARIABLES)
-list(REMOVE_DUPLICATES _varNames)
-list(SORT _varNames)
-
+# # log all *_INIT variables
+# get_cmake_property(_varNames VARIABLES)
+# list(REMOVE_DUPLICATES _varNames)
+# list(SORT _varNames)
 # foreach(_varName ${_varNames})
 #     if(_varName MATCHES "_INIT$")
 #         message(STATUS "${_varName}=${${_varName}}")
