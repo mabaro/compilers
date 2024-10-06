@@ -30,7 +30,7 @@ void SerializeAs(std::ostream& ostr, const T& i_value)
 template <typename T, typename COUNT_T = uint32_t>
 void SerializeN(std::ostream& ostr, const T* i_value, COUNT_T count)
 {
-    ostr.write((char*)i_value, count * sizeof(T));
+    ostr.write((char*)i_value, static_cast<std::streamsize>(count * sizeof(T)));
 }
 
 template <typename T, size_t TSIZE = sizeof(T)>
@@ -48,7 +48,7 @@ void DeserializeAs(std::istream& istr, T& o_value)
 template <typename T, typename COUNT_T = uint32_t>
 void DeserializeN(std::istream& istr, T* o_value, COUNT_T count)
 {
-    istr.read((char*)o_value, count * sizeof(T));
+    istr.read((char*)o_value, static_cast<std::streamsize>(count * sizeof(T)));
 }
 
 }  // namespace serde

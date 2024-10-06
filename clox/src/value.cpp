@@ -334,6 +334,17 @@ bool operator<(const Value &a, const Value &b)
         case Value::Type::Number: return a.as.number < b.as.number;
         case Value::Type::Integer: return a.as.integer < b.as.integer;
         case Value::Type::Null: return false;
+        case Value::Type::Object:
+            switch (a.as.object->type)
+            {
+                case Object::Type::String:
+                {
+                    auto strA = static_cast<char *>(a);
+                    auto strB = static_cast<char *>(b);
+                    return strcmp(strA, strB) < 0;
+                }
+                default: FAIL_MSG("Not implemented"); return false;
+            }
         default: ASSERT(false); return false;
     }
 }
@@ -352,7 +363,7 @@ bool operator>(const Value &a, const Value &b)
                 {
                     auto strA = static_cast<char *>(a);
                     auto strB = static_cast<char *>(b);
-                    return strcmp(strA, strB);
+                    return strcmp(strA, strB) > 0;
                 }
                 default: FAIL_MSG("Not implemented"); return false;
             }

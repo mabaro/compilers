@@ -4,12 +4,12 @@
 
 #include "chunk.h"
 
-int simpleInstruction(const char* name, int offset)
+uint16_t simpleInstruction(const char* name, uint16_t offset)
 {
     printf("%s\n", name);
     return offset + 1;
 }
-int constantInstruction(const char* name, const Chunk& chunk, int offset)
+uint16_t constantInstruction(const char* name, const Chunk& chunk, uint16_t offset)
 {
     const uint8_t constantIndex = chunk.getCode()[offset + 1];
     printf("%-16s [%04d]='", name, constantIndex);
@@ -19,13 +19,13 @@ int constantInstruction(const char* name, const Chunk& chunk, int offset)
     return offset + 2;
 }
 
-int disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesAvailable)
+uint16_t disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesAvailable)
 {
     ASSERT(offset < chunk.getCodeSize());
     printf("%04d ", offset);
     if (linesAvailable)
     {
-        if (offset > 0 && chunk.getLine(offset) == chunk.getLine(offset - 1))
+        if (offset > 0u && chunk.getLine(offset) == chunk.getLine(offset - 1))
         {
             printf(" | ");
         }
@@ -68,6 +68,6 @@ void disassemble(const Chunk& chunk, const char* name)
     const bool linesAvailable = chunk.getLineCount() > 0;
     for (size_t offset = 0; offset < chunk.getCodeSize();)
     {
-        offset = disassembleInstruction(chunk, static_cast<uint16_t>(offset), linesAvailable);
+        offset = static_cast<size_t>(disassembleInstruction(chunk, static_cast<uint16_t>(offset), linesAvailable));
     }
 }

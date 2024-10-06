@@ -41,7 +41,7 @@ Result<CharBufferUPtr> readFile(const char* path, bool binaryMode)
     ScopedCallback closeFile([&file] { fclose(file); });
 
     fseek(file, 0L, SEEK_END);
-    const size_t fileSize = ftell(file);
+    const size_t fileSize = static_cast<size_t>(ftell(file));
     rewind(file);
 
     CharBufferUPtr buffer = std::make_unique<char[]>(fileSize + 1);

@@ -91,9 +91,6 @@ struct Compiler
         bool disassemble           = false;
     };
 
-   private:
-    Configuration _configuration;
-
    public:
     inline const Configuration &getConfiguration() const { return _configuration; }
     inline void                 setConfiguration(const Configuration &config) { _configuration = config; }
@@ -586,6 +583,8 @@ struct Compiler
     }
 
    protected:
+    Configuration _configuration;
+
     Scanner  _scanner;
     Parser   _parser;
     uint32_t _lastExpressionLine = uint32_t(-1);

@@ -38,6 +38,11 @@ struct VirtualMachine
     VirtualMachine() {}
     ~VirtualMachine() {}
 
+    VirtualMachine(const VirtualMachine &) = delete;
+    VirtualMachine(VirtualMachine &&) = delete;
+    VirtualMachine& operator=(const VirtualMachine&) = delete;
+    VirtualMachine& operator=(VirtualMachine&&) = delete;
+
     result_t init()
     {
         _environments.push_back(std::make_unique<Environment>());
@@ -88,7 +93,7 @@ struct VirtualMachine
                 _chunk->printConstants();
                 disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable);
             }
-#else // #if DEBUG_TRACE_EXECUTION
+#else   // #if DEBUG_TRACE_EXECUTION
         for (;;)
         {
 #endif  // #else // #if DEBUG_TRACE_EXECUTION
@@ -457,7 +462,11 @@ struct VirtualMachine
         ASSERT(offset < stackSize());
         return *(_stackTop - offset);
     }
-    size_t stackSize() const { return _stackTop - _stack; }
+    size_t stackSize() const
+    {
+        ASSERT(_stackTop >= _stack);
+        return static_cast<size_t>(_stackTop - _stack);
+    }
 #if DEBUG_TRACE_EXECUTION
     void stackPrint() const
     {

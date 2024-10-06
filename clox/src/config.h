@@ -24,3 +24,7 @@
 // PE build is intended for injecting bytecodes into a template VM binary
 #define PE_BUILD NOT_IN_USE
 static_assert(!USING(PE_BUILD) || !USING(DEBUG_BUILD));
+
+
+#define MACHINE_BITS 8
+#define MAX_OPCODE_BYTES (1 << MACHINE_BITS)

@@ -96,7 +96,8 @@ Token Scanner::makeToken(TokenType type, int ltrim, int rtrim) const
     Token token;
     token.type   = type;
     token.start  = _start + ltrim;
-    token.length = static_cast<int>(_current - token.start) - rtrim;
+    ASSERT(_current >= token.start);
+    token.length = static_cast<uint32_t>((_current - token.start) - rtrim);
     token.line   = _line;
     return token;
 }
@@ -105,7 +106,7 @@ Token Scanner::makeToken(TokenType type, const std::string& escapedString) const
     Token token;
     token.type   = type;
     token.start  = escapedString.data();
-    token.length = static_cast<int>(escapedString.size());
+    token.length = static_cast<uint32_t>(escapedString.size());
     token.line   = _line;
     return token;
 }
@@ -209,7 +210,7 @@ bool Scanner::checkKeyword(int start, int length, const char* rest)
 {
     const ptrdiff_t startToCurr  = this->_current - this->_start;
     const ptrdiff_t expectedSize = start + length;
-    if ((startToCurr == expectedSize) && (0 == memcmp(this->_start + start, rest, length)))
+    if ((startToCurr == expectedSize) && (0 == memcmp(this->_start + start, rest, static_cast<size_t>(length))))
     {
         return true;
     }
@@ -258,7 +259,7 @@ TokenType Scanner::identifierType()
                                             [](const Keyword& a, const Keyword& b)
                                             { return memcmp(a.str, b.str, a.len) >= 0; }));
         const char*  currentTokenStr = this->_start;
-        const size_t currentTokenLen = this->_current - this->_start;
+        const ptrdiff_t currentTokenLen = this->_current - this->_start;
         for (const auto& keyword : keywords)
         {
             if ((keyword.len == currentTokenLen) && 0 == memcmp(keyword.str, currentTokenStr, currentTokenLen))

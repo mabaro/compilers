@@ -11,6 +11,7 @@ struct ByteBuffer : public std::basic_streambuf<char>
 struct ByteStream : public std::istream
 {
     ByteStream(const uint8_t* data, size_t count) : std::istream(&_buffer), _buffer(data, count) { rdbuf(&_buffer); }
+    ByteStream(ByteStream&&) = delete;
 
    private:
     ByteBuffer _buffer;

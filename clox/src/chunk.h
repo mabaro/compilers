@@ -39,6 +39,9 @@ struct Chunk
 
     Chunk(const char* sourcePath) : _sourcepath(sourcePath) {}
     ~Chunk() {}
+
+    Chunk(const Chunk&)            = delete;
+    Chunk(Chunk&&)                 = delete;
     Chunk& operator=(Chunk&&)      = delete;
     Chunk& operator=(const Chunk&) = delete;
 
@@ -48,11 +51,11 @@ struct Chunk
     const char* getSourcePath() const { return _sourcepath.c_str(); }
 
     const uint8_t* getCode() const { return _code.data(); }
-    const size_t   getCodeSize() const { return _code.size(); }
+    size_t   getCodeSize() const { return _code.size(); }
 
     const uint16_t* getLines() const { return _lines.data(); }
-    const uint16_t  getLine(uint16_t index) const { return _lines[index]; }
-    const size_t    getLineCount() const { return _lines.size(); }
+    uint16_t  getLine(uint16_t index) const { return _lines[index]; }
+    size_t    getLineCount() const { return _lines.size(); }
 
     const ValueArray& getConstants() const { return _constants; }
 
@@ -69,11 +72,12 @@ struct Chunk
     }
     int addConstant(const Value& value)
     {
+        ASSERT(_constants.size() < (1 << MAX_OPCODE_BYTES));
         auto constantIt = std::find_if(_constants.begin(), _constants.end(),
                                        [&value](const Value& constant) { return constant == value; });
         if (constantIt != _constants.end())
         {
-            const size_t constantIndex = std::distance(_constants.begin(), constantIt);
+            const ptrdiff_t constantIndex = std::distance(_constants.begin(), constantIt);
             return static_cast<int>(constantIndex);
         }
 

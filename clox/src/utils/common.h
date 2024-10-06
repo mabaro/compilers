@@ -17,7 +17,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEBUG_PRINT_CODE NOT_INT_USE  // USING(DEBUG_BUILD)
+#define DEBUG_PRINT_CODE NOT_IN_USE  // USING(DEBUG_BUILD)
 #define DEBUG_TRACE_EXECUTION USING(DEBUG_BUILD)
 
 #if USING(DEBUG_PRINT_CODE)
@@ -148,11 +148,11 @@ struct Error
     explicit Error(const char* msg) : _message(msg) {}
     explicit Error(const std::string& msg) : _message(msg) {}
     explicit Error(code_t e) : _code(e) {}
-    Error(code_t e, const std::string& msg) : _code(e), _message(msg) {}
-    Error(code_t e, const char* msg) : _code(e), _message(msg) {}
+    Error(code_t e, const std::string& msg) : _message(msg), _code(e) {}
+    Error(code_t e, const char* msg) : _message(msg),_code(e) {}
 
-    Error(const Error& e) : _code(e._code), _message(e._message) {}
-    Error(Error&& e) : _code(e._code), _message(std::move(e._message)) {}
+    Error(const Error& e) : _message(e._message), _code(e._code) {}
+    Error(Error&& e) : _message(std::move(e._message)), _code(e._code) {}
     Error& operator=(const Error& e)
     {
         _code    = e;
@@ -170,8 +170,8 @@ struct Error
     const std::string& message() const { return _message; }
 
    protected:
-    const code_t      _code    = code_t::Undefined;
     const std::string _message = "Undefined";
+    const code_t      _code    = code_t::Undefined;
 };
 using Error_t = Error<ErrorCode>;
 
