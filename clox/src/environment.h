@@ -44,7 +44,7 @@ struct Environment
     }
     void print() const
     {
-        for (const auto it : _dict)
+        for (const auto& it : _dict)
         {
             printf("%s=[", it.first.c_str());
             printValue(it.second);

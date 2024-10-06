@@ -24,7 +24,7 @@ MAKE_NAMED_ENUM_CLASS_WITH_TYPE(OpCode, uint8_t, Return, Constant,
                                 // Core methods
                                 Print,
 
-                                Variable, GlobalVarDef, GlobalVarGet, GlobalVarSet,
+                                GlobalVarDef, GlobalVarGet, GlobalVarSet,
 
                                 Pop,
 
@@ -72,7 +72,7 @@ struct Chunk
     }
     int addConstant(const Value& value)
     {
-        ASSERT(_constants.size() < (1LL << MAX_OPCODE_BYTES));
+        ASSERT_MSG(_constants.size() <= MAX_OPCODE_VALUE, format("#constants(%d) > MaxConstants(%d)\n", _constants.size(), MAX_OPCODE_VALUE).c_str());
         auto constantIt = std::find_if(_constants.begin(), _constants.end(),
                                        [&value](const Value& constant) { return constant == value; });
         if (constantIt != _constants.end())

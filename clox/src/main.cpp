@@ -230,8 +230,6 @@ int main(int argc, const char* argv[])
                                 {
                                     return errorReportWithHelpFunc(
                                         format("Unexpected output file. Only used with -compile: %s", curArg).c_str());
-                                    validParam = false;
-                                    break;
                                 }
                                 if (!isArgFunc(*(argvPtr + 1)))
                                 {
