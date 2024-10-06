@@ -38,10 +38,10 @@ struct VirtualMachine
     VirtualMachine() {}
     ~VirtualMachine() {}
 
-    VirtualMachine(const VirtualMachine &) = delete;
-    VirtualMachine(VirtualMachine &&) = delete;
-    VirtualMachine& operator=(const VirtualMachine&) = delete;
-    VirtualMachine& operator=(VirtualMachine&&) = delete;
+    VirtualMachine(const VirtualMachine &)            = delete;
+    VirtualMachine(VirtualMachine &&)                 = delete;
+    VirtualMachine &operator=(const VirtualMachine &) = delete;
+    VirtualMachine &operator=(VirtualMachine &&)      = delete;
 
     result_t init()
     {
@@ -81,7 +81,7 @@ struct VirtualMachine
 
 #if DEBUG_TRACE_EXECUTION
         const bool linesAvailable = _chunk->getLineCount() > 0;
-        for (;;)
+        while (1)
         {
             if (_compiler.getConfiguration().disassemble)
             {
@@ -265,7 +265,8 @@ struct VirtualMachine
                     }
                     break;
                 }
-                default: break;
+                case OpCode::Skip: break;
+                case OpCode::Undefined: FAIL(); break;
             }
         }
 
@@ -367,7 +368,7 @@ struct VirtualMachine
 #if USING(DEBUG_BUILD)
                 else if (strstr(line, "debugbreak"))
                 {
-                    const bool enable = strstr(line, "enable");
+                    const bool enable = nullptr != strstr(line, "enable");
                     util::SetDebugBreakEnabled(enable);
                     printf("--------------------------------\n");
                     printf("DebugBreak <- %s\n", enable ? "enabled" : "disabled");
@@ -412,10 +413,11 @@ struct VirtualMachine
     }
 
    protected:  // Interpreter
-    const Value &peek(int distance) const
+    const Value &peek(uint32_t distance) const
     {
         ASSERT(distance < stackSize());
-        return _stackTop[-1 + distance];
+        const Value &value = *(_stackTop - 1 + distance);
+        return value;
     }
 
     result_t runtimeError(const char *format, ...)
@@ -491,19 +493,19 @@ struct VirtualMachine
     const Chunk   *_chunk = nullptr;
     const uint8_t *_ip    = nullptr;
 
-    Value *addVariable(const char *name, int environmentIndex)
+    Value *addVariable(const char *name, uint32_t environmentIndex)
     {
         ASSERT(environmentIndex < _environments.size());
         return _environments[environmentIndex]->addVariable(name);
     }
-    bool removeVariable(const char *name, int environmentIndex)
+    bool removeVariable(const char *name, uint32_t environmentIndex)
     {
         ASSERT(environmentIndex < _environments.size());
         return _environments[environmentIndex]->removeVariable(name);
     }
-    Value *findVariable(const char *name, int environmentIndex)
+    Value *findVariable(const char *name, uint32_t environmentIndex)
     {
-        ASSERT(environmentIndex < static_cast<int>(_environments.size()));
+        ASSERT(environmentIndex < _environments.size());
         return _environments[environmentIndex]->findVariable(name);
     }
     std::vector<std::unique_ptr<Environment>> _environments;
