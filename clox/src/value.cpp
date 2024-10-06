@@ -254,7 +254,6 @@ Value Value::operator-() const
         case Value::Type::Integer: return Create(-as.integer);
         default: ASSERT(false); return Create();
     }
-    return *this;
 }
 
 Value Value::operator-(const Value &a)

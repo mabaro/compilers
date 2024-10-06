@@ -14,7 +14,7 @@ Scanner::result_t Scanner::init(const char* source)
 }
 Scanner::result_t Scanner::finish()
 {
-    _line = -1;
+    _line = uint32_t(-1);
     _escapedStrings.clear();
 
     return makeResultError<result_t>();
@@ -109,7 +109,7 @@ Token Scanner::makeToken(TokenType type, const std::string& escapedString) const
     token.line   = _line;
     return token;
 }
-Scanner::TokenResult_t Scanner::makeTokenError(TokenType type, const char* msg, int64_t tokenLength)
+Scanner::TokenResult_t Scanner::makeTokenError(TokenType /*type*/, const char* msg, int64_t tokenLength)
 {
     char      message[1024];
     const int pos = (int)(_current - _start);

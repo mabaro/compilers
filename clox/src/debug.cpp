@@ -66,8 +66,8 @@ void disassemble(const Chunk& chunk, const char* name)
     printf("== %s ==\n", name);
 
     const bool linesAvailable = chunk.getLineCount() > 0;
-    for (int offset = 0; offset < chunk.getCodeSize();)
+    for (size_t offset = 0; offset < chunk.getCodeSize();)
     {
-        offset = disassembleInstruction(chunk, offset, linesAvailable);
+        offset = disassembleInstruction(chunk, static_cast<uint16_t>(offset), linesAvailable);
     }
 }

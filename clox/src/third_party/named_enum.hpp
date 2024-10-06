@@ -88,7 +88,7 @@ constexpr bool has_trailing_comma( char const (&string)[N] ){
 
 
 template<std::size_t... I>
-constexpr std::array<string_t,sizeof...(I)> make_array( char * string,
+constexpr std::array<string_t,sizeof...(I)> make_array( char * /*string*/,
                                                         char ** ids,
                                                         std::index_sequence<I...> ){
     return std::array<string_t,sizeof...(I)>{ids[I]...};

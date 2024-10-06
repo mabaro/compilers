@@ -203,13 +203,13 @@ int main(int argc, const char* argv[])
         auto isArgFunc = [](const char* arg) { return (arg[0] == '-'); };
         for (const char** argvPtr = &argv[1]; argvPtr != &argv[argc]; ++argvPtr)
         {
-            const char* argv = *argvPtr;
-            if (isArgFunc(argv))
+            const char* curArg = *argvPtr;
+            if (isArgFunc(curArg))
             {
                 bool validParam = false;
                 for (const Param& param : params)
                 {
-                    if (0 == strcmp(&argv[1], param.arg))
+                    if (0 == strcmp(&curArg[1], param.arg))
                     {
                         validParam = true;
 
@@ -229,7 +229,7 @@ int main(int argc, const char* argv[])
                                 if (config.mode != ExecutionMode::Compile)
                                 {
                                     return errorReportWithHelpFunc(
-                                        format("Unexpected output file. Only used with -compile: %s", argv).c_str());
+                                        format("Unexpected output file. Only used with -compile: %s", curArg).c_str());
                                     validParam = false;
                                     break;
                                 }
@@ -256,7 +256,7 @@ int main(int argc, const char* argv[])
                 }
                 if (!validParam)
                 {
-                    return errorReportWithHelpFunc(format("Invalid parameter: %s\n", argv).c_str());
+                    return errorReportWithHelpFunc(format("Invalid parameter: %s\n", curArg).c_str());
                 }
             }
             else
@@ -264,7 +264,7 @@ int main(int argc, const char* argv[])
                 if (config.srcCodeOrFile != nullptr)
                 {
                     return errorReportWithHelpFunc(
-                        format("Parameter '%s' is unexpected, <%s> is already defined: '%s'\n", argv,
+                        format("Parameter '%s' is unexpected, <%s> is already defined: '%s'\n", curArg,
                                config.isCodeOrFile ? "source_code" : "source_path", config.srcCodeOrFile)
                             .c_str());
                 }

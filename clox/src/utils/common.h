@@ -92,7 +92,7 @@ static std::string buildMessage(const char* fmt, ...)
     va_list args;
     va_start(args, fmt);
     char buff[1000];
-    int  len = vsnprintf(buff, 1000, fmt, args);
+    vsnprintf(buff, 1000, fmt, args);
     va_end(args);
     return std::string(buff);
 }

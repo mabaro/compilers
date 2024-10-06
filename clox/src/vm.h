@@ -74,10 +74,10 @@ struct VirtualMachine
         stackPush(a op b);          \
     } while (false)
 
+#if DEBUG_TRACE_EXECUTION
         const bool linesAvailable = _chunk->getLineCount() > 0;
         for (;;)
         {
-#if DEBUG_TRACE_EXECUTION
             if (_compiler.getConfiguration().disassemble)
             {
                 printf("          ");
@@ -88,8 +88,10 @@ struct VirtualMachine
                 _chunk->printConstants();
                 disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable);
             }
-#endif  // #if DEBUG_TRACE_EXECUTION
-
+#else // #if DEBUG_TRACE_EXECUTION
+        for (;;)
+        {
+#endif  // #else // #if DEBUG_TRACE_EXECUTION
             const OpCode instruction = OpCode(READ_BYTE());
             switch (instruction)
             {
@@ -492,7 +494,7 @@ struct VirtualMachine
     }
     Value *findVariable(const char *name, int environmentIndex)
     {
-        ASSERT(environmentIndex < _environments.size());
+        ASSERT(environmentIndex < static_cast<int>(_environments.size()));
         return _environments[environmentIndex]->findVariable(name);
     }
     std::vector<std::unique_ptr<Environment>> _environments;

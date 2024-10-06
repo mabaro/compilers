@@ -24,8 +24,6 @@ Result<void> Chunk::serialize(std::ostream& o_stream) const
 {
     ASSERT_MSG(serde::isLittleEndian(), "not supported, need reverting bytes");
     using len_t          = serde::size_t;
-    const size_t lenSize = sizeof(len_t);
-    len_t        len     = 0;
 
     serde::SerializeN(o_stream, MAGIC_ID, strlen(MAGIC_ID));
     serde::Serialize(o_stream, VERSION);
@@ -48,7 +46,6 @@ Result<void> Chunk::serialize(std::ostream& o_stream) const
 Result<void> Chunk::deserialize(std::istream& i_stream)
 {
     using len_t          = serde::size_t;
-    const size_t lenSize = sizeof(len_t);
     len_t        len     = 0;
     char         tempStr[32];
 

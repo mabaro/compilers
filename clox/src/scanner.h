@@ -70,8 +70,8 @@ enum class TokenType
 };
 struct Token
 {
-    int         line   = -1;
-    int         length = 0;
+    uint32_t    line   = uint32_t(-1);
+    uint32_t    length = 0;
     const char* start  = nullptr;
     TokenType   type   = TokenType::Eof;
 };
@@ -92,7 +92,7 @@ struct Scanner
     const char*              _start   = 0;
     const char*              _current = 0;
     const char*              _linePtr = 0;
-    int                      _line    = -1;
+    uint32_t                 _line    = uint32_t(-1);
     std::vector<std::string> _escapedStrings;
 
     result_t init(const char* source);

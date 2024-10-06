@@ -1,8 +1,8 @@
 #pragma once
 
 #include "chunk.h"
-#include "utils/common.h"
 #include "scanner.h"
+#include "utils/common.h"
 
 #if USING(DEBUG_PRINT_CODE)
 #include "debug.h"
@@ -273,7 +273,9 @@ struct Compiler
         {
             case TokenType::Minus: emitBytes(OpCode::Negate); break;
             case TokenType::Bang: emitBytes(OpCode::Not); break;
-            default: return;
+            default:
+                FAIL_MSG("Unreachable symbol while parsing [%.*s]", _parser.previous.length, _parser.previous.start);
+                return;  // Unreachable.
         }
     }
     void binary()
@@ -374,12 +376,13 @@ struct Compiler
 #endif  // #if USING(DEBUG_PRINT_CODE)
     }
 
-    int makeConstant(const Value &value)
+    uint8_t makeConstant(const Value &value)
     {
         ASSERT(currentChunk());
         Chunk &chunk = *currentChunk();
 
         const int constantId = chunk.addConstant(value);
+        ASSERT(constantId < UINT8_MAX);
         if (constantId > UINT8_MAX)
         {
             error(buildMessage("Max constants per chunk exceeded: %s", UINT8_MAX).c_str());
@@ -387,7 +390,7 @@ struct Compiler
 #if USING(DEBUG_TRACE_EXECUTION) && USING(DEBUG_PRINT_CODE)
         chunk.printConstants();
 #endif  // #if USING(DEBUG_TRACE_EXECUTION) && USING(DEBUG_PRINT_CODE)
-        return constantId;
+        return static_cast<uint8_t>(constantId);
     }
     void emitConstant(const Value &value) { emitBytes(OpCode::Constant, makeConstant(value)); }
 
@@ -397,7 +400,7 @@ struct Compiler
     {
         Chunk *chunk = currentChunk();
         ASSERT(chunk);
-        chunk->write(byte, _lastExpressionLine);
+        chunk->write(byte, static_cast<uint16_t>(_lastExpressionLine));
     }
     void emitBytes(OpCode code)
     {
@@ -483,14 +486,14 @@ struct Compiler
 
     void populateParseRules()
     {
-        auto binaryFunc     = [&](bool canAssign) { binary(); };
-        auto groupingFunc   = [&](bool canAssign) { grouping(); };
-        auto literalFunc    = [&](bool canAssign) { literal(); };
-        auto numberFunc     = [&](bool canAssign) { number(); };
-        auto stringFunc     = [&](bool canAssign) { string(); };
-        auto skipFunc       = [&](bool canAssign) { skip(); };
-        auto unaryFunc      = [&](bool canAssign) { unary(); };
-        auto varFunc        = [&](bool canAssign) { variableDeclaration(); };
+        auto binaryFunc     = [&](bool /*canAssign*/) { binary(); };
+        auto groupingFunc   = [&](bool /*canAssign*/) { grouping(); };
+        auto literalFunc    = [&](bool /*canAssign*/) { literal(); };
+        auto numberFunc     = [&](bool /*canAssign*/) { number(); };
+        auto stringFunc     = [&](bool /*canAssign*/) { string(); };
+        auto skipFunc       = [&](bool /*canAssign*/) { skip(); };
+        auto unaryFunc      = [&](bool /*canAssign*/) { unary(); };
+        auto varFunc        = [&](bool /*canAssign*/) { variableDeclaration(); };
         auto identifierFunc = [&](bool canAssign) { variable(canAssign); };
 
         _parseRules[(size_t)TokenType::LeftParen]    = {groupingFunc, NULL, Precedence::NONE};
@@ -583,9 +586,9 @@ struct Compiler
     }
 
    protected:
-    Scanner _scanner;
-    Parser  _parser;
-    int     _lastExpressionLine = -1;
+    Scanner  _scanner;
+    Parser   _parser;
+    uint32_t _lastExpressionLine = uint32_t(-1);
 
     std::unique_ptr<Chunk> _compilingChunk = nullptr;
     Chunk                 *currentChunk() { return _compilingChunk.get(); }
