@@ -12,12 +12,41 @@
             // "args": ["${workspaceFolder}/tests/test.clox"],
             // "args": ["-compile", "-code", "var a=1; print a;" ],
             // "args": ["-compile", "-output", "marcos.cloxbin", "-code", "print 1+1;" ],
-            "args": ["-run", "marcos.cloxbin" ],
+            "args": [
+                "-run",
+                "marcos.cloxbin"
+            ],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}/bin",
             "environment": [],
             "console": "externalTerminal"
-        }
-
+        },
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/clox",
+            "args": [
+                "-code",
+                "a=2; a*2=1;"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/bin",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
     ]
 }
