@@ -59,23 +59,26 @@ else()
         list(APPEND CMAKE_CXX_FLAGS_INIT "-fno-rtti" "-fno-exceptions")
         list(APPEND CMAKE_CXX_FLAGS_DEBUG_INIT "-Wsuggest-final-types"
             "-Wsuggest-final-methods" "-Wsuggest-override")
-        list(APPEND CMAKE_CXX_FLAGS_RELEASE_INIT "-O0")
     endif()
 
     if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
         list(APPEND CMAKE_CXX_FLAGS_INIT "-fno-rtti" "-fno-exceptions"
             "-Qunused-arguments" "-fcolor-diagnostics")
         list(APPEND CMAKE_CXX_FLAGS_DEBUG_INIT "-Wdocumentation")
-        list(APPEND CMAKE_CXX_FLAGS_RELEASE_INIT "-O3")
     endif()
+
+    string(REGEX REPLACE "-O[^ ]*" "" CMAKE_CXX_FLAGS_RELEASE_INIT "${CMAKE_CXX_FLAGS_RELEASE_INIT}")
+    list(APPEND CMAKE_CXX_FLAGS_RELEASE_INIT "-O3")
 
     # disable warnings
     ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-gnu-zero-variadic-macro-arguments")
     ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "-Wno-format-security")
     ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_RELEASE_INIT "-Wno-error=unused-function")
-    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_RELEASE_INIT "-DNDEBUG")
+
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_RELEASE_INIT "-D NDEBUG")
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_DEBUG_INIT "-D DEBUG")
 
     string(REPLACE ";" " " CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT}")
-    string(REPLACE ";" " " CMAKE_CXX_FLAGS_DEBUG_INIT "${CMAKE_CXX_FLAGS_INIT}")
-    string(REPLACE ";" " " CMAKE_CXX_FLAGS_RELEASE_INIT "${CMAKE_CXX_FLAGS_INIT}")
+    string(REPLACE ";" " " CMAKE_CXX_FLAGS_DEBUG_INIT "${CMAKE_CXX_FLAGS_DEBUG_INIT}")
+    string(REPLACE ";" " " CMAKE_CXX_FLAGS_RELEASE_INIT "${CMAKE_CXX_FLAGS_RELEASE_INIT}")
 endif()

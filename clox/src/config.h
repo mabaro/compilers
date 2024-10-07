@@ -13,7 +13,10 @@
 #endif
 
 #ifndef DEBUG
-#define DEBUG_BUILD !USING(RELEASE_BUILD)
+#if !USING(RELEASE_BUILD)
+#error Either NDEBUG or DEBUG must be defined!
+#endif // #if !USING(RELEASE_BUILD)
+#define DEBUG_BUILD NOT_IN_USE
 #else
 #if USING(RELEASE_BUILD)
 #error DEBUG is defined on a RELEASE BUILD
