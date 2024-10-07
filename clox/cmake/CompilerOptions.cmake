@@ -41,6 +41,7 @@ if(MSVC)
     ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "/wd4710") # function was selected for inline
     ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "/wd4711") # function XXX selected for automatic inline expansion
     ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "/wd4774") # print argument for format is not a literal
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "/wd5045") # Compiler will insert Spectre mitigation for memory load if
     ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_INIT "/wd5246") # initialization of a subobject should be wrapped in braces
 
     # remove double spaces
@@ -52,13 +53,13 @@ if(MSVC)
 # message("[DEBUG] CMAKE_CXX_FLAGS_INIT = ${CMAKE_CXX_FLAGS_INIT}")
 else()
     list(APPEND CMAKE_CXX_FLAGS_INIT "-fPIC" "-Wall" "-pedantic")
-    #  "-Werror" )
 
+    # "-Werror" )
     if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
         list(APPEND CMAKE_CXX_FLAGS_INIT "-fno-rtti" "-fno-exceptions")
         list(APPEND CMAKE_CXX_FLAGS_DEBUG_INIT "-Wsuggest-final-types"
             "-Wsuggest-final-methods" "-Wsuggest-override")
-        list(APPEND CMAKE_CXX_FLAGS_RELEASE_INIT "-O3")
+        list(APPEND CMAKE_CXX_FLAGS_RELEASE_INIT "-O0")
     endif()
 
     if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
