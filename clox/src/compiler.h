@@ -89,6 +89,10 @@ struct Compiler
         bool allowDynamicVariables = false;  // no need to declare with <var>
         bool defaultConstVariables = false;  // <mut> allows modifying variables
         bool disassemble           = false;
+#if USING(DEBUG_TRACE_EXECUTION)
+        bool debugPrintConstants = false;  // print constants on every new one
+        bool debugPrintVariables = false;  // print variables on every new one
+#endif                                     // #if USING(DEBUG_TRACE_EXECUTION)
     };
 
    public:
@@ -107,8 +111,8 @@ struct Compiler
         }
 
         populateParseRules();
-
         _scanner.init(source);
+        ScopedCallback onExit([&] { _scanner.finish(); });
         _compilingChunk = std::make_unique<Chunk>(sourcePath);
 
         _parser.optError.reset();
@@ -125,7 +129,7 @@ struct Compiler
         {
             const Parser::ErrorInfo &errorInfo    = getCurrentError().value();
             const char              *errorLinePtr = errorInfo.linePtr;
-            char        message[2048];
+            char                     message[2048];
 #if USING(EXTENDED_ERROR_REPORT)
             const char *lineEnd = strchr(errorLinePtr, '\n');
             if (lineEnd == nullptr)
@@ -150,9 +154,9 @@ struct Compiler
                 *messagePtr++ = '\n';
                 *messagePtr++ = '\0';
             }
-#else // #if USING(EXTENDED_ERROR_REPORT)
+#else   // #if USING(EXTENDED_ERROR_REPORT)
             snprintf(message, sizeof(message), "%s\n\t%s'\n", errorInfo.error.message().c_str(), errorLinePtr);
-#endif // #else // #if USING(EXTENDED_ERROR_REPORT)
+#endif  // #else // #if USING(EXTENDED_ERROR_REPORT)
             return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
         }
 
@@ -387,9 +391,12 @@ struct Compiler
         {
             error(buildMessage("Max constants per chunk exceeded: %s", UINT8_MAX).c_str());
         }
-#if USING(DEBUG_TRACE_EXECUTION) && USING(DEBUG_PRINT_CODE)
-        chunk.printConstants();
-#endif  // #if USING(DEBUG_TRACE_EXECUTION) && USING(DEBUG_PRINT_CODE)
+#if USING(DEBUG_TRACE_EXECUTION)
+        if (_configuration.debugPrintConstants)
+        {
+            chunk.printConstants();
+        }
+#endif  // #if USING(DEBUG_TRACE_EXECUTION)
         return static_cast<uint8_t>(constantId);
     }
     void emitConstant(const Value &value) { emitBytes(OpCode::Constant, makeConstant(value)); }

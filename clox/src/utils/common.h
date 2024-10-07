@@ -10,16 +10,16 @@
 #include <string>
 #include <type_traits>
 
-#include "utils/assert.h"
 #include "config.h"
+#include "utils/assert.h"
 
 #define ARRAY_SIZE(X) (sizeof(X) / sizeof(X[0]))
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEBUG_PRINT_CODE NOT_IN_USE  // USING(DEBUG_BUILD)
-#define DEBUG_TRACE_EXECUTION USING(DEBUG_BUILD)
-#define EXTENDED_ERROR_REPORT NOT_IN_USE
+#define DEBUG_PRINT_CODE IN_USE       // USING(DEBUG_BUILD)
+#define DEBUG_TRACE_EXECUTION IN_USE  // USING(DEBUG_BUILD)
+#define EXTENDED_ERROR_REPORT IN_USE
 
 #if USING(DEBUG_PRINT_CODE)
 namespace debug_print
@@ -150,7 +150,7 @@ struct Error
     explicit Error(const std::string& msg) : _message(msg) {}
     explicit Error(code_t e) : _code(e) {}
     Error(code_t e, const std::string& msg) : _message(msg), _code(e) {}
-    Error(code_t e, const char* msg) : _message(msg),_code(e) {}
+    Error(code_t e, const char* msg) : _message(msg), _code(e) {}
 
     Error(const Error& e) : _message(e._message), _code(e._code) {}
     Error(Error&& e) : _message(std::move(e._message)), _code(e._code) {}

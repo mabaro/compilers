@@ -345,60 +345,102 @@ struct VirtualMachine
 
             if (line[0] == '!')
             {
-                if (strstr(line, "help"))
+                if (nullptr != strstr(line, "help") || nullptr != strstr(line, "Help"))
                 {
                     printf("--------------------------------\n");
                     printf("Commands(preceded with '!'):\n");
+                    printf("\tAllowDynamicVar <0/1>\n");
+#if DEBUG_TRACE_EXECUTION
+                    printf("\tPrintConstants\n");
+                    printf("\tPrintVariables\n");
+#endif  // #if DEBUG_TRACE_EXECUTION
+#if USING(DEBUG_BUILD)
                     printf("\tdebugbreak <enable/disable>\n");
+#endif  // #if USING(DEBUG_BUILD)
 #if USING(DEBUG_PRINT_CODE)
-                    printf("\tsetdebugprintlevel <N>\n");
-                    printf("\tgetdebugprintlevel\n");
+                    printf("\tDebugPrintLevel <N>\n");
 #endif  // #if USING(DEBUG_PRINT_CODE)
                     printf("\tquit\n");
                     printf("--------------------------------\n");
                     continue;
                 }
-                else if (strstr(line, "quit"))
+                else if (nullptr != strstr(line, "quit") || nullptr != strstr(line, "Quit"))
                 {
                     printf("--------------------------------\n");
                     printf("Exiting...\n");
                     printf("--------------------------------\n");
                     break;
                 }
-#if USING(DEBUG_BUILD)
-                else if (strstr(line, "debugbreak"))
+                else if (nullptr != strstr(line, "allowdynamicvar") || nullptr != strstr(line, "AllowDynamicVar"))
                 {
-                    const bool enable = nullptr != strstr(line, "enable");
-                    util::SetDebugBreakEnabled(enable);
-                    printf("--------------------------------\n");
-                    printf("DebugBreak <- %s\n", enable ? "enabled" : "disabled");
-                    printf("--------------------------------\n");
+                    char                   *secondArg = strstr(line, " ");
+                    Compiler::Configuration config    = _compiler.getConfiguration();
+                    if (secondArg != nullptr && secondArg[1] != '\n')
+                    {
+                        const bool enable            = secondArg[1] == '1';
+                        config.allowDynamicVariables = enable;
+                        _compiler.setConfiguration(config);
+                        printf("[CMD] AllowDynamicVar set to '%s'\n", enable ? "enabled" : "disabled");
+                    }
+                    else
+                    {
+                        printf("[CMD] AllowDynamicVar is '%s'\n",
+                               config.allowDynamicVariables ? "enabled" : "disabled");
+                    }
                     continue;
                 }
+#if DEBUG_TRACE_EXECUTION
+                else if (nullptr != strstr(line, "printconstants") || nullptr != strstr(line, "PrintConstants"))
+                {
+                    printf("[CMD] Constants:\n");
+                    if (_chunk)
+                    {
+                        _chunk->printConstants();
+                    }
+                    continue;
+                }
+                else if (nullptr != strstr(line, "printvariables") || nullptr != strstr(line, "PrintVariables"))
+                {
+                    printf("[CMD] Variables:\n");
+                    this->printVariables();
+                    continue;
+                }
+#endif  // #if DEBUG_TRACE_EXECUTION
+#if USING(DEBUG_BUILD)
+                else if (nullptr != strstr(line, "debugbreak") || nullptr != strstr(line, "DebugBreak"))
+                {
+                    char *secondArg = strstr(line, " ");
+                    if (secondArg != nullptr && secondArg[1] != '\n')
+                    {
+                        const bool enable            = secondArg[1] == '1';
+                        util::SetDebugBreakEnabled(enable);
+                        printf("[CMD] DebugBreak set to '%s'\n", enable ? "enabled" : "disabled");
+                    }
+                    else
+                    {
+                        printf("[CMD] DebugBreak is '%s'\n", util::IsDebugBreakEnabled() ? "enabled" : "disabled");
+                    }
+                    continue;
+                }
+#endif  // #if !USING(DEBUG_BUILD)
 #if USING(DEBUG_PRINT_CODE)
-                else if (strstr(line, "setdebugprintlevel"))
+                else if (nullptr != strstr(line, "debugprintlevel") || nullptr != strstr(line, "DebugPrintLevel"))
                 {
                     char *secondArg = strstr(line, " ");
                     if (secondArg != nullptr)
                     {
                         const int level = atoi(secondArg + 1);
                         debug_print::SetLevel(level);
-                        printf("--------------------------------\n");
-                        printf("SetDebugPrintLevel <- %d\n", level);
-                        printf("--------------------------------\n");
+                        printf("[CMD] DebugPrintLevel set to '%d'\n", level);
+                    }
+                    else
+                    {
+                        const int level = debug_print::GetLevel();
+                        printf("[CMD] DebugPrintLevel is '%d'\n", level);
                     }
                     continue;
                 }
-                else if (strstr(line, "getdebugprintlevel"))
-                {
-                    const int level = debug_print::GetLevel();
-                    printf("--------------------------------\n");
-                    printf("GetDebugPrintLevel -> %d\n", level);
-                    printf("--------------------------------\n");
-                    continue;
-                }
 #endif  // #if USING(DEBUG_PRINT_CODE)
-#endif  // #if !USING(DEBUG_BUILD)
             }
 
             result_t result = interpret(line, "REPL");
@@ -484,7 +526,6 @@ struct VirtualMachine
 
     void printVariables() const
     {
-        printf(" Global variables: ");
         _environments.front()->print();
     }
 #endif  // #if DEBUG_TRACE_EXECUTION
@@ -496,6 +537,13 @@ struct VirtualMachine
     Value *addVariable(const char *name, uint32_t environmentIndex)
     {
         ASSERT(environmentIndex < _environments.size());
+#if USING(DEBUG_TRACE_EXECUTION)
+        if (_compiler.getConfiguration().debugPrintVariables)
+        {
+            _environments[environmentIndex]->print();
+        }
+#endif  // #if USING(DEBUG_TRACE_EXECUTION)
+
         return _environments[environmentIndex]->addVariable(name);
     }
     bool removeVariable(const char *name, uint32_t environmentIndex)
