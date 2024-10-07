@@ -125,8 +125,8 @@ struct Compiler
         {
             const Parser::ErrorInfo &errorInfo    = getCurrentError().value();
             const char              *errorLinePtr = errorInfo.linePtr;
-
             char        message[2048];
+#if USING(EXTENDED_ERROR_REPORT)
             const char *lineEnd = strchr(errorLinePtr, '\n');
             if (lineEnd == nullptr)
             {
@@ -136,11 +136,11 @@ struct Compiler
             {
                 const char *innerErrorMsg = errorInfo.error.message().c_str();
                 const int   lineLen       = static_cast<int>(lineEnd - errorLinePtr);
-                snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, errorInfo.linePtr);
+                snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, errorLinePtr);
                 char *messagePtr = message + strlen(message);
 
                 const Token *errorToken = errorInfo.token.type != TokenType::COUNT ? &errorInfo.token : nullptr;
-                const size_t lenToToken = errorToken ? errorToken->start - errorInfo.linePtr : strlen(errorLinePtr);
+                const size_t lenToToken = errorToken ? errorToken->start - errorLinePtr : strlen(errorLinePtr);
                 *messagePtr++           = '\n';
                 *messagePtr++           = '\t';
                 *messagePtr++           = ' ';  // extra <'>
@@ -150,6 +150,9 @@ struct Compiler
                 *messagePtr++ = '\n';
                 *messagePtr++ = '\0';
             }
+#else // #if USING(EXTENDED_ERROR_REPORT)
+            snprintf(message, sizeof(message), "%s\n\t%s'\n", errorInfo.error.message().c_str(), errorLinePtr);
+#endif // #else // #if USING(EXTENDED_ERROR_REPORT)
             return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
         }
 

@@ -19,6 +19,7 @@
 
 #define DEBUG_PRINT_CODE NOT_IN_USE  // USING(DEBUG_BUILD)
 #define DEBUG_TRACE_EXECUTION USING(DEBUG_BUILD)
+#define EXTENDED_ERROR_REPORT NOT_IN_USE
 
 #if USING(DEBUG_PRINT_CODE)
 namespace debug_print
@@ -157,11 +158,13 @@ struct Error
     {
         _code    = e;
         _message = e.msg;
+        return *this;
     }
     Error& operator=(Error&& e)
     {
         _code    = std::move(e);
         _message = std::move(e.msg);
+        return *this;
     }
 
     bool operator==(const Error& e) const { return e._code == _code && !e._message.compare(_message); }
