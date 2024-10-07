@@ -4,7 +4,7 @@
 
 Scanner::result_t Scanner::init(const char* source)
 {
-    ASSERT_MSG(_line == -1, "Need to call finish() before init()");
+    ASSERT_MSG(_line == uint32_t(-1), "Need to call finish() before init()");
     _start   = source;
     _current = source;
     _line    = 0;
