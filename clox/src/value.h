@@ -15,6 +15,7 @@ struct Object
 #if USING(DEBUG_BUILD)
     union
     {
+        Object* obj;
         ObjectString *string;
     } as;
 #endif  // #if USING(DEBUG_BUILD)
@@ -38,8 +39,11 @@ struct Object
         ObjectT *newObject = nullptr;
         if (std::is_same_v<ObjectString, ObjectT>)
         {
-            newObject       = ALLOCATE(ObjectT);
+            newObject       = ALLOCATE_FLEX(ObjectT, flexibleSize);
             newObject->type = ObjectT::Type::String;
+#if USING(DEBUG_BUILD)
+            newObject->as.obj = newObject;
+#endif  // #if USING(DEBUG_BUILD)
         }
         ////////////////////////////////////////////////////////////////////////////////
         if (newObject)

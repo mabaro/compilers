@@ -53,7 +53,6 @@ void Object::FreeObject(Object *obj)
         case Type::String:
         {
             ObjectString *strObj = obj->asString();
-            DEALLOCATE_N(char, strObj->chars, strObj->length);
             DEALLOCATE(ObjectString, strObj);
             break;
         }
@@ -91,20 +90,16 @@ ObjectString *ObjectString::CreateByMove(char *str, size_t length)
     ObjectString *newStringObj = Object::allocate<ObjectString>();
     newStringObj->chars        = str;
     newStringObj->length       = length;
-#if USING(DEBUG_BUILD)
-    newStringObj->as.string = newStringObj;
-#endif  // #if USING(DEBUG_BUILD)
     return newStringObj;
 }
 
 ObjectString *ObjectString::CreateByCopy(const char *str, size_t length)
 {
-    char *newString = ALLOCATE_N(char, length + 1);
-    ASSERT(newString);
-    memcpy(newString, str, length);
-    newString[length] = 0;
-
-    return CreateByMove(newString, length);
+    ObjectString *newStringObj = Object::allocate<ObjectString>(length);
+    newStringObj->chars        = ((char *)newStringObj) + sizeof(ObjectString);
+    newStringObj->length       = length;
+    memcpy(newStringObj->chars, str, length);
+    return newStringObj;
 }
 
 bool ObjectString::compare(const ObjectString &a, const ObjectString &b)
