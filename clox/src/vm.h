@@ -476,6 +476,7 @@ struct VirtualMachine
         char           outputMessage[512];
         snprintf(outputMessage, sizeof(outputMessage), "[%s:%d] Runtime error: %s\n", chunk->getSourcePath(), line,
                  message);
+        FAIL_MSG(outputMessage);
         stackReset();
         return makeResultError<result_t>(result_t::error_t::code_t::RuntimeError, outputMessage);
     }
