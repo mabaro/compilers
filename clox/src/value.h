@@ -84,6 +84,7 @@ struct ObjectString : public Object
     Result<void> serialize(std::ostream &o_stream) const;
     Result<void> deserialize(std::istream &i_stream);
 
+    static ObjectString *CreateEmpty();
     static ObjectString *CreateByMove(char *str, size_t length);
     static ObjectString *CreateByCopy(const char *str, size_t length);
 
@@ -102,8 +103,8 @@ struct Value
 
     enum class Type : uint8_t
     {
-        Bool,
         Null,
+        Bool,
         Number,
         Integer,
         Object,
