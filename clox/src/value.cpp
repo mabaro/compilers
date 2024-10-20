@@ -73,17 +73,17 @@ Result<void> ObjectString::serialize(std::ostream &o_stream) const
 {
     if ((this->length < ((1L << 6) - 1)))
     {
-        const uint8_t len = (length << 2) | 0x01;
+        const uint8_t len = static_cast<uint8_t>(length << 2) | 0x01;
         serde::Serialize(o_stream, len);
     }
     else if ((this->length < ((1L << 14) - 1)))
     {
-        const uint16_t len = (length << 2) | 0x02;
+        const uint16_t len = static_cast<uint16_t>(length << 2) | 0x02;
         serde::Serialize(o_stream, len);
     }
     else
     {
-        const uint32_t len = (length << 2) | 0x00;
+        const uint32_t len = static_cast<uint32_t>(length << 2) | 0x00;
         serde::Serialize(o_stream, len);
     }
 
