@@ -68,8 +68,9 @@ struct VirtualMachine
 
     result_t run()
     {
-#define READ_BYTE() (*_ip++)
-#define READ_CONSTANT() (_chunk->getConstants()[READ_BYTE()])
+#define READ_U8() (*_ip++)
+#define READ_U16() (_ip += 2, (uint16_t)((_ip[-2] << 8) | _ip[-1]))
+#define READ_CONSTANT() (_chunk->getConstants()[READ_U8()])
 #define READ_STRING() (READ_CONSTANT().as.object->asString()->chars)
 #define BINARY_OP(op)               \
     do                              \
@@ -97,7 +98,7 @@ struct VirtualMachine
         for (;;)
         {
 #endif  // #else // #if DEBUG_TRACE_EXECUTION
-            const OpCode instruction = OpCode(READ_BYTE());
+            const OpCode instruction = OpCode(READ_U8());
             switch (instruction)
             {
                 case OpCode::Return: return InterpretResult::Ok;
@@ -266,12 +267,29 @@ struct VirtualMachine
                     break;
                 }
                 case OpCode::Skip: break;
+
+                case OpCode::Jump:
+                {
+                    const uint16_t offset = READ_U16();
+                    _ip += offset;
+                    break;
+                }
+                case OpCode::JumpIfFalse:
+                {
+                    const uint16_t offset = READ_U16();
+                    if (peek(0).isFalsey())
+                    {
+                        _ip += offset;
+                    }
+                    break;
+                }
                 case OpCode::Undefined: FAIL(); break;
             }
         }
 
         return makeResult<result_t>(InterpretResult::Error);
-#undef READ_BYTE
+#undef READ_U8
+#undef READ_U16
 #undef READ_CONSTANT
 #undef READ_STRING
 #undef BINARY_OP

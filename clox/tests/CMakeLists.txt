@@ -15,46 +15,68 @@ add_test(NAME cmd_run_from_file COMMAND clox -run ${PROJECT_SOURCE_DIR}/tests/he
 
 # Compiler features
 add_test(NAME lang_print COMMAND clox -code "print \"hello world\";")
+set_tests_properties(lang_print PROPERTIES PASS_REGULAR_EXPRESSION "hello world")
 add_test(NAME lang_escape_text COMMAND clox -code "print 1+1; print \"\nthis is a \\\"escape\\\" 'test' \n\";")
 add_test(NAME lang_string_concat COMMAND clox -code "var a=\"hello\"; var b=\"world\"; print a + \" \" + b;")
+set_tests_properties(lang_string_concat PROPERTIES PASS_REGULAR_EXPRESSION "hello world")
 
 # > Using dynamic variables
-add_test(NAME lang_dyn_var_undeclared COMMAND clox -allow_dynamic_variables -code "a = 1;")
-add_test(NAME lang_dyn_var_assignment COMMAND clox -allow_dynamic_variables -code "a=1; b=a;")
-add_test(NAME lang_dyn_var_arithmetic COMMAND clox -allow_dynamic_variables -code "a=1; b=a;print(a+b);")
-add_test(NAME lang_fail_dyn_var_fail_undefined COMMAND clox -allow_dynamic_variables -code "var a; b=a;")
-add_test(NAME lang_fail_dyn_var_invalid_assign_target1 COMMAND clox -allow_dynamic_variables -code "a=2; a*2=1;")
-add_test(NAME lang_fail_dyn_var_invalid_assign_target2 COMMAND clox -allow_dynamic_variables -code "a=2; 2*a=1;")
-add_test(NAME lang_fail_dyn_var_invalid_assign_target3 COMMAND clox -allow_dynamic_variables -code "a=2;b=3; a*b=1;")
+add_test(NAME lang_var_dyn_var_undeclared COMMAND clox -allow_dynamic_variables -code "a = 1;")
+add_test(NAME lang_var_dyn_var_assignment COMMAND clox -allow_dynamic_variables -code "a=1; b=a;")
+add_test(NAME lang_var_dyn_var_arithmetic COMMAND clox -allow_dynamic_variables -code "a=1; b=a;print(a+b);")
+add_test(NAME lang_var_fail_dyn_var_fail_undefined COMMAND clox -allow_dynamic_variables -code "var a; b=a;")
+add_test(NAME lang_var_fail_dyn_var_invalid_assign_target1 COMMAND clox -allow_dynamic_variables -code "a=2; a*2=1;")
+add_test(NAME lang_var_fail_dyn_var_invalid_assign_target2 COMMAND clox -allow_dynamic_variables -code "a=2; 2*a=1;")
+add_test(NAME lang_var_fail_dyn_var_invalid_assign_target3 COMMAND clox -allow_dynamic_variables -code "a=2;b=3; a*b=1;")
 set_tests_properties(
-    lang_fail_dyn_var_fail_undefined
-    lang_fail_dyn_var_invalid_assign_target1
-    lang_fail_dyn_var_invalid_assign_target2
-    lang_fail_dyn_var_invalid_assign_target3
+    lang_var_fail_dyn_var_fail_undefined
+    lang_var_fail_dyn_var_invalid_assign_target1
+    lang_var_fail_dyn_var_invalid_assign_target2
+    lang_var_fail_dyn_var_invalid_assign_target3
     PROPERTIES WILL_FAIL TRUE)
 
 # < Using dynamic variables
 
 # > Not using dynamic variables
 add_test(NAME lang_var_declaration COMMAND clox -code "var a;")
-add_test(NAME lang_assignment COMMAND clox -code "var a=1; var b=2;var c=a+b; print(c);")
-add_test(NAME lang_arithmetic_and_strings COMMAND clox -code "var A=0;var B=1;var C=A+B;print(\"Sum of \"); print(A); print(\" + \"); print(B); print(\" = \"); print(C);")
-add_test(NAME lang_fail_var_undefined_read COMMAND clox -code "a; b=a;")
-add_test(NAME lang_fail_invalid_assign_target_simple1 COMMAND clox -code "1*2=1;")
-add_test(NAME lang_fail_invalid_assign_target_simple2 COMMAND clox -code "var a=1; a*2=1;")
-add_test(NAME lang_fail_invalid_assign_target_simple3 COMMAND clox -code "var a=1; 2*a=1;")
-add_test(NAME lang_fail_invalid_assign_target COMMAND clox -code "var a=2;var b=3; a*b=1;")
-add_test(NAME lang_fail_undeclared_var COMMAND clox -code "a = 1;")
-add_test(NAME lang_fail_undefined_var_read COMMAND clox -code "var a; b=a;")
+add_test(NAME lang_var_assignment COMMAND clox -code "var a=1; var b=2;var c=a+b; print(c);")
+set_tests_properties(lang_var_assignment PROPERTIES PASS_REGULAR_EXPRESSION "3")
+add_test(NAME lang_var_arithmetic_and_strings COMMAND clox -code "var A=1;var B=2;var C=A+B;print(\"Sum of \"); print(A); print(\" + \"); print(B); print(\" = \"); print(C);")
+set_tests_properties(lang_var_arithmetic_and_strings PROPERTIES PASS_REGULAR_EXPRESSION "= 3.00")
+add_test(NAME lang_var_fail_var_undefined_read COMMAND clox -code "a; b=a;")
+add_test(NAME lang_var_fail_invalid_assign_target_simple1 COMMAND clox -code "1*2=1;")
+add_test(NAME lang_var_fail_invalid_assign_target_simple2 COMMAND clox -code "var a=1; a*2=1;")
+add_test(NAME lang_var_fail_invalid_assign_target_simple3 COMMAND clox -code "var a=1; 2*a=1;")
+add_test(NAME lang_var_fail_invalid_assign_target COMMAND clox -code "var a=2;var b=3; a*b=1;")
+add_test(NAME lang_var_fail_undeclared_var COMMAND clox -code "a = 1;")
+add_test(NAME lang_var_fail_undefined_var_read COMMAND clox -code "var a; b=a;")
 set_tests_properties(
-    lang_fail_var_undefined_read
-    lang_fail_invalid_assign_target_simple1
-    lang_fail_invalid_assign_target_simple2
-    lang_fail_invalid_assign_target_simple3
-    lang_fail_invalid_assign_target
-    lang_fail_undeclared_var
-    lang_fail_undefined_var_read
+    lang_var_fail_var_undefined_read
+    lang_var_fail_invalid_assign_target_simple1
+    lang_var_fail_invalid_assign_target_simple2
+    lang_var_fail_invalid_assign_target_simple3
+    lang_var_fail_invalid_assign_target
+    lang_var_fail_undeclared_var
+    lang_var_fail_undefined_var_read
     PROPERTIES WILL_FAIL TRUE)
+
+# # arith
+add_test(NAME lang_arith_sum COMMAND clox -code "var a=1; var b=2; print a + b;")
+set_tests_properties(lang_arith_sum PROPERTIES PASS_REGULAR_EXPRESSION "3")
+add_test(NAME lang_arith_sub COMMAND clox -code "var a=1; var b=2; print a - b;")
+set_tests_properties(lang_arith_sub PROPERTIES PASS_REGULAR_EXPRESSION "-1")
+add_test(NAME lang_arith_mul COMMAND clox -code "var a=3; var b=5; print a * b;")
+set_tests_properties(lang_arith_mul PROPERTIES PASS_REGULAR_EXPRESSION "15")
+add_test(NAME lang_arith_div COMMAND clox -code "var a=3; var b=2; print a / b;")
+set_tests_properties(lang_arith_div PROPERTIES PASS_REGULAR_EXPRESSION "1.5")
+
+# # flow control
+add_test(NAME lang_flow_if1 COMMAND clox -code "if (true) print(\"true\"); else print(\"false\");")
+set_tests_properties(lang_flow_if1 PROPERTIES PASS_REGULAR_EXPRESSION "true")
+add_test(NAME lang_flow_if2 COMMAND clox -code "if (false) print(\"true\"); else print(\"false\");")
+set_tests_properties(lang_flow_if2 PROPERTIES PASS_REGULAR_EXPRESSION "false")
+add_test(NAME lang_flow_if3 COMMAND clox -code "var a=2; var b=1; if (a>b) print(\"bigger\"); else print(\"smaller\");")
+set_tests_properties(lang_flow_if3 PROPERTIES PASS_REGULAR_EXPRESSION "bigger")
 
 add_test(NAME lang_from_file_print COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test.clox)
 add_test(NAME lang_from_file_arith_and_print COMMAND clox ${PROJECT_SOURCE_DIR}/tests/test2.clox)

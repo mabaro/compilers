@@ -18,6 +18,14 @@ uint16_t constantInstruction(const char* name, const Chunk& chunk, uint16_t offs
 
     return offset + 2;
 }
+uint16_t jumpInstruction(const char* name, int sign, const Chunk& chunk, uint16_t offset)
+{
+    const uint8_t* code = chunk.getCode();
+    uint16_t       jump = (uint16_t)(code[offset + 1] << 8);
+    jump |= code[offset + 2];
+    printf("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
+    return offset + 3;
+}
 
 uint16_t disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesAvailable)
 {
@@ -57,6 +65,8 @@ uint16_t disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesA
         case OpCode::GlobalVarDef: return constantInstruction("OP_GLOBAL_VAR_DEFINE", chunk, offset);
         case OpCode::GlobalVarGet: return constantInstruction("OP_GLOBAL_VAR_GET", chunk, offset);
         case OpCode::GlobalVarSet: return constantInstruction("OP_GLOBAL_VAR_SET", chunk, offset);
+        case OpCode::Jump: return jumpInstruction("OP_JUMP", 1, chunk, offset);
+        case OpCode::JumpIfFalse: return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
         default: printf("Unknown opcode %d\n", (int)instruction); return offset + 1;
     }
 }

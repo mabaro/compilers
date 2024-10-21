@@ -30,6 +30,9 @@ MAKE_NAMED_ENUM_CLASS_WITH_TYPE(OpCode, uint8_t, Return, Constant,
 
                                 Skip,  // helper for semicolon
 
+                                // flow control
+                                Jump, JumpIfFalse,
+
                                 Undefined  // = 0x0FF
 );
 
@@ -50,8 +53,12 @@ struct Chunk
 
     const char* getSourcePath() const { return _sourcepath.c_str(); }
 
+    uint8_t*       getCodeMut() { return _code.data(); }
     const uint8_t* getCode() const { return _code.data(); }
-    size_t   getCodeSize() const { return _code.size(); }
+    uint16_t       getCodeSize() const
+    {
+        return _code.size();
+    }
 
     const uint16_t* getLines() const { return _lines.data(); }
     uint16_t  getLine(uint16_t index) const { return _lines[index]; }
