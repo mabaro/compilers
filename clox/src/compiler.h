@@ -555,7 +555,7 @@ struct Compiler
             parsePrecedence(Precedence::AND);
             patchJump(endJump);
          };
-        auto orFunc = [&](bool canAssign) { 
+        auto orFunc = [&](bool /*canAssign*/) { 
             const uint16_t endJump = emitJump(OpCode::JumpIfTrue);
             emitBytes(OpCode::Pop);
             parsePrecedence(Precedence::OR);
