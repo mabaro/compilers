@@ -430,7 +430,7 @@ DECL_OPERATOR(/)
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-static void print(const Object *obj)
+[[maybe_unused]] static void print(const Object *obj)
 {
     ASSERT(obj);
 

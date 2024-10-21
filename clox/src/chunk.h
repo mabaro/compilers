@@ -57,7 +57,7 @@ struct Chunk
     const uint8_t* getCode() const { return _code.data(); }
     uint16_t       getCodeSize() const
     {
-        return _code.size();
+        return static_cast<uint16_t>(_code.size());
     }
 
     const uint16_t* getLines() const { return _lines.data(); }
