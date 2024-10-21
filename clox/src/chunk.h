@@ -31,7 +31,7 @@ MAKE_NAMED_ENUM_CLASS_WITH_TYPE(OpCode, uint8_t, Return, Constant,
                                 Skip,  // helper for semicolon
 
                                 // flow control
-                                Jump, JumpIfFalse,
+                                Jump, JumpIfFalse, JumpIfTrue,
 
                                 Undefined  // = 0x0FF
 );

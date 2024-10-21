@@ -283,6 +283,15 @@ struct VirtualMachine
                     }
                     break;
                 }
+                case OpCode::JumpIfTrue:
+                {
+                    const uint16_t offset = READ_U16();
+                    if (!peek(0).isFalsey())
+                    {
+                        _ip += offset;
+                    }
+                    break;
+                }
                 case OpCode::Undefined: FAIL(); break;
             }
         }

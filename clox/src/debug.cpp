@@ -67,6 +67,7 @@ uint16_t disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesA
         case OpCode::GlobalVarSet: return constantInstruction("OP_GLOBAL_VAR_SET", chunk, offset);
         case OpCode::Jump: return jumpInstruction("OP_JUMP", 1, chunk, offset);
         case OpCode::JumpIfFalse: return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
+        case OpCode::JumpIfTrue: return jumpInstruction("OP_JUMP_IF_TRUE", 1, chunk, offset);
         default: printf("Unknown opcode %d\n", (int)instruction); return offset + 1;
     }
 }

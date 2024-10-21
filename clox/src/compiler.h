@@ -549,6 +549,18 @@ struct Compiler
         auto unaryFunc      = [&](bool /*canAssign*/) { unary(); };
         auto varFunc        = [&](bool /*canAssign*/) { variableDeclaration(); };
         auto identifierFunc = [&](bool canAssign) { variable(canAssign); };
+        auto andFunc = [&](bool /*canAssign*/) { 
+            const uint16_t endJump = emitJump(OpCode::JumpIfFalse);
+            emitBytes(OpCode::Pop);
+            parsePrecedence(Precedence::AND);
+            patchJump(endJump);
+         };
+        auto orFunc = [&](bool canAssign) { 
+            const uint16_t endJump = emitJump(OpCode::JumpIfTrue);
+            emitBytes(OpCode::Pop);
+            parsePrecedence(Precedence::OR);
+            patchJump(endJump);
+         };
 
         _parseRules[(size_t)TokenType::LeftParen]    = {groupingFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::RightParen]   = {NULL, NULL, Precedence::NONE};
@@ -573,8 +585,8 @@ struct Compiler
         _parseRules[(size_t)TokenType::String]       = {stringFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Number]       = {numberFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::NumberFloat]  = {numberFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::And]          = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Or]           = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::And]          = {NULL, andFunc, Precedence::AND};
+        _parseRules[(size_t)TokenType::Or]           = {NULL, orFunc, Precedence::OR};
         _parseRules[(size_t)TokenType::Class]        = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Super]        = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Null]         = {literalFunc, NULL, Precedence::NONE};
