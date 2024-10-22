@@ -47,6 +47,9 @@ if(MSVC)
     # remove double spaces
     string(REGEX REPLACE "[ ]+" " " CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT}")
 
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_RELEASE_INIT "/D NDEBUG")
+    ADD_IF_NOT_PRESSENT(CMAKE_CXX_FLAGS_DEBUG_INIT "/D DEBUG")
+
 # /wdNNNN # supress warning NNNN
 # /weNNNN # error instead of warning NNNN
 # /woNNNN # notify only once for warning NNNN
