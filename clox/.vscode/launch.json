@@ -9,21 +9,42 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/Debug/clox.exe",
+            "args": [
+                "-code",
+                "var a=1; var b=2; if (a>0 && b> 0) print(\"bigger\"); else print(\"lower\");"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            // "console": "externalTerminal",
+            "console": "integratedTerminal",
+        }
+        , {
+            "name": "(msvc) Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
             // "args": ["${workspaceFolder}/tests/test.clox"],
-            "args": [ "-run", "var a=1; print a;" ],
             // "args": ["-compile", "-output", "marcos.cloxbin", "-code", "print 1+1;" ],
             // "args": [ "-run", "marcos.cloxbin" ],
             "args": [ "-code", "var a=1; var b=2; if (a>0) print(\">\"); else print(\"<\");" ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/bin",
             "environment": [],
-            "console": "externalTerminal"
+            "console": "externalTerminal",
+        },
+        {
+            "name": "(ctest) Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${cmake.testProgram}",
+            "args": [ "${cmake.testArgs}"],
         },
         {
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/clox",
+            "program": "${command:cmake.launchTargetPath}",
             "args": [ "-code", "var a=1; var b=2; if (a>0) print(\\\">\\\"); else print(\\\"<\\\");" ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/bin",
@@ -43,5 +64,13 @@
                 }
             ]
         },
+        {
+            "name": "(ctest) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "cwd": "${cmake.testWorkingDirectory}",
+            "program": "${cmake.testProgram}",
+            "args": [ "${cmake.testArgs}"],
+        }
     ]
 }
