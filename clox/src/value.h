@@ -85,7 +85,7 @@ struct ObjectString : public Object
     Result<void> deserialize(std::istream &i_stream);
 
     static ObjectString *CreateEmpty();
-    static ObjectString *CreateByMove(char *str, size_t length);
+    static ObjectString* CreateConcat(const char *str1, size_t len1, const char *str2, size_t len2);
     static ObjectString *CreateByCopy(const char *str, size_t length);
 
     static bool compare(const ObjectString &a, const ObjectString &b);
@@ -135,7 +135,7 @@ struct Value
     static Value Create(bool value);
     static Value Create(int value);
     static Value Create(double value);
-    static Value CreateByMove(char *ownedStr, size_t length);
+    static Value CreateConcat(const char *str1, size_t len1, const char *str2, size_t len2);
     static Value CreateByCopy(const char *begin, size_t length);
 
     Value operator-() const;

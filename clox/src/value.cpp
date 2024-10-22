@@ -130,20 +130,25 @@ ObjectString *ObjectString::CreateEmpty()
     return newStringObj;
 }
 
-ObjectString *ObjectString::CreateByMove(char *str, size_t length)
+ObjectString *ObjectString::CreateConcat(const char *str1, size_t len1, const char *str2, size_t len2)
 {
-    ObjectString *newStringObj = Object::allocate<ObjectString>();
-    newStringObj->chars        = str;
-    newStringObj->length       = length;
+    const size_t newLength = len1 + len2;
+    ObjectString *newStringObj  = Object::allocate<ObjectString>(newLength + 1);
+    newStringObj->chars        = ((char *)newStringObj) + sizeof(ObjectString);
+    memcpy(newStringObj->chars, str1, len1);
+    memcpy(newStringObj->chars + len1, str2, len2);
+    newStringObj->length        = newLength;
+    newStringObj->chars[newLength] = '\0';
     return newStringObj;
 }
 
 ObjectString *ObjectString::CreateByCopy(const char *str, size_t length)
 {
-    ObjectString *newStringObj = Object::allocate<ObjectString>(length);
+    ObjectString *newStringObj = Object::allocate<ObjectString>(length + 1);
     newStringObj->chars        = ((char *)newStringObj) + sizeof(ObjectString);
     newStringObj->length       = length;
     memcpy(newStringObj->chars, str, length);
+    newStringObj->chars[length] = '\0';
     return newStringObj;
 }
 
@@ -267,11 +272,11 @@ Value Value::Create(double value)
         .type = Type::Number,
     };
 }
-Value Value::CreateByMove(char *str, size_t length)
+Value Value::CreateConcat(const char *str1, size_t len1, const char *str2, size_t len2)
 {
     return Value{
         .as{
-            .object = ObjectString::CreateByMove(str, length),
+            .object = ObjectString::CreateConcat(str1, len1, str2, len2),
         },
         .type = Type::Object,
     };
@@ -316,12 +321,7 @@ Result<Value> operator+(const Object &a, const Object &b)
             const ObjectString *bStr = b.asString();
             if (aStr && bStr)
             {
-                const size_t newLength = aStr->length + bStr->length;
-                char        *newStr    = (char *)malloc(newLength + 1);
-                memcpy(newStr, aStr->chars, aStr->length);
-                memcpy(newStr + aStr->length, bStr->chars, bStr->length);
-                newStr[newLength] = 0;
-                return Value::CreateByMove(newStr, newLength);
+                return Value::CreateConcat(aStr->chars, aStr->length, bStr->chars, bStr->length);
             }
         }
         break;
