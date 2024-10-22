@@ -31,8 +31,6 @@ struct VirtualMachine
     };
     using result_t = Result<InterpretResult, error_t>;
 
-    static const int kGlobalEnvironmentIndex = 0;
-
     ///////////////////////////////////////////////////////////////////////////////////
 
     VirtualMachine() {}
@@ -45,11 +43,10 @@ struct VirtualMachine
 
     result_t init()
     {
+        ASSERT(_environments.empty());
         _environments.push_back(std::make_unique<Environment>());
-        for (auto &env : _environments)
-        {
-            env->Init();
-        }
+        _currrentEnvironment = _environments.back().get();
+        _environments.back()->Init(nullptr);
 
         return makeResult<result_t>(InterpretResult::Ok);
     }
@@ -82,6 +79,7 @@ struct VirtualMachine
 
 #if DEBUG_TRACE_EXECUTION
         const bool linesAvailable = _chunk->getLineCount() > 0;
+        uint16_t   scopeCount     = 0;
         while (1)
         {
             if (_compiler.getConfiguration().disassemble)
@@ -92,7 +90,8 @@ struct VirtualMachine
                 printVariables();
                 printf("          ");
                 _chunk->printConstants();
-                disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable);
+                disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable,
+                                       &scopeCount);
             }
 #else   // #if DEBUG_TRACE_EXECUTION
         for (;;)
@@ -202,14 +201,14 @@ struct VirtualMachine
                 case OpCode::GlobalVarDef:
                 {
                     const char *varName = READ_STRING();
-                    Value      *value   = addVariable(varName, kGlobalEnvironmentIndex);
+                    Value      *value   = addVariable(varName);
                     *value              = stackPop();  // null or expression :)
                     break;
                 }
                 case OpCode::GlobalVarGet:
                 {
                     const char *varName = READ_STRING();
-                    Value      *value   = findVariable(varName, kGlobalEnvironmentIndex);
+                    Value      *value   = findVariable(varName);
                     if (value == nullptr)
                     {
                         return runtimeError("Trying to read undeclared variable '%s'.", varName);
@@ -224,12 +223,12 @@ struct VirtualMachine
                 case OpCode::GlobalVarSet:
                 {
                     const char *varName = READ_STRING();
-                    Value      *value   = findVariable(varName, kGlobalEnvironmentIndex);
+                    Value      *value   = findVariable(varName);
                     if (value == nullptr)
                     {
                         if (_compiler.getConfiguration().allowDynamicVariables)
                         {
-                            value = addVariable(varName, kGlobalEnvironmentIndex);
+                            value = addVariable(varName);
                         }
                         else
                         {
@@ -248,11 +247,11 @@ struct VirtualMachine
                     // ...
                     if (varValue == nullptr)
                     {
-                        varValue = findVariable(varName, kGlobalEnvironmentIndex);
+                        varValue = findVariable(varName);
                     }
                     if (varValue == nullptr)
                     {  // allow dynamic creation ?
-                        varValue = addVariable(varName, kGlobalEnvironmentIndex);
+                        varValue = addVariable(varName);
                         DEBUGPRINT_EX("Dynamic var(%s) created\n", varName);
                     }
                     if (varValue != nullptr)
@@ -290,6 +289,21 @@ struct VirtualMachine
                     {
                         _ip += offset;
                     }
+                    break;
+                }
+                case OpCode::ScopeBegin:
+                {
+                    Environment *curEnv = _environments.back().get();
+                    _environments.push_back(std::make_unique<Environment>());
+                    _environments.back()->Init(curEnv);
+                    _currrentEnvironment = _environments.back().get();
+                    break;
+                }
+                case OpCode::ScopeEnd:
+                {
+                    _currrentEnvironment = _environments.back()->_parentEnvironment;
+                    _environments.back()->Reset();
+                    _environments.pop_back();
                     break;
                 }
                 case OpCode::Undefined: FAIL(); break;
@@ -439,7 +453,7 @@ struct VirtualMachine
                     char *secondArg = strstr(line, " ");
                     if (secondArg != nullptr && secondArg[1] != '\n')
                     {
-                        const bool enable            = secondArg[1] == '1';
+                        const bool enable = secondArg[1] == '1';
                         util::SetDebugBreakEnabled(enable);
                         printf("[CMD] DebugBreak set to '%s'\n", enable ? "enabled" : "disabled");
                     }
@@ -542,7 +556,7 @@ struct VirtualMachine
 #if DEBUG_TRACE_EXECUTION
     void stackPrint() const
     {
-        printf(" Stack: ");
+        printf("Stack: ");
         for (const Value *slot = _stack; slot < _stackTop; ++slot)
         {
             printf("[");
@@ -554,7 +568,9 @@ struct VirtualMachine
 
     void printVariables() const
     {
-        _environments.front()->print();
+        printf("Variables: ");
+        ASSERT(_currrentEnvironment);
+        _currrentEnvironment->print();
     }
 #endif  // #if DEBUG_TRACE_EXECUTION
 
@@ -562,29 +578,30 @@ struct VirtualMachine
     const Chunk   *_chunk = nullptr;
     const uint8_t *_ip    = nullptr;
 
-    Value *addVariable(const char *name, uint32_t environmentIndex)
+    Value *addVariable(const char *name)
     {
-        ASSERT(environmentIndex < _environments.size());
+        ASSERT(_currrentEnvironment);
 #if USING(DEBUG_TRACE_EXECUTION)
         if (_compiler.getConfiguration().debugPrintVariables)
         {
-            _environments[environmentIndex]->print();
+            _currrentEnvironment->print();
         }
 #endif  // #if USING(DEBUG_TRACE_EXECUTION)
 
-        return _environments[environmentIndex]->addVariable(name);
+        return _currrentEnvironment->addVariable(name);
     }
-    bool removeVariable(const char *name, uint32_t environmentIndex)
+    bool removeVariable(const char *name)
     {
-        ASSERT(environmentIndex < _environments.size());
-        return _environments[environmentIndex]->removeVariable(name);
+        ASSERT(_currrentEnvironment);
+        return _currrentEnvironment->removeVariable(name);
     }
-    Value *findVariable(const char *name, uint32_t environmentIndex)
+    Value *findVariable(const char *name)
     {
-        ASSERT(environmentIndex < _environments.size());
-        return _environments[environmentIndex]->findVariable(name);
+        ASSERT(_currrentEnvironment);
+        return _currrentEnvironment->findVariable(name);
     }
     std::vector<std::unique_ptr<Environment>> _environments;
+    Environment                              *_currrentEnvironment = nullptr;
 
     Compiler _compiler;
 };

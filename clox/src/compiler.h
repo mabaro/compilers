@@ -92,10 +92,10 @@ struct Compiler
 #if USING(DEBUG_TRACE_EXECUTION)
         bool debugPrintConstants = false;  // print constants on every new one
         bool debugPrintVariables = false;  // print variables on every new one
-#endif // #if USING(DEBUG_TRACE_EXECUTION)
+#endif                                     // #if USING(DEBUG_TRACE_EXECUTION)
 #if USING(EXTENDED_ERROR_REPORT)
         bool extendedErrorReport = true;
-#endif // #if USING(EXTENDED_ERROR_REPORT)
+#endif  // #if USING(EXTENDED_ERROR_REPORT)
     };
 
    public:
@@ -122,7 +122,7 @@ struct Compiler
         _parser.panicMode = false;
 
         advance();
-        while (!getCurrentError().hasValue() && !match(TokenType::Eof))
+        while (!getCurrentError().hasValue() && !isAtEnd())
         {
             declaration();
         }
@@ -159,7 +159,8 @@ struct Compiler
                     *messagePtr++ = '\n';
                     *messagePtr++ = '\0';
                 }
-            } else
+            }
+            else
 #endif  // #if USING(EXTENDED_ERROR_REPORT)
             {
                 snprintf(message, sizeof(message), "%s:\t'%s'\n", errorInfo.error.message().c_str(), errorLinePtr);
@@ -195,6 +196,10 @@ struct Compiler
         {
             printStatement();
         }
+        else if (match(TokenType::LeftBrace))
+        {
+            blockStatement();
+        }
         else if (match(TokenType::If))
         {
             ifStatement();
@@ -210,6 +215,17 @@ struct Compiler
         consume(TokenType::Semicolon, "Expect ';' after value");
         CMP_DEBUGPRINT_PARSE(3);
         emitBytes(OpCode::Print);
+    }
+    void blockStatement()
+    {
+        emitBytes(OpCode::ScopeBegin);
+        while (!check(TokenType::RightBrace) && !isAtEnd())
+        {
+            declaration();
+        }
+        consume(TokenType::RightBrace, "Expect '}' after value");
+        CMP_DEBUGPRINT_PARSE(3);
+        emitBytes(OpCode::ScopeEnd);
     }
     void ifStatement()
     {
@@ -519,7 +535,7 @@ struct Compiler
         // discard remaining part of current block (i.e., statement)
         _parser.panicMode = false;
 
-        while (_parser.current.type != TokenType::Eof)
+        while (!isAtEnd())
         {
             if (_parser.previous.type == TokenType::Semicolon)
             {
@@ -557,18 +573,20 @@ struct Compiler
         auto unaryFunc      = [&](bool /*canAssign*/) { unary(); };
         auto varFunc        = [&](bool /*canAssign*/) { variableDeclaration(); };
         auto identifierFunc = [&](bool canAssign) { variable(canAssign); };
-        auto andFunc = [&](bool /*canAssign*/) { 
+        auto andFunc        = [&](bool /*canAssign*/)
+        {
             const uint16_t endJump = emitJump(OpCode::JumpIfFalse);
             emitBytes(OpCode::Pop);
             parsePrecedence(Precedence::AND);
             patchJump(endJump);
-         };
-        auto orFunc = [&](bool /*canAssign*/) { 
+        };
+        auto orFunc = [&](bool /*canAssign*/)
+        {
             const uint16_t endJump = emitJump(OpCode::JumpIfTrue);
             emitBytes(OpCode::Pop);
             parsePrecedence(Precedence::OR);
             patchJump(endJump);
-         };
+        };
 
         _parseRules[(size_t)TokenType::LeftParen]    = {groupingFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::RightParen]   = {NULL, NULL, Precedence::NONE};
@@ -617,6 +635,7 @@ struct Compiler
     const Optional<Parser::ErrorInfo> &getCurrentError() const { return _parser.optError; }
     const Token                       &getCurrentToken() const { return _parser.current; }
 
+    bool isAtEnd() { return getCurrentToken().type == TokenType::Eof; }
     bool check(TokenType type) const { return getCurrentToken().type == type; }
     bool match(TokenType type)
     {

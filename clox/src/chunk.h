@@ -33,6 +33,8 @@ MAKE_NAMED_ENUM_CLASS_WITH_TYPE(OpCode, uint8_t, Return, Constant,
                                 // flow control
                                 Jump, JumpIfFalse, JumpIfTrue,
 
+                                ScopeBegin, ScopeEnd,
+
                                 Undefined  // = 0x0FF
 );
 
@@ -96,7 +98,7 @@ struct Chunk
    public:  // helpers
     void printConstants() const
     {
-        printf(" Constants: ");
+        printf("Constants: ");
         for (size_t i = 0; i < getConstants().size(); ++i)
         {
             printf("%zu[", i);

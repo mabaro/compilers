@@ -5,14 +5,16 @@
 
 struct Environment
 {
-    bool Init()
+    bool Init(Environment *parentEnvironment)
     {
         ASSERT(_dict.empty());
+        _parentEnvironment = parentEnvironment;
         return true;
     }
     bool Reset()
     {
         _dict.clear();
+        _parentEnvironment = nullptr;
         return true;
     }
     Value *addVariable(const char *varName)
@@ -40,11 +42,15 @@ struct Environment
         {
             return &varIt->second;
         }
+        if (_parentEnvironment != nullptr)
+        {
+            return _parentEnvironment->findVariable(varName);
+        }
         return nullptr;
     }
     void print() const
     {
-        for (const auto& it : _dict)
+        for (const auto &it : _dict)
         {
             printf("%s=[", it.first.c_str());
             printValue(it.second);
@@ -52,5 +58,7 @@ struct Environment
         }
         printf("\n");
     }
+
     std::unordered_map<std::string, Value> _dict;
+    Environment                           *_parentEnvironment = nullptr;
 };

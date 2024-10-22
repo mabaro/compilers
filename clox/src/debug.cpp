@@ -26,23 +26,39 @@ uint16_t jumpInstruction(const char* name, int sign, const Chunk& chunk, uint16_
     printf("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
     return offset + 3;
 }
+uint16_t scopeInstruction(const char* name, const Chunk& /*chunk*/, uint16_t offset)
+{
+    printf("%s\n", name);
+    return offset + 1;
+}
 
-uint16_t disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesAvailable)
+uint16_t disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesAvailable, uint16_t* scopeCount)
 {
     ASSERT(offset < chunk.getCodeSize());
+    const OpCode instruction = OpCode(chunk.getCode()[offset]);
+
     printf("%04d ", offset);
+    if (instruction == OpCode::ScopeEnd)
+    {
+        --(*scopeCount);
+    }
+
+    for (int i = *scopeCount; i > 0; --i)
+    {
+        printf("#");
+    }
+
     if (linesAvailable)
     {
         if (offset > 0u && chunk.getLine(offset) == chunk.getLine(offset - 1))
         {
-            printf(" | ");
+            printf("| ");
         }
         else
         {
             printf("%u ", chunk.getLine(offset));
         }
     }
-    const OpCode instruction = OpCode(chunk.getCode()[offset]);
     switch (instruction)
     {
         case OpCode::Return: return simpleInstruction("OP_RETURN", offset);
@@ -68,6 +84,8 @@ uint16_t disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesA
         case OpCode::Jump: return jumpInstruction("OP_JUMP", 1, chunk, offset);
         case OpCode::JumpIfFalse: return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
         case OpCode::JumpIfTrue: return jumpInstruction("OP_JUMP_IF_TRUE", 1, chunk, offset);
+        case OpCode::ScopeBegin: ++(*scopeCount); return scopeInstruction("OP_SCOPE_BEGIN", chunk, offset);
+        case OpCode::ScopeEnd: return scopeInstruction("OP_SCOPE_END", chunk, offset);
         default: printf("Unknown opcode %d\n", (int)instruction); return offset + 1;
     }
 }
@@ -77,8 +95,10 @@ void disassemble(const Chunk& chunk, const char* name)
     printf("== %s ==\n", name);
 
     const bool linesAvailable = chunk.getLineCount() > 0;
+    uint16_t   scopeCount     = 0;
     for (size_t offset = 0; offset < chunk.getCodeSize();)
     {
-        offset = static_cast<size_t>(disassembleInstruction(chunk, static_cast<uint16_t>(offset), linesAvailable));
+        offset = static_cast<size_t>(
+            disassembleInstruction(chunk, static_cast<uint16_t>(offset), linesAvailable, &scopeCount));
     }
 }
