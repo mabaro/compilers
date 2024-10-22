@@ -187,6 +187,10 @@ struct Compiler
         {
             printStatement();
         }
+        else if (match(TokenType::If))
+        {
+            ifStatement();
+        }
         else
         {
             expressionStatement();
@@ -199,6 +203,28 @@ struct Compiler
         CMP_DEBUGPRINT_PARSE(3);
         emitBytes(OpCode::Print);
     }
+    void ifStatement()
+    {
+        consume(TokenType::LeftParen, "Expected '(' before expression.");
+        expression();
+        consume(TokenType::RightParen, "Expected ')' after expression.");
+
+        const uint16_t thenJump = emitJump(OpCode::JumpIfFalse);
+        emitBytes(OpCode::Pop);  // pop condition
+
+        statement();
+        const uint16_t elseJump = emitJump(OpCode::Jump);
+
+        patchJump(thenJump);
+        emitBytes(OpCode::Pop);  // pop condition
+
+        if (match(TokenType::Else))
+        {
+            statement();
+        }
+        patchJump(elseJump);
+    }
+
     void expressionStatement()
     {
         expression();
@@ -403,6 +429,27 @@ struct Compiler
 
     void emitReturn() { emitBytes((uint8_t)OperationType::Return); }
 
+    uint16_t emitJump(OpCode op)
+    {
+        emitBytes(op);
+        const uint16_t codeOffset = currentChunk()->getCodeSize();
+        // placeholder
+        emitBytes((uint8_t)0xff);
+        emitBytes((uint8_t)0xff);
+        return codeOffset;
+    }
+
+    void patchJump(uint16_t offset)
+    {
+        constexpr size_t jumpBytes = 2;
+        Chunk           *chunk     = currentChunk();
+        const uint16_t   jumpLen   = chunk->getCodeSize() - offset - jumpBytes;
+
+        uint8_t *code    = chunk->getCodeMut();
+        code[offset]     = static_cast<uint8_t>((jumpLen >> 8) & 0xff);
+        code[offset + 1] = static_cast<uint8_t>(jumpLen & 0xff);
+    }
+
     void emitBytes(uint8_t byte)
     {
         Chunk *chunk = currentChunk();
@@ -502,6 +549,18 @@ struct Compiler
         auto unaryFunc      = [&](bool /*canAssign*/) { unary(); };
         auto varFunc        = [&](bool /*canAssign*/) { variableDeclaration(); };
         auto identifierFunc = [&](bool canAssign) { variable(canAssign); };
+        auto andFunc = [&](bool /*canAssign*/) { 
+            const uint16_t endJump = emitJump(OpCode::JumpIfFalse);
+            emitBytes(OpCode::Pop);
+            parsePrecedence(Precedence::AND);
+            patchJump(endJump);
+         };
+        auto orFunc = [&](bool /*canAssign*/) { 
+            const uint16_t endJump = emitJump(OpCode::JumpIfTrue);
+            emitBytes(OpCode::Pop);
+            parsePrecedence(Precedence::OR);
+            patchJump(endJump);
+         };
 
         _parseRules[(size_t)TokenType::LeftParen]    = {groupingFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::RightParen]   = {NULL, NULL, Precedence::NONE};
@@ -526,8 +585,8 @@ struct Compiler
         _parseRules[(size_t)TokenType::String]       = {stringFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Number]       = {numberFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::NumberFloat]  = {numberFunc, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::And]          = {NULL, NULL, Precedence::NONE};
-        _parseRules[(size_t)TokenType::Or]           = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::And]          = {NULL, andFunc, Precedence::AND};
+        _parseRules[(size_t)TokenType::Or]           = {NULL, orFunc, Precedence::OR};
         _parseRules[(size_t)TokenType::Class]        = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Super]        = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Null]         = {literalFunc, NULL, Precedence::NONE};
@@ -553,12 +612,12 @@ struct Compiler
     bool check(TokenType type) const { return getCurrentToken().type == type; }
     bool match(TokenType type)
     {
-        if (!check(type))
+        if (check(type))
         {
-            return false;
+            advance();
+            return true;
         }
-        advance();
-        return true;
+        return false;
     }
     void consume(TokenType type, const char *message)
     {

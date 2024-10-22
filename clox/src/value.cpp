@@ -34,12 +34,9 @@ Result<Object *> Object::deserialize(std::istream &i_stream)
     {
         case Type::String:
         {
-            serde::size_t len;
-            serde::Deserialize(i_stream, len);
-            char *newString = ALLOCATE_N(char, len + 1);
-            serde::DeserializeN(i_stream, newString, len);
-            newString[len] = '\0';
-            return ObjectString::CreateByMove(newString, len);
+            ObjectString *newString = ObjectString::CreateEmpty();
+            newString->deserialize(i_stream);
+            return newString;
         }
         default: FAIL();
     }
@@ -53,7 +50,6 @@ void Object::FreeObject(Object *obj)
         case Type::String:
         {
             ObjectString *strObj = obj->asString();
-            DEALLOCATE_N(char, strObj->chars, strObj->length);
             DEALLOCATE(ObjectString, strObj);
             break;
         }
@@ -62,12 +58,12 @@ void Object::FreeObject(Object *obj)
 }
 void Object::FreeObjects()
 {
-    Object *ptr = s_allocatedList;
-    while (ptr)
+    Object *object = s_allocatedList;
+    while (object)
     {
-        Object *next = ptr->_allocatedNext;
-        DEALLOCATE(Object, ptr);
-        ptr = next;
+        Object *next = object->_allocatedNext;
+        FreeObject(object);
+        object = next;
     }
 }
 
@@ -75,15 +71,63 @@ void Object::FreeObjects()
 
 Result<void> ObjectString::serialize(std::ostream &o_stream) const
 {
-    serde::SerializeAs<serde::size_t>(o_stream, this->length);
+    if ((this->length < ((1L << 6) - 1)))
+    {
+        const uint8_t len = static_cast<uint8_t>(length << 2) | 0x01;
+        serde::Serialize(o_stream, len);
+    }
+    else if ((this->length < ((1L << 14) - 1)))
+    {
+        const uint16_t len = static_cast<uint16_t>(length << 2) | 0x02;
+        serde::Serialize(o_stream, len);
+    }
+    else
+    {
+        const uint32_t len = static_cast<uint32_t>(length << 2) | 0x00;
+        serde::Serialize(o_stream, len);
+    }
+
     serde::SerializeN(o_stream, this->chars, this->length);
     return Result<void>();
 }
 Result<void> ObjectString::deserialize(std::istream &i_stream)
 {
-    serde::DeserializeAs<serde::size_t>(i_stream, this->length);
+    this->length = 0;
+
+    uint8_t byte;
+    serde::Deserialize(i_stream, byte);
+    this->length = byte;
+
+    if ((byte & 0x03) == 2)
+    {
+        this->length = byte;
+        serde::Deserialize(i_stream, byte);
+        this->length = (byte << 8) | this->length;
+    }
+    else if ((byte & 0x03) == 0)
+    {
+        this->length = byte;
+        serde::Deserialize(i_stream, byte);
+        this->length = (byte << 8) | this->length;
+        serde::Deserialize(i_stream, byte);
+        this->length = (byte << 16) | this->length;
+        serde::Deserialize(i_stream, byte);
+        this->length = (byte << 24) | this->length;
+    }
+    this->length >>= 2;
+
+    this->chars = ALLOCATE_N(char, this->length + 1);
     serde::DeserializeN(i_stream, this->chars, this->length);
+    this->chars[this->length] = '\0';
     return Result<void>();
+}
+
+ObjectString *ObjectString::CreateEmpty()
+{
+    ObjectString *newStringObj = Object::allocate<ObjectString>();
+    newStringObj->chars        = nullptr;
+    newStringObj->length       = 0;
+    return newStringObj;
 }
 
 ObjectString *ObjectString::CreateByMove(char *str, size_t length)
@@ -91,20 +135,16 @@ ObjectString *ObjectString::CreateByMove(char *str, size_t length)
     ObjectString *newStringObj = Object::allocate<ObjectString>();
     newStringObj->chars        = str;
     newStringObj->length       = length;
-#if USING(DEBUG_BUILD)
-    newStringObj->as.string = newStringObj;
-#endif  // #if USING(DEBUG_BUILD)
     return newStringObj;
 }
 
 ObjectString *ObjectString::CreateByCopy(const char *str, size_t length)
 {
-    char *newString = ALLOCATE_N(char, length + 1);
-    ASSERT(newString);
-    memcpy(newString, str, length);
-    newString[length] = 0;
-
-    return CreateByMove(newString, length);
+    ObjectString *newStringObj = Object::allocate<ObjectString>(length);
+    newStringObj->chars        = ((char *)newStringObj) + sizeof(ObjectString);
+    newStringObj->length       = length;
+    memcpy(newStringObj->chars, str, length);
+    return newStringObj;
 }
 
 bool ObjectString::compare(const ObjectString &a, const ObjectString &b)
@@ -120,12 +160,12 @@ Result<void> Value::serialize(std::ostream &o_stream) const
     serde::Serialize(o_stream, type);
     switch (type)
     {
+        case Type::Null: break;
         case Type::Bool: serde::Serialize(o_stream, as.boolean); break;
-        case Type::Null:
-        case Type::Undefined: break;
         case Type::Number: serde::Serialize(o_stream, as.number); break;
         case Type::Integer: serde::Serialize(o_stream, as.integer); break;
         case Type::Object: return as.object->serialize(o_stream); break;
+        case Type::Undefined: break;
         default: FAIL_MSG("Unsupported type: %d\n", type);
     }
     return Result<void>();
@@ -390,7 +430,7 @@ DECL_OPERATOR(/)
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-static void print(const Object *obj)
+[[maybe_unused]] static void print(const Object *obj)
 {
     ASSERT(obj);
 

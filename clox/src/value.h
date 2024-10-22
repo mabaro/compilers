@@ -3,6 +3,7 @@
 #include "utils/common.h"
 
 #define ALLOCATE(Type) (Type *)malloc(sizeof(Type))
+#define ALLOCATE_FLEX(Type, ExtraSize) (Type *)malloc(sizeof(Type) + ExtraSize)
 #define ALLOCATE_N(Type, count) (Type *)malloc(sizeof(Type) * count)
 #define DEALLOCATE(Type, pointer) free(pointer)
 #define DEALLOCATE_N(Type, pointer, N) free(pointer)
@@ -14,6 +15,7 @@ struct Object
 #if USING(DEBUG_BUILD)
     union
     {
+        Object* obj;
         ObjectString *string;
     } as;
 #endif  // #if USING(DEBUG_BUILD)
@@ -30,15 +32,18 @@ struct Object
     static Result<Object *> deserialize(std::istream &i_stream);
 
     template <typename ObjectT>
-    static ObjectT *allocate()
+    static ObjectT *allocate(size_t flexibleSize = 0)
     {
         static_assert(std::is_same_v<ObjectT, ObjectString>, "ObjectT not supported");
 
         ObjectT *newObject = nullptr;
         if (std::is_same_v<ObjectString, ObjectT>)
         {
-            newObject       = ALLOCATE(ObjectT);
+            newObject       = ALLOCATE_FLEX(ObjectT, flexibleSize);
             newObject->type = ObjectT::Type::String;
+#if USING(DEBUG_BUILD)
+            newObject->as.obj = newObject;
+#endif  // #if USING(DEBUG_BUILD)
         }
         ////////////////////////////////////////////////////////////////////////////////
         if (newObject)
@@ -79,6 +84,7 @@ struct ObjectString : public Object
     Result<void> serialize(std::ostream &o_stream) const;
     Result<void> deserialize(std::istream &i_stream);
 
+    static ObjectString *CreateEmpty();
     static ObjectString *CreateByMove(char *str, size_t length);
     static ObjectString *CreateByCopy(const char *str, size_t length);
 
@@ -97,8 +103,8 @@ struct Value
 
     enum class Type : uint8_t
     {
-        Bool,
         Null,
+        Bool,
         Number,
         Integer,
         Object,

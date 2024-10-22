@@ -49,6 +49,7 @@ template <typename T, typename COUNT_T = uint32_t>
 void DeserializeN(std::istream& istr, T* o_value, COUNT_T count)
 {
     istr.read((char*)o_value, static_cast<std::streamsize>(count * sizeof(T)));
+    ASSERT(istr.gcount() == count);
 }
 
 }  // namespace serde

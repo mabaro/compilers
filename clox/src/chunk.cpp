@@ -4,6 +4,7 @@
 
 #include "utils/serde.h"
 
+
 struct Version
 {
     uint8_t major;
@@ -44,13 +45,14 @@ Result<void> Chunk::serialize(std::ostream& o_stream) const
 }
 Result<void> Chunk::deserialize(std::istream& i_stream)
 {
-    using len_t          = serde::size_t;
-    len_t        len     = 0;
-    char         tempStr[32];
+    using len_t = serde::size_t;
+    len_t len   = 0;
+    char  tempStr[32];
 
     serde::DeserializeN(i_stream, &tempStr[0], strlen(MAGIC_ID));
     if (0 != strncmp(MAGIC_ID, tempStr, strlen(MAGIC_ID)))
     {
+        FAIL();
         return Result<void>::error_t(format("Invalid MagicID: %s != %s\n", tempStr, MAGIC_ID));
     }
 
@@ -58,12 +60,14 @@ Result<void> Chunk::deserialize(std::istream& i_stream)
     serde::Deserialize(i_stream, version);
     if (VERSION != version)
     {
+        FAIL();
         return Result<void>::error_t(format("Invalid version %d.%d != %d.%d expected\n", version, VERSION));
     }
 
     serde::DeserializeN(i_stream, tempStr, strlen(DATA_SEG));
     if (0 != strncmp(DATA_SEG, tempStr, strlen(DATA_SEG)))
     {
+        FAIL();
         return Result<void>::error_t(format("DATA segment not present\n"));
     }
 
@@ -77,6 +81,7 @@ Result<void> Chunk::deserialize(std::istream& i_stream)
     serde::DeserializeN(i_stream, tempStr, strlen(CODE_SEG));
     if (0 != strncmp(CODE_SEG, tempStr, strlen(CODE_SEG)))
     {
+        FAIL();
         return Result<void>::error_t(format("CODE segment not present\n"));
     }
     serde::DeserializeAs<serde::code_len_t>(i_stream, len);

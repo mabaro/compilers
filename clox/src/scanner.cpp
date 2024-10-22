@@ -74,6 +74,12 @@ Scanner::TokenResult_t Scanner::scanToken()
                 return makeToken(TokenType::And);
             }
             break;
+        case '|':
+            if (match('|'))
+            {
+                return makeToken(TokenType::Or);
+            }
+            break;
         case '\"': return string();
         case ';': return makeToken(TokenType::Semicolon);
         default:

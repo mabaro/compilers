@@ -88,7 +88,7 @@ void Log(LogLevel level, const char* fmt, Args... args)
 }
 }  // namespace Logger
 
-static std::string buildMessage(const char* fmt, ...)
+[[maybe_unused]] static std::string buildMessage(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -114,7 +114,7 @@ static std::string buildMessage(const char* fmt, ...)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-static std::string format(const char* format, ...)
+[[maybe_unused]] static std::string format(const char* format, ...)
 {
     char    message[256];
     va_list args;
@@ -133,6 +133,8 @@ struct ScopedCallback
     ~ScopedCallback() { callbackFunc(); }
     callback_t callbackFunc = nullptr;
 };
+
+#define on_scope_exit(X) ScopedCallback scope_callback ##__LINE__([&](){ X })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
