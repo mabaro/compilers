@@ -44,7 +44,7 @@ operator   -> "==" | "!+" | "<" | "<=" | ">" | ">="
 
     <details open>
       <summary>Some relevant links on Portable Executables and code injection </summary>
-     
+      * https://gourish-singla.medium.com/pe-code-injection-in-windows-program-exe-ce65f70bf10a
       * https://github.com/evilsocket/libpe/blob/master/peview/peview.cpp
       * https://whereisr0da.github.io/blog/posts/2020-10-21-inject-code
       * https://alexm.ro/en/blog/build-the-smallest-portable-executable-with-assembly
