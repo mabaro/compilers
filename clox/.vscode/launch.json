@@ -10,8 +10,8 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/Debug/clox.exe",
             "args": [
-                "-code",
-                "var a=1; var b=2; if (a>0 && b> 0) print(\"bigger\"); else print(\"lower\");"
+                "-disassemble",
+                "${workspaceFolder}/tests/scope.clox",
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

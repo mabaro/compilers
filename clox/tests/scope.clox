@@ -1,18 +1,23 @@
 var a=1; 
-print "scope0"; print "a="; print a;
+print "scope0 "; print "a="; print a;
 { 
     var b=2; 
-    print "scope1"; print "b="; print b;
-    print "scope1"; print "a="; print a;
+    print "\nscope1 "; print "b="; print b;
+    print "\nscope1 "; print "a="; print a;
     a = a + b; 
-    print "scope1"; print "a=a+b"; print a;
+    print "\nscope1 "; print "a=a+b="; print a;
     {
         var c=3; 
-        print "scope2"; print "c="; print c;
-        print "scope2"; print "b="; print b;
-        print "scope2"; print "a="; print a;
-        print "scope2"; print "b=a+c"; print b;
+        print "\nscope2 "; print "c="; print c;
+        print "\nscope2 "; print "b="; print b;
+        print "\nscope2 "; print "a="; print a;
+        b=a+c;
+        print "\nscope2 "; print "b=a+c="; print b;
     }
-    print "scope1"; print "b="; print b;
+    print "\nscope1 "; print "b="; print b;
+    a=b;
+    print "\nscope1 "; print "a=b"; print a;
 } 
-print "scope0"; print "a="; print a;
+print "\nscope0 "; print "a="; print a;
+print "\n";
+print a==6;
