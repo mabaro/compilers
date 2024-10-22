@@ -92,7 +92,10 @@ struct Compiler
 #if USING(DEBUG_TRACE_EXECUTION)
         bool debugPrintConstants = false;  // print constants on every new one
         bool debugPrintVariables = false;  // print variables on every new one
-#endif                                     // #if USING(DEBUG_TRACE_EXECUTION)
+#endif // #if USING(DEBUG_TRACE_EXECUTION)
+#if USING(EXTENDED_ERROR_REPORT)
+        bool extendedErrorReport = true;
+#endif // #if USING(EXTENDED_ERROR_REPORT)
     };
 
    public:
@@ -131,32 +134,37 @@ struct Compiler
             const char              *errorLinePtr = errorInfo.linePtr;
             char                     message[2048];
 #if USING(EXTENDED_ERROR_REPORT)
-            const char *lineEnd = strchr(errorLinePtr, '\n');
-            if (lineEnd == nullptr)
+            if (_configuration.extendedErrorReport)
             {
-                lineEnd = strchr(errorLinePtr, '\0');
-            }
-            if (lineEnd != nullptr)
-            {
-                const char *innerErrorMsg = errorInfo.error.message().c_str();
-                const int   lineLen       = static_cast<int>(lineEnd - errorLinePtr);
-                snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, errorLinePtr);
-                char *messagePtr = message + strlen(message);
+                const char *lineEnd = strchr(errorLinePtr, '\n');
+                if (lineEnd == nullptr)
+                {
+                    lineEnd = strchr(errorLinePtr, '\0');
+                }
+                if (lineEnd != nullptr)
+                {
+                    const char *innerErrorMsg = errorInfo.error.message().c_str();
+                    const int   lineLen       = static_cast<int>(lineEnd - errorLinePtr);
+                    snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, errorLinePtr);
+                    char *messagePtr = message + strlen(message);
 
-                const Token *errorToken = errorInfo.token.type != TokenType::COUNT ? &errorInfo.token : nullptr;
-                const size_t lenToToken = errorToken ? errorToken->start - errorLinePtr : strlen(errorLinePtr);
-                *messagePtr++           = '\n';
-                *messagePtr++           = '\t';
-                *messagePtr++           = ' ';  // extra <'>
-                memset(messagePtr, ' ', lenToToken);
-                messagePtr += lenToToken;
-                *messagePtr++ = '^';
-                *messagePtr++ = '\n';
-                *messagePtr++ = '\0';
+                    const Token *errorToken = errorInfo.token.type != TokenType::COUNT ? &errorInfo.token : nullptr;
+                    const size_t lenToToken = errorToken ? errorToken->start - errorLinePtr : strlen(errorLinePtr);
+                    *messagePtr++           = '\n';
+                    *messagePtr++           = '\t';
+                    *messagePtr++           = ' ';  // extra <'>
+                    memset(messagePtr, ' ', lenToToken);
+                    messagePtr += lenToToken;
+                    *messagePtr++ = '^';
+                    *messagePtr++ = '\n';
+                    *messagePtr++ = '\0';
+                }
+            } else
+#endif  // #if USING(EXTENDED_ERROR_REPORT)
+            {
+                snprintf(message, sizeof(message), "%s:\t'%s'\n", errorInfo.error.message().c_str(), errorLinePtr);
             }
-#else   // #if USING(EXTENDED_ERROR_REPORT)
-            snprintf(message, sizeof(message), "%s\n\t%s'\n", errorInfo.error.message().c_str(), errorLinePtr);
-#endif  // #else // #if USING(EXTENDED_ERROR_REPORT)
+
             return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
         }
 
@@ -488,15 +496,15 @@ struct Compiler
         char message[1024];
         if (token.type == TokenType::Eof)
         {
-            snprintf(message, sizeof(message), " at end");
+            snprintf(message, sizeof(message), "at end");
         }
         else if (token.type == TokenType::Error)
         {
-            snprintf(message, sizeof(message), " Error token!!!");
+            snprintf(message, sizeof(message), "token found!!!");
         }
         else
         {
-            snprintf(message, sizeof(message), " at '%.*s'", token.length, token.start);
+            snprintf(message, sizeof(message), "at '%.*s'", token.length, token.start);
         }
 
         _parser.optError = Parser::ErrorInfo{

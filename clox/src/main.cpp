@@ -123,9 +123,12 @@ int main(int argc, const char* argv[])
             enum class Type
             {
                 help,
-                code,
-                default_const_variables,
                 allow_dynamic_variables,
+                default_const_variables,
+#if USING(EXTENDED_ERROR_REPORT)
+                extended_errors,
+#endif // #if USING(EXTENDED_ERROR_REPORT)
+                code,
                 disassemble,
                 repl,
                 compile,
@@ -143,6 +146,9 @@ int main(int argc, const char* argv[])
                       "Allows dynamic creation of variables on use (i.e., variable declaration not required)"),
             ADD_PARAM(default_const_variables,
                       "Variables are const by default, requiring <mut> modifier to be writable"),
+#if USING(EXTENDED_ERROR_REPORT)
+            ADD_PARAM_WITH_PARAMS(extended_errors, "Show extended error reporting", "<0 / 1>"),
+#endif // #if USING(EXTENDED_ERROR_REPORT)
             ADD_PARAM(disassemble, "Show disassembled code"),
             ADD_PARAM(repl, "Enters interactive mode(i.e. REPL)"),
             ADD_PARAM(compile, "Compiles into bytecode and outputs the result to console or the output_file defined"),
@@ -241,6 +247,14 @@ int main(int argc, const char* argv[])
                             case Param::Type::default_const_variables:
                                 compilerConfiguration.defaultConstVariables = true;
                                 break;
+#if USING(EXTENDED_ERROR_REPORT)
+                            case Param::Type::extended_errors:
+                                if (!isArgFunc(*(argvPtr + 1)))
+                                {
+                                    compilerConfiguration.extendedErrorReport = **(++argvPtr) == '1';
+                                }
+                                break;
+#endif // #if USING(EXTENDED_ERROR_REPORT)
                             case Param::Type::repl: config.mode = ExecutionMode::REPL; break;
                             case Param::Type::help: config.hasToShowHelp = true; break;
                             case Param::Type::compile: config.mode = ExecutionMode::Compile; break;
