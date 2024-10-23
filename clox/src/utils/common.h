@@ -33,7 +33,10 @@ void SetLevel(int level);
 // Portability hacks
 
 #ifdef __unix
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-value"
 #define fopen_s(pFile, filename, mode) ((*pFile = fopen(filename, mode)) == NULL)
+#pragma GCC diagnostic pop
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
