@@ -1,0 +1,10 @@
+# Command line tests
+add_test(NAME cmd_help COMMAND clox -help)
+set_tests_properties(cmd_help PROPERTIES PASS_REGULAR_EXPRESSION "Usage:")
+add_test(NAME cmd_fail_no_args COMMAND clox)
+set_tests_properties(cmd_fail_no_args PROPERTIES WILL_FAIL TRUE)
+add_test(NAME cmd_interpret_from_code COMMAND clox -code "print \"hello world\";")
+add_test(NAME cmd_interpret_from_file COMMAND clox ${CMAKE_CURRENT_SOURCE_DIR}/test.clox)
+add_test(NAME cmd_compile_from_code COMMAND clox -compile -code "print \"hello world\";")
+add_test(NAME cmd_compile_from_file COMMAND clox -compile -code "print \"hello world\";" -output ${CMAKE_CURRENT_SOURCE_DIR}/helloworld.cloxbin)
+add_test(NAME cmd_run_from_file COMMAND clox -run ${CMAKE_CURRENT_SOURCE_DIR}/helloworld.cloxbin)

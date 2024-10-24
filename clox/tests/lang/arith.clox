@@ -1,0 +1,15 @@
+var a=1;
+var b=2;
+var c=3;
+var result = true;
+
+result = result && (a == 1);
+result = result && (b == 2);
+result = result && (c == 3);
+result = result && (a + b == c);
+result = result && (c - b == a);
+result = result && (6 == a + b + c);
+result = result && (b * c == a + b + c);
+result = result && (6 / b == c);
+
+print result;
