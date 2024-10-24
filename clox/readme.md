@@ -3,9 +3,12 @@
 <summary>
 The book "Crafting interpreters" by R. Nystrom shows a very deep and complete travel through a compiler's pipeline.
 </summary>
+
+Highlighted book entries:
+- [Pratt parser entry](https://craftinginterpreters.com/compiling-expressions.html#a-pratt-parser)
+
+[GitHub project](https://github.com/munificent/craftinginterpreters)
   
-### Some key points I found particularly interesting to keep:
-* [Pratt parser](https://craftinginterpreters.com/compiling-expressions.html#a-pratt-parser)
 </details>
 
 # The book
