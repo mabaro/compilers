@@ -57,7 +57,7 @@ codepos_t disassembleInstruction(const Chunk& chunk, codepos_t offset, bool line
         }
         else
         {
-            printf("%u ", chunk.getLine(offset));
+            printf("%zu ", chunk.getLine(offset));
         }
     }
     switch (instruction)
