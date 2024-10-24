@@ -15,11 +15,5 @@ Compiler::result_t Compiler::compileFromFile(const char *path, Optional<Compiler
     }
     char *buffer = source.value().get();
 
-    result_t result = compile(buffer, path, optConfiguration);
-    if (!result.isOk())
-    {
-        LOG_ERROR("%s", result.error().message().c_str());
-    }
-
-    return std::move(result.extract());
+    return compile(buffer, path, optConfiguration);
 }

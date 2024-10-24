@@ -23,8 +23,6 @@
 #include <unordered_map>
 #include <vector>
 
-using Number = double;
-
 enum class OperationType : uint8_t
 {
     Return,
@@ -49,6 +47,7 @@ struct Parser
     };
     Optional<ErrorInfo> optError;
     bool                panicMode = false;
+    bool                hadError  = false;
 };
 
 enum class Precedence
@@ -120,56 +119,27 @@ struct Compiler
 
         _parser.optError.reset();
         _parser.panicMode = false;
+        _parser.hadError  = false;
 
         advance();
-        while (!getCurrentError().hasValue() && !isAtEnd())
+        while (!isAtEnd())
         {
             declaration();
         }
 
         consume(TokenType::Eof, "Expected end of expression");
-        if (getCurrentError().hasValue())
-        {
-            const Parser::ErrorInfo &errorInfo    = getCurrentError().value();
-            const char              *errorLinePtr = errorInfo.linePtr;
-            char                     message[2048];
-#if USING(EXTENDED_ERROR_REPORT)
-            if (_configuration.extendedErrorReport)
-            {
-                const char *lineEnd = strchr(errorLinePtr, '\n');
-                if (lineEnd == nullptr)
-                {
-                    lineEnd = strchr(errorLinePtr, '\0');
-                }
-                if (lineEnd != nullptr)
-                {
-                    const char *innerErrorMsg = errorInfo.error.message().c_str();
-                    const int   lineLen       = static_cast<int>(lineEnd - errorLinePtr);
-                    snprintf(message, sizeof(message), "%s\n\t'%.*s'", innerErrorMsg, lineLen, errorLinePtr);
-                    char *messagePtr = message + strlen(message);
-
-                    const Token *errorToken = errorInfo.token.type != TokenType::COUNT ? &errorInfo.token : nullptr;
-                    const size_t lenToToken = errorToken ? errorToken->start - errorLinePtr : strlen(errorLinePtr);
-                    *messagePtr++           = '\n';
-                    *messagePtr++           = '\t';
-                    *messagePtr++           = ' ';  // extra <'>
-                    memset(messagePtr, ' ', lenToToken);
-                    messagePtr += lenToToken;
-                    *messagePtr++ = '^';
-                    *messagePtr++ = '\n';
-                    *messagePtr++ = '\0';
-                }
-            }
-            else
-#endif  // #if USING(EXTENDED_ERROR_REPORT)
-            {
-                snprintf(message, sizeof(message), "%s:\t'%s'\n", errorInfo.error.message().c_str(), errorLinePtr);
-            }
-
-            return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
-        }
 
         finishCompilation();
+
+        if (_parser.hadError)
+        {
+            if (getCurrentError().hasValue())
+            {
+                const Parser::ErrorInfo errorInfo    = _parser.optError.extract();
+                return makeResultError<result_t>(result_t::error_t::code_t::Undefined, errorInfo.error.message());
+            }
+            return makeResultError<result_t>(result_t::error_t::code_t::Undefined, "Compilation failed.");
+        }
         return extractChunk();
     }
 
@@ -204,6 +174,14 @@ struct Compiler
         {
             ifStatement();
         }
+        else if (match(TokenType::While))
+        {
+            whileStatement();
+        }
+        else if (match(TokenType::Do))
+        {
+            dowhileStatement();
+        }
         else
         {
             expressionStatement();
@@ -233,11 +211,11 @@ struct Compiler
         expression();
         consume(TokenType::RightParen, "Expected ')' after expression.");
 
-        const uint16_t thenJump = emitJump(OpCode::JumpIfFalse);
+        const codepos_t thenJump = emitJump(OpCode::JumpIfFalse);
         emitBytes(OpCode::Pop);  // pop condition
 
         statement();
-        const uint16_t elseJump = emitJump(OpCode::Jump);
+        const codepos_t elseJump = emitJump(OpCode::Jump);
 
         patchJump(thenJump);
         emitBytes(OpCode::Pop);  // pop condition
@@ -247,6 +225,43 @@ struct Compiler
             statement();
         }
         patchJump(elseJump);
+    }
+    void whileStatement()
+    {
+        const codepos_t loopStart = _compilingChunk->getCodeSize();
+
+        consume(TokenType::LeftParen, "Expected '(' after 'while'.");
+        expression();
+        consume(TokenType::RightParen, "Expected ')' after condition.");
+
+        const codepos_t exitJump = emitJump(OpCode::JumpIfFalse);
+        emitBytes(OpCode::Pop);  // pop condition
+
+        statement();
+        emitJump(OpCode::Jump, loopStart);
+
+        patchJump(exitJump);
+        emitBytes(OpCode::Pop);  // pop condition
+    }
+    void dowhileStatement()
+    {
+        const codepos_t doJump = emitJump(OpCode::Jump);
+
+        const codepos_t loopStart = _compilingChunk->getCodeSize();
+        emitBytes(OpCode::Pop);  // pop condition
+
+        patchJump(doJump);
+
+        statement();
+
+        consume(TokenType::While, "Expected 'While'");
+        consume(TokenType::LeftParen, "Expected '(' after 'while'.");
+        expression();
+        consume(TokenType::RightParen, "Expected ')' after condition.");
+        consume(TokenType::Semicolon, "Expected ';' after expression.");
+
+        emitJump(OpCode::JumpIfTrue, loopStart);
+        emitBytes(OpCode::Pop);  // pop condition
     }
 
     void expressionStatement()
@@ -422,7 +437,7 @@ struct Compiler
     {
         emitReturn();
 #if USING(DEBUG_PRINT_CODE)
-        if (_configuration.disassemble && !_parser.optError.hasValue())
+        if (_configuration.disassemble && !_parser.hadError)
         {
             ASSERT(currentChunk());
             disassemble(*currentChunk(), "code");
@@ -453,25 +468,38 @@ struct Compiler
 
     void emitReturn() { emitBytes((uint8_t)OperationType::Return); }
 
+    uint16_t emitJump(OpCode op, codepos_t jumpOffset)
+    {
+        constexpr size_t jumpBytes = sizeof(jump_t);
+        emitBytes(op);
+        Chunk *chunk = currentChunk();
+        ASSERT(chunk->getCodeSize() - jumpOffset < limits::kMaxJumpLength);
+        const codepos_t codeOffset = chunk->getCodeSize();
+
+        const jump_t jump = jumpOffset - codeOffset - jumpBytes;
+
+        emitBytes(static_cast<uint16_t>(jump));
+        return codeOffset;
+    }
     uint16_t emitJump(OpCode op)
     {
         emitBytes(op);
-        const uint16_t codeOffset = currentChunk()->getCodeSize();
+        const codepos_t codeOffset = currentChunk()->getCodeSize();
         // placeholder
         emitBytes((uint8_t)0xff);
         emitBytes((uint8_t)0xff);
         return codeOffset;
     }
-
-    void patchJump(uint16_t offset)
+    void patchJump(codepos_t codePos)
     {
-        constexpr size_t jumpBytes = 2;
+        constexpr size_t jumpBytes = sizeof(jump_t);
         Chunk           *chunk     = currentChunk();
-        const uint16_t   jumpLen   = chunk->getCodeSize() - offset - jumpBytes;
+        ASSERT(chunk->getCodeSize() - codePos < limits::kMaxJumpLength);
+        const jump_t jumpLen = chunk->getCodeSize() - codePos - jumpBytes;
 
-        uint8_t *code    = chunk->getCodeMut();
-        code[offset]     = static_cast<uint8_t>((jumpLen >> 8) & 0xff);
-        code[offset + 1] = static_cast<uint8_t>(jumpLen & 0xff);
+        uint8_t *code     = chunk->getCodeMut();
+        code[codePos]     = static_cast<uint8_t>((jumpLen >> 8) & 0xff);
+        code[codePos + 1] = static_cast<uint8_t>(jumpLen & 0xff);
     }
 
     void emitBytes(uint8_t byte)
@@ -480,16 +508,25 @@ struct Compiler
         ASSERT(chunk);
         chunk->write(byte, static_cast<uint16_t>(_lastExpressionLine));
     }
+    void emitBytes(uint16_t word)
+    {
+        Chunk *chunk = currentChunk();
+        ASSERT(chunk);
+        uint8_t byte = static_cast<uint8_t>((word >> 8) & 0xFF);
+        chunk->write(byte, _lastExpressionLine);
+        byte = static_cast<uint8_t>(word & 0xFF);
+        chunk->write(byte, _lastExpressionLine);
+    }
     void emitBytes(OpCode code)
     {
         CMP_DEBUGPRINT(1, "emitOp: %s", named_enum::name(code));
         emitBytes((uint8_t)code);
     }
-    void emitBytes(int constantId)
-    {
-        ASSERT(constantId < UINT8_MAX);
-        emitBytes((uint8_t)constantId);
-    }
+    // void emitBytes(int constantId)
+    // {
+    //     ASSERT(constantId < UINT8_MAX);
+    //     emitBytes((uint8_t)constantId);
+    // }
     template <typename T, typename... Args>
     void emitBytes(T byte, Args... args)
     {
@@ -508,30 +545,67 @@ struct Compiler
             return _parser.optError.value();
         }
         _parser.panicMode = true;
+        _parser.hadError  = true;
 
-        char message[1024];
+        char innerMessage[1024];
         if (token.type == TokenType::Eof)
         {
-            snprintf(message, sizeof(message), "at end");
+            snprintf(innerMessage, sizeof(innerMessage), "at end");
         }
         else if (token.type == TokenType::Error)
         {
-            snprintf(message, sizeof(message), "token found!!!");
+            snprintf(innerMessage, sizeof(innerMessage), "token found!!!");
         }
         else
         {
-            snprintf(message, sizeof(message), "at '%.*s'", token.length, token.start);
+            snprintf(innerMessage, sizeof(innerMessage), "at '%.*s'", token.length, token.start);
         }
 
-        _parser.optError = Parser::ErrorInfo{
-            Parser::error_t(Parser::error_t::code_t::Undefined,
-                            buildMessage("[line %d] Error %s: %s", _parser.current.line, message, errorMsg)),
-            token, _scanner._linePtr};
+        char message[2048];
+        snprintf(message, sizeof(message), "[line %d] Error %s: %s", _parser.current.line, innerMessage, errorMsg);
+#if USING(EXTENDED_ERROR_REPORT)
+        if (_configuration.extendedErrorReport)
+        {
+            const char *errorLinePtr = _scanner._linePtr;
+            const char *lineEnd      = strchr(errorLinePtr, '\n');
+            if (lineEnd == nullptr)
+            {
+                lineEnd = strchr(errorLinePtr, '\0');
+            }
+            if (lineEnd != nullptr)
+            {
+                const int lineLen       = static_cast<int>(lineEnd - errorLinePtr);
+
+                const char *messagePtrEnd = message + sizeof(message);
+                char     *messagePtr    = message + strlen(message);
+                snprintf(messagePtr, messagePtrEnd - messagePtr, "\n\t'%.*s'", lineLen, errorLinePtr);
+                messagePtr = message + strlen(message);
+
+                const Token *errorToken = token.type != TokenType::COUNT ? &token : nullptr;
+                const size_t lenToToken = errorToken ? errorToken->start - errorLinePtr : strlen(errorLinePtr);
+                *messagePtr++           = '\n';
+                *messagePtr++           = '\t';
+                *messagePtr++           = ' ';  // extra <'>
+                memset(messagePtr, ' ', lenToToken);
+                messagePtr += lenToToken;
+                *messagePtr++ = '^';
+                *messagePtr++ = '\0';
+            }
+        }
+#endif  // #if USING(EXTENDED_ERROR_REPORT)
+        _parser.optError =
+            Parser::ErrorInfo{Parser::error_t(Parser::error_t::code_t::Undefined, message), token, _scanner._linePtr};
         return _parser.optError.value();
     }
 
     void synchronize()
     {
+        if (getCurrentError().hasValue())
+        {
+            const Parser::ErrorInfo errorInfo    = _parser.optError.extract();
+            LOG_ERROR("%s\n", errorInfo.error.message().c_str());
+        }
+
         // discard remaining part of current block (i.e., statement)
         _parser.panicMode = false;
 
@@ -625,6 +699,7 @@ struct Compiler
         _parseRules[(size_t)TokenType::Print]        = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Var]          = {varFunc, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Return]       = {NULL, NULL, Precedence::NONE};
+        _parseRules[(size_t)TokenType::Do]           = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::While]        = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::For]          = {NULL, NULL, Precedence::NONE};
         _parseRules[(size_t)TokenType::Func]         = {NULL, NULL, Precedence::NONE};

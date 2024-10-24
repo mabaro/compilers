@@ -244,6 +244,7 @@ TokenType Scanner::identifierType()
 #define ADD_KEYWORD(STR, TYPE) {#STR, (int)strlen(#STR), TokenType::TYPE}
         static const Keyword keywords[] = {
             ADD_KEYWORD(class, Class),
+            ADD_KEYWORD(do, Do),
             ADD_KEYWORD(else, Else),
             ADD_KEYWORD(exit, Exit),
             ADD_KEYWORD(false, False),

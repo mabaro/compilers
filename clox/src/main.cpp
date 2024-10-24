@@ -266,7 +266,7 @@ int main(int argc, const char* argv[])
                 }
                 if (!validParam)
                 {
-                    return errorReportWithHelpFunc(format("Invalid parameter: %s\n", curArg).c_str());
+                    return errorReportWithHelpFunc(format("Invalid parameter: %s", curArg).c_str());
                 }
             }
             else
@@ -274,7 +274,7 @@ int main(int argc, const char* argv[])
                 if (config.srcCodeOrFile != nullptr)
                 {
                     return errorReportWithHelpFunc(
-                        format("Parameter '%s' is unexpected, <%s> is already defined: '%s'\n", curArg,
+                        format("Parameter '%s' is unexpected, <%s> is already defined: '%s'", curArg,
                                config.isCodeOrFile ? "source_code" : "source_path", config.srcCodeOrFile)
                             .c_str());
                 }
@@ -298,7 +298,7 @@ int main(int argc, const char* argv[])
             auto result = VM.repl(compilerConfiguration);
             if (!result.isOk())
             {
-                return errorReportWithHelpFunc(format("%s\n", result.error().message().c_str()).c_str());
+                return errorReportWithHelpFunc(format("%s", result.error().message().c_str()).c_str());
             }
         }
         else
@@ -306,7 +306,7 @@ int main(int argc, const char* argv[])
             if (config.srcCodeOrFile == nullptr)
             {
                 return errorReportWithHelpFunc(
-                    format("Missing %s\n", config.isCodeOrFile ? "source_code parameter" : "source_path").c_str());
+                    format("Missing %s", config.isCodeOrFile ? "source_code parameter" : "source_path").c_str());
             }
             if (config.mode == ExecutionMode::Compile)
             {
@@ -338,12 +338,12 @@ int main(int argc, const char* argv[])
                     if (ofs.bad())
                     {
                         return errorReportFunc(
-                            format("Failed to open file '%s' for writing\n", config.compileOutputPath).c_str());
+                            format("Failed to open file '%s' for writing", config.compileOutputPath).c_str());
                     }
                     auto serializeResult = compiledChunk->serialize(ofs);
                     if (!serializeResult.isOk())
                     {
-                        return errorReportFunc(format("Failed serializing to file '%s': %s \n",
+                        return errorReportFunc(format("Failed serializing to file '%s': %s",
                                                       config.compileOutputPath,
                                                       serializeResult.error().message().c_str())
                                                    .c_str());
@@ -355,7 +355,7 @@ int main(int argc, const char* argv[])
                     if (!serializeResult.isOk())
                     {
                         return errorReportFunc(
-                            format("Failed serializing: %s \n", serializeResult.error().message().c_str()).c_str());
+                            format("Failed serializing: %s", serializeResult.error().message().c_str()).c_str());
                     }
                 }
             }
@@ -375,7 +375,7 @@ int main(int argc, const char* argv[])
                         if (!loadResult.isOk())
                         {
                             return errorReportFunc(
-                                format("Failed loading bytecode: %s \n", loadResult.error().message().c_str()).c_str());
+                                format("Failed loading bytecode: %s", loadResult.error().message().c_str()).c_str());
                         }
                     }
                     else
@@ -384,13 +384,13 @@ int main(int argc, const char* argv[])
                         if (!ifs.is_open() || !ifs.good())
                         {
                             return errorReportFunc(
-                                format("Failed to open file '%s' for reading\n", config.compileOutputPath).c_str());
+                                format("Failed to open file '%s' for reading", config.compileOutputPath).c_str());
                         }
                         auto deserializeResult = code.deserialize(ifs);
                         if (!deserializeResult.isOk())
                         {
                             return errorReportFunc(
-                                format("Failed loading bytecode: %s \n", deserializeResult.error().message().c_str())
+                                format("Failed loading bytecode: %s", deserializeResult.error().message().c_str())
                                     .c_str());
                         }
                     }
@@ -404,7 +404,7 @@ int main(int argc, const char* argv[])
                     if (!result.isOk())
                     {
                         resultCode = -1;
-                        LOG_ERROR(result.error().message().c_str());
+                        return errorReportFunc(result.error().message().c_str());
                     }
                 }
                 else if (config.mode == ExecutionMode::Interpret)
@@ -414,7 +414,7 @@ int main(int argc, const char* argv[])
                     if (!result.isOk())
                     {
                         resultCode = -1;
-                        LOG_ERROR(result.error().message().c_str());
+                        return errorReportFunc(result.error().message().c_str());
                     }
                 }
             }

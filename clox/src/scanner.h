@@ -54,6 +54,7 @@ enum class TokenType
     Print,
     Return,
 
+    Do,
     While,
     For,
 
