@@ -66,7 +66,7 @@ struct VirtualMachine
     result_t run()
     {
 #define READ_U8() (*_ip++)
-#define READ_U16() (_ip += 2, (uint16_t)((_ip[-2] << 8) | _ip[-1]))
+#define READ_OFFSET16() (_ip += 2, (int16_t)((_ip[-2] << 8) | _ip[-1]))
 #define READ_CONSTANT() (_chunk->getConstants()[READ_U8()])
 #define READ_STRING() (READ_CONSTANT().as.object->asString()->chars)
 #define BINARY_OP(op)               \
@@ -78,21 +78,25 @@ struct VirtualMachine
     } while (false)
 
 #if DEBUG_TRACE_EXECUTION
-        const bool linesAvailable = _chunk->getLineCount() > 0;
-        uint16_t   scopeCount     = 0;
-        while (1)
-        {
             if (_compiler.getConfiguration().disassemble)
             {
-                printf("          ");
-                stackPrint();
-                printf("          ");
-                printVariables();
-                printf("          ");
-                _chunk->printConstants();
-                disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable,
-                                       &scopeCount);
+                printf("== VM ==\n");
             }
+            const bool linesAvailable = _chunk->getLineCount() > 0;
+            uint16_t   scopeCount     = 0;
+            while (1)
+            {
+                if (_compiler.getConfiguration().disassemble)
+                {
+                    printf("          ");
+                    printStack();
+                    // printf("          ");
+                    // printVariables();
+                    // printf("          ");
+                    // _chunk->printConstants();
+                    disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable,
+                                           &scopeCount);
+                }
 #else   // #if DEBUG_TRACE_EXECUTION
         for (;;)
         {
@@ -269,13 +273,13 @@ struct VirtualMachine
 
                 case OpCode::Jump:
                 {
-                    const uint16_t offset = READ_U16();
+                    const int16_t offset = READ_OFFSET16();
                     _ip += offset;
                     break;
                 }
                 case OpCode::JumpIfFalse:
                 {
-                    const uint16_t offset = READ_U16();
+                    const int16_t offset = READ_OFFSET16();
                     if (peek(0).isFalsey())
                     {
                         _ip += offset;
@@ -284,7 +288,7 @@ struct VirtualMachine
                 }
                 case OpCode::JumpIfTrue:
                 {
-                    const uint16_t offset = READ_U16();
+                    const int16_t offset = READ_OFFSET16();
                     if (!peek(0).isFalsey())
                     {
                         _ip += offset;
@@ -342,8 +346,7 @@ struct VirtualMachine
 
     result_t runFromSource(const char *sourceCode, Optional<Compiler::Configuration> optConfiguration = none_t)
     {
-        result_t result = interpret(sourceCode, "SOURCE", optConfiguration);
-        return result;
+        return interpret(sourceCode, "SOURCE", optConfiguration);
     }
 
     result_t runFromFile(const char *path, Optional<Compiler::Configuration> optConfiguration = none_t)
@@ -355,13 +358,7 @@ struct VirtualMachine
         }
         char *buffer = source.value().get();
 
-        result_t result = interpret(buffer, path, optConfiguration);
-        if (!result.isOk())
-        {
-            LOG_ERROR("%s", result.error().message().c_str());
-        }
-
-        return result;
+        return interpret(buffer, path, optConfiguration);
     }
 
     result_t runFromByteCode(const Chunk &bytecode)
@@ -554,22 +551,22 @@ struct VirtualMachine
         return static_cast<size_t>(_stackTop - _stack);
     }
 #if DEBUG_TRACE_EXECUTION
-    void stackPrint() const
+    void printStack() const
     {
-        printf("Stack: ");
-        for (const Value *slot = _stack; slot < _stackTop; ++slot)
-        {
-            printf("[");
-            printValue(*slot);
-            printf("]");
-        }
-        printf("\n");
+            printf("Stack");
+            for (const Value *slot = _stack; slot < _stackTop; ++slot)
+            {
+                printf("[");
+                printValue(*slot);
+                printf("]");
+            }
+            printf("\n");
     }
 
     void printVariables() const
     {
-        printf("Variables: ");
         ASSERT(_currrentEnvironment);
+        printf("Variables");
         _currrentEnvironment->print();
     }
 #endif  // #if DEBUG_TRACE_EXECUTION

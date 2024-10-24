@@ -36,7 +36,7 @@ Result<CharBufferUPtr> readFile(const char* path, bool binaryMode)
     if (file == nullptr)
     {
         return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
-                                         format("Couldn't open file '%s'\n", path));
+                                         format("Couldn't open file '%s'", path));
     }
     ScopedCallback closeFile([&file] { fclose(file); });
 
@@ -48,7 +48,7 @@ Result<CharBufferUPtr> readFile(const char* path, bool binaryMode)
     if (buffer == nullptr)
     {
         char message[1024];
-        snprintf(message, sizeof(message), "Couldn't allocate memory for reading the file %s with size %zu byte(s)\n",
+        snprintf(message, sizeof(message), "Couldn't allocate memory for reading the file %s with size %zu byte(s)",
                  path, fileSize);
         LOG_ERROR(message);
         return makeResultError<result_t>(result_t::error_t::code_t::Undefined, message);
@@ -67,7 +67,7 @@ Result<CharBufferUPtr> readFile(const char* path, bool binaryMode)
     {
         LOG_ERROR("Couldn't read the file '%s'\n", path);
         return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
-                                         format("Couldn't read the file '%s'\n", path));
+                                         format("Couldn't read the file '%s'", path));
     }
     buffer[bytesRead] = '\0';
 

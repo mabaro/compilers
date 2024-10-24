@@ -13,6 +13,15 @@
 #include "config.h"
 #include "utils/assert.h"
 
+// compiler types
+using jump_t = int16_t;
+using codepos_t = uint16_t;
+
+namespace limits
+{
+    constexpr size_t kMaxJumpLength = (1L << 16) - 1;
+}
+
 #define ARRAY_SIZE(X) (sizeof(X) / sizeof(X[0]))
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,10 +42,7 @@ void SetLevel(int level);
 // Portability hacks
 
 #ifdef __unix
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-value"
-#define fopen_s(pFile, filename, mode) ((*pFile = fopen(filename, mode)) == NULL)
-#pragma GCC diagnostic pop
+#define fopen_s(pFile, filename, mode) (*pFile = fopen(filename, mode))
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -17,6 +17,9 @@ struct Environment
         _parentEnvironment = nullptr;
         return true;
     }
+    size_t getVariableCount() const {
+        return _dict.size();
+    }
     Value *addVariable(const char *varName)
     {
         auto itPair = _dict.insert({varName, Value{}});

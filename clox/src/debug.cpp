@@ -4,12 +4,12 @@
 
 #include "chunk.h"
 
-uint16_t simpleInstruction(const char* name, uint16_t offset)
+codepos_t simpleInstruction(const char* name, codepos_t offset)
 {
     printf("%s\n", name);
     return offset + 1;
 }
-uint16_t constantInstruction(const char* name, const Chunk& chunk, uint16_t offset)
+codepos_t constantInstruction(const char* name, const Chunk& chunk, codepos_t offset)
 {
     const uint8_t constantIndex = chunk.getCode()[offset + 1];
     printf("%-16s [%04d]='", name, constantIndex);
@@ -18,21 +18,22 @@ uint16_t constantInstruction(const char* name, const Chunk& chunk, uint16_t offs
 
     return offset + 2;
 }
-uint16_t jumpInstruction(const char* name, int sign, const Chunk& chunk, uint16_t offset)
+codepos_t jumpInstruction(const char* name, const Chunk& chunk, codepos_t codePos)
 {
     const uint8_t* code = chunk.getCode();
-    uint16_t       jump = (uint16_t)(code[offset + 1] << 8);
-    jump |= code[offset + 2];
-    printf("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
-    return offset + 3;
+    jump_t       jumpOffset = (uint16_t)(code[codePos + 1] << 8);
+    jumpOffset |= code[codePos + 2];
+
+    printf("%-16s %4d -> %d\n", name, codePos, codePos + 3 + jumpOffset);
+    return codePos + 3;
 }
-uint16_t scopeInstruction(const char* name, const Chunk& /*chunk*/, uint16_t offset)
+codepos_t scopeInstruction(const char* name, const Chunk& /*chunk*/, uint16_t offset)
 {
     printf("%s\n", name);
     return offset + 1;
 }
 
-uint16_t disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesAvailable, uint16_t* scopeCount)
+codepos_t disassembleInstruction(const Chunk& chunk, codepos_t offset, bool linesAvailable, uint16_t* scopeCount)
 {
     ASSERT(offset < chunk.getCodeSize());
     const OpCode instruction = OpCode(chunk.getCode()[offset]);
@@ -81,9 +82,9 @@ uint16_t disassembleInstruction(const Chunk& chunk, uint16_t offset, bool linesA
         case OpCode::GlobalVarDef: return constantInstruction("OP_GLOBAL_VAR_DEFINE", chunk, offset);
         case OpCode::GlobalVarGet: return constantInstruction("OP_GLOBAL_VAR_GET", chunk, offset);
         case OpCode::GlobalVarSet: return constantInstruction("OP_GLOBAL_VAR_SET", chunk, offset);
-        case OpCode::Jump: return jumpInstruction("OP_JUMP", 1, chunk, offset);
-        case OpCode::JumpIfFalse: return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
-        case OpCode::JumpIfTrue: return jumpInstruction("OP_JUMP_IF_TRUE", 1, chunk, offset);
+        case OpCode::Jump: return jumpInstruction("OP_JUMP", chunk, offset);
+        case OpCode::JumpIfFalse: return jumpInstruction("OP_JUMP_IF_FALSE", chunk, offset);
+        case OpCode::JumpIfTrue: return jumpInstruction("OP_JUMP_IF_TRUE", chunk, offset);
         case OpCode::ScopeBegin: ++(*scopeCount); return scopeInstruction("OP_SCOPE_BEGIN", chunk, offset);
         case OpCode::ScopeEnd: return scopeInstruction("OP_SCOPE_END", chunk, offset);
         default: printf("Unknown opcode %d\n", (int)instruction); return offset + 1;
@@ -96,9 +97,9 @@ void disassemble(const Chunk& chunk, const char* name)
 
     const bool linesAvailable = chunk.getLineCount() > 0;
     uint16_t   scopeCount     = 0;
-    for (size_t offset = 0; offset < chunk.getCodeSize();)
+    for (codepos_t offset = 0; offset < chunk.getCodeSize();)
     {
-        offset = static_cast<size_t>(
+        offset = static_cast<codepos_t>(
             disassembleInstruction(chunk, static_cast<uint16_t>(offset), linesAvailable, &scopeCount));
     }
 }

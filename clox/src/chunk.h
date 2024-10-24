@@ -62,8 +62,18 @@ struct Chunk
         return static_cast<uint16_t>(_code.size());
     }
 
-    const uint16_t* getLines() const { return _lines.data(); }
-    uint16_t  getLine(uint16_t index) const { return _lines[index]; }
+    size_t  getLine(codepos_t codePos) const { 
+        size_t line = 0;
+        if (_lines.empty())
+        {
+            return 0;
+        }
+
+        while(_lines[line] < codePos)
+        {
+            ++line;
+        }
+        return line; }
     size_t    getLineCount() const { return _lines.size(); }
 
     const ValueArray& getConstants() const { return _constants; }
@@ -73,11 +83,18 @@ struct Chunk
         _code.clear();
         _lines.clear();
     }
-    void write(OpCode code, uint16_t line) { write((uint8_t)code, line); }
-    void write(uint8_t byte, uint16_t line)
+    void write(OpCode code, size_t line) { write((uint8_t)code, line); }
+    void write(uint8_t byte, size_t line)
     {
         _code.push_back(byte);
-        _lines.push_back(line);
+        if (_lines.size() > line)
+        {
+            _lines.back() = _code.size();
+        }
+        else
+        {
+            _lines.push_back(_code.size());
+        }
     }
     int addConstant(const Value& value)
     {
