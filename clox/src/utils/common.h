@@ -14,12 +14,13 @@
 #include "utils/assert.h"
 
 // compiler types
-using jump_t = int16_t;
+using jump_t    = int16_t;
 using codepos_t = uint16_t;
+using opcode_t  = uint8_t;
 
 namespace limits
 {
-    constexpr size_t kMaxJumpLength = (1L << 16) - 1;
+constexpr size_t kMaxJumpLength = (1L << 16) - 1;
 }
 
 #define ARRAY_SIZE(X) (sizeof(X) / sizeof(X[0]))
@@ -143,7 +144,7 @@ struct ScopedCallback
     callback_t callbackFunc = nullptr;
 };
 
-#define on_scope_exit(X) ScopedCallback scope_callback ##__LINE__([&](){ X })
+#define on_scope_exit(X) ScopedCallback scope_callback##__LINE__([&]() { X })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
