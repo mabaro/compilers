@@ -24,6 +24,8 @@ set(SOURCES
     src/utils/assert.cpp
     src/utils/common.h
     src/utils/common.cpp
+    src/utils/input.h
+    src/utils/input.cpp
     src/chunk.h
     src/chunk.cpp
     src/compiler.h
