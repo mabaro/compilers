@@ -6,6 +6,16 @@
 #define NOT_IN_USE 0
 #define USING(X) (X & X)
 
+
+#ifdef __linux__
+#define LINUX_OS
+#elif defined(_WIN32) // #ifdef __linux__
+#define WINDOWS_OS
+#elif defined(__ANDROID__)
+#define ANDROID_OS
+#endif // #elif defined(WIN32) // #ifdef __linux__
+
+
 #ifndef NDEBUG
 #define RELEASE_BUILD NOT_IN_USE
 #else
