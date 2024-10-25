@@ -11,17 +11,18 @@ codepos_t simpleInstruction(const char* name, codepos_t offset)
 }
 codepos_t constantInstruction(const char* name, const Chunk& chunk, codepos_t offset)
 {
-    const uint8_t constantIndex = chunk.getCode()[offset + 1];
+    const uint8_t* code          = chunk.getCode();
+    const uint8_t  constantIndex = code[offset + 1];
     printf("%-16s [%04d]='", name, constantIndex);
-    printValue(chunk.getConstants().getValue(constantIndex));
+    printValueDebug(chunk.getConstants().getValue(constantIndex));
     printf("'\n");
 
     return offset + 2;
 }
 codepos_t jumpInstruction(const char* name, const Chunk& chunk, codepos_t codePos)
 {
-    const uint8_t* code = chunk.getCode();
-    jump_t       jumpOffset = (uint16_t)(code[codePos + 1] << 8);
+    const uint8_t* code       = chunk.getCode();
+    jump_t         jumpOffset = (uint16_t)(code[codePos + 1] << 8);
     jumpOffset |= code[codePos + 2];
 
     printf("%-16s %4d -> %d\n", name, codePos, codePos + 3 + jumpOffset);
@@ -33,10 +34,15 @@ codepos_t scopeInstruction(const char* name, const Chunk& /*chunk*/, uint16_t of
     return offset + 1;
 }
 
-codepos_t disassembleInstruction(const Chunk& chunk, codepos_t offset, bool linesAvailable, uint16_t* scopeCount)
+codepos_t disassembleInstruction(const Chunk& chunk, codepos_t offset, bool linesAvailable, uint16_t* scopeCount,
+                                 OpCode* o_op)
 {
     ASSERT(offset < chunk.getCodeSize());
     const OpCode instruction = OpCode(chunk.getCode()[offset]);
+    if (o_op != nullptr)
+    {
+        *o_op = instruction;
+    }
 
     printf("%04d ", offset);
     if (instruction == OpCode::ScopeEnd)

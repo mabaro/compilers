@@ -56,7 +56,7 @@ struct Environment
         for (const auto &it : _dict)
         {
             printf("%s=[", it.first.c_str());
-            printValue(it.second);
+            printValueDebug(it.second);
             printf("]");
         }
         printf("\n");

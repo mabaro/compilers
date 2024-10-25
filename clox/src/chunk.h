@@ -57,24 +57,23 @@ struct Chunk
 
     uint8_t*       getCodeMut() { return _code.data(); }
     const uint8_t* getCode() const { return _code.data(); }
-    uint16_t       getCodeSize() const
-    {
-        return static_cast<uint16_t>(_code.size());
-    }
+    size_t         getCodeSize() const { return _code.size(); }
 
-    size_t  getLine(codepos_t codePos) const { 
+    size_t getLine(codepos_t codePos) const
+    {
         size_t line = 0;
         if (_lines.empty())
         {
             return 0;
         }
 
-        while(_lines[line] < codePos)
+        while (_lines[line] < codePos)
         {
             ++line;
         }
-        return line; }
-    size_t    getLineCount() const { return _lines.size(); }
+        return line;
+    }
+    size_t getLineCount() const { return _lines.size(); }
 
     const ValueArray& getConstants() const { return _constants; }
 
@@ -98,7 +97,8 @@ struct Chunk
     }
     int addConstant(const Value& value)
     {
-        ASSERT_MSG(_constants.size() <= MAX_OPCODE_VALUE, format("#constants(%d) > MaxConstants(%d)\n", _constants.size(), MAX_OPCODE_VALUE).c_str());
+        ASSERT_MSG(_constants.size() <= MAX_OPCODE_VALUE,
+                   format("#constants(%d) > MaxConstants(%d)\n", _constants.size(), MAX_OPCODE_VALUE).c_str());
         auto constantIt = std::find_if(_constants.begin(), _constants.end(),
                                        [&value](const Value& constant) { return constant == value; });
         if (constantIt != _constants.end())
@@ -119,7 +119,7 @@ struct Chunk
         for (size_t i = 0; i < getConstants().size(); ++i)
         {
             printf("%zu[", i);
-            printValue(getConstants()[i]);
+            printValueDebug(getConstants()[i]);
             printf("]");
         }
         printf("\n");

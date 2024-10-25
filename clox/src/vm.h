@@ -13,6 +13,10 @@ https://craftinginterpreters.com/a-virtual-machine.html
 #include "environment.h"
 #include "utils/common.h"
 
+#if DEBUG_TRACE_EXECUTION
+#include "utils/input.h"
+#endif  // #if DEBUG_TRACE_EXECUTION
+
 struct VirtualMachine
 {
     enum class ErrorCode
@@ -31,6 +35,12 @@ struct VirtualMachine
     };
     using result_t = Result<InterpretResult, error_t>;
 
+    struct Configuration
+    {
+        bool stepByStep = false;
+    };
+    Configuration _configuration;
+
     ///////////////////////////////////////////////////////////////////////////////////
 
     VirtualMachine() {}
@@ -41,8 +51,13 @@ struct VirtualMachine
     VirtualMachine &operator=(const VirtualMachine &) = delete;
     VirtualMachine &operator=(VirtualMachine &&)      = delete;
 
-    result_t init()
+    void                 setConfiguration(const Configuration &config) { _configuration = config; }
+    const Configuration &getConfiguration() const { return _configuration; }
+
+    result_t init(const Configuration &configuration)
     {
+        _configuration = configuration;
+
         ASSERT(_environments.empty());
         _environments.push_back(std::make_unique<Environment>());
         _currrentEnvironment = _environments.back().get();
@@ -50,6 +65,7 @@ struct VirtualMachine
 
         return makeResult<result_t>(InterpretResult::Ok);
     }
+    void     init() { init(_configuration); }
     result_t finish()
     {
         ASSERT(_environments.size() <= 1);
@@ -78,25 +94,63 @@ struct VirtualMachine
     } while (false)
 
 #if DEBUG_TRACE_EXECUTION
+        if (_compiler.getConfiguration().disassemble)
+        {
+            printf("== VM ==\n");
+        }
+        const bool linesAvailable = _chunk->getLineCount() > 0;
+        uint16_t   scopeCount     = 0;
+        bool       stepDebugging  = _configuration.stepByStep;
+        for (;;)
+        {
             if (_compiler.getConfiguration().disassemble)
             {
-                printf("== VM ==\n");
-            }
-            const bool linesAvailable = _chunk->getLineCount() > 0;
-            uint16_t   scopeCount     = 0;
-            while (1)
-            {
-                if (_compiler.getConfiguration().disassemble)
+                static bool sWasPrint = false;
+                if (sWasPrint)
                 {
-                    printf("          ");
-                    printStack();
-                    // printf("          ");
-                    // printVariables();
-                    // printf("          ");
-                    // _chunk->printConstants();
-                    disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable,
-                                           &scopeCount);
+                    printf("\n");
+                    sWasPrint = false;
                 }
+                printf("          ");
+                printStack();
+                printf("          ");
+                printVariables();
+                printf("          ");
+                _chunk->printConstants();
+                OpCode instruction = OpCode::Undefined;
+                disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable,
+                                       &scopeCount, &instruction);
+                if (instruction == OpCode::Print)
+                {
+                    sWasPrint = true;
+                    printf("[output]");
+                }
+                if (stepDebugging)
+                {
+                    // static std::vector<codepos_t> sTimeMachine;
+                    while (true)
+                    {
+                        const char c = read_char();
+                        if (c == 'n')
+                        {
+                            // sTimeMachine.push_back(_ip - _chunk->getCode());
+                            break;
+                        }
+                        // WIP - going back requires restoring previous state
+                        // else if (c == 'p')
+                        // {
+                        //     _ip = sTimeMachine.back() + _chunk->getCode();
+                        //     sTimeMachine.pop_back();
+                        //     break;
+                        // }
+                        else if (c == 'q')
+                        {
+                            stepDebugging = false;
+                            break;
+                        }
+                    }
+                }
+            }
 #else   // #if DEBUG_TRACE_EXECUTION
         for (;;)
         {
@@ -262,9 +316,8 @@ struct VirtualMachine
                     {
                         *varValue = rvalue;
 #if USING(DEBUG_BUILD)
-                        std::string tempStr;
-                        printValue(tempStr, rvalue);
-                        DEBUGPRINT_EX("var(%s)=%s\n", varName, tempStr.c_str());
+                        DEBUGPRINT_EX("var(%s)=%s\n", varName);
+                        printValueDebug(rvalue);
 #endif  // #if USING(DEBUG_BUILD)
                     }
                     break;
@@ -553,20 +606,20 @@ struct VirtualMachine
 #if DEBUG_TRACE_EXECUTION
     void printStack() const
     {
-            printf("Stack");
-            for (const Value *slot = _stack; slot < _stackTop; ++slot)
-            {
-                printf("[");
-                printValue(*slot);
-                printf("]");
-            }
-            printf("\n");
+        printf("Stack");
+        for (const Value *slot = _stack; slot < _stackTop; ++slot)
+        {
+            printf("[");
+            printValueDebug(*slot);
+            printf("]");
+        }
+        printf("\n");
     }
 
     void printVariables() const
     {
         ASSERT(_currrentEnvironment);
-        printf("Variables");
+        printf("Variables ");
         _currrentEnvironment->print();
     }
 #endif  // #if DEBUG_TRACE_EXECUTION

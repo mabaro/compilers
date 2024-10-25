@@ -156,5 +156,5 @@ Result<Value> operator+(const Object &a, const Object &b);
 
 ////////////////////////////
 
-void printValue(std::string &oStr, const Value &value);
 void printValue(const Value &value);
+void printValueDebug(const Value &value);

@@ -132,12 +132,12 @@ ObjectString *ObjectString::CreateEmpty()
 
 ObjectString *ObjectString::CreateConcat(const char *str1, size_t len1, const char *str2, size_t len2)
 {
-    const size_t newLength = len1 + len2;
-    ObjectString *newStringObj  = Object::allocate<ObjectString>(newLength + 1);
+    const size_t  newLength    = len1 + len2;
+    ObjectString *newStringObj = Object::allocate<ObjectString>(newLength + 1);
     newStringObj->chars        = ((char *)newStringObj) + sizeof(ObjectString);
     memcpy(newStringObj->chars, str1, len1);
     memcpy(newStringObj->chars + len1, str2, len2);
-    newStringObj->length        = newLength;
+    newStringObj->length           = newLength;
     newStringObj->chars[newLength] = '\0';
     return newStringObj;
 }
@@ -446,40 +446,54 @@ DECL_OPERATOR(/)
     }
 }
 
-void printValue(std::string &oStr, const Value &value)
+void printValue(const Value &value)
 {
-    oStr.resize(64);
     switch (value.type)
     {
-        case Value::Type::Bool:
-            snprintf(oStr.data(), oStr.capacity(), "%s", value.as.boolean ? "true" : "false");
-            break;
-        case Value::Type::Null: snprintf(oStr.data(), oStr.capacity(), "%s", "null"); break;
-        case Value::Type::Number: snprintf(oStr.data(), oStr.capacity(), "%.2f", value.as.number); break;
-        case Value::Type::Integer: snprintf(oStr.data(), oStr.capacity(), "%d", value.as.integer); break;
+        case Value::Type::Bool: printf("%s", value.as.boolean ? "true" : "false"); break;
+        case Value::Type::Null: printf("%s", "null"); break;
+        case Value::Type::Number: printf("%.2f", value.as.number); break;
+        case Value::Type::Integer: printf("%d", value.as.integer); break;
         case Value::Type::Object:
             switch (value.as.object->type)
             {
                 case Object::Type::String:
                 {
                     auto strObj = *value.as.object->asString();
-                    if (oStr.size() < strObj.length)
-                    {
-                        oStr.resize(strObj.length);
-                    }
-                    snprintf(oStr.data(), oStr.capacity(), "%.*s", (int)strObj.length, strObj.chars);
+                    printf("%.*s", (int)strObj.length, strObj.chars);
                     break;
                 }
                 default: FAIL_MSG("UNDEFINED OBJECT TYPE(%d)", value.as.object->type);
             }
             break;
-        default: snprintf(oStr.data(), oStr.capacity(), "UNDEF"); break;
+        default: printf("UNDEF"); break;
     }
 }
 
-void printValue(const Value &value)
+void printValueDebug(const Value &value)
 {
-    std::string outStr;
-    printValue(outStr, value);
-    printf("%s", outStr.c_str());
+    const bool isString = value.type == Value::Type::Object && value.as.object->type == Object::Type::String;
+    if (!isString)
+    {
+        printValue(value);
+    }
+    else
+    {
+        auto        strObj     = *value.as.object->asString();
+        const char *charPtr    = strObj.chars;
+        const char *charPtrEnd = strObj.chars + strObj.length;
+        while (charPtr != charPtrEnd)
+        {
+            if (*charPtr != '\n')
+            {
+                putc(*charPtr, stdout);
+            }
+            else
+            {
+                putc('\\', stdout);
+                putc('n', stdout);
+            }
+            ++charPtr;
+        }
+    }
 }
