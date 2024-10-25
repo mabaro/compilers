@@ -19,3 +19,4 @@ while(a<5)
 }asdf
 
 print acc==5*5*5;
+print "\n";

@@ -18,3 +18,4 @@ do{
 }while(a<5);
 
 print (accum==5*5*5);
+print "\n";

@@ -19,3 +19,4 @@ while(a<5)
 }
 
 print acc==5*5*5;
+print "\n";

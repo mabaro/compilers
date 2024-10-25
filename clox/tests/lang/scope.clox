@@ -9,3 +9,4 @@ var a=1;
     a = b;
 } 
 print a==6;
+print "\n";

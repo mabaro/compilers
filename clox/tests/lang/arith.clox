@@ -13,3 +13,4 @@ result = result && (b * c == a + b + c);
 result = result && (6 / b == c);
 
 print result;
+print "\n";
