@@ -25,6 +25,7 @@ int main(int argc, const char* argv[])
 
     Compiler                compiler;
     Compiler::Configuration compilerConfiguration;
+    VirtualMachine::Configuration virtualMachineConfiguration;
 
     auto errorReportFunc =
         [&resultCode](const char* errorMessage, int errorCode = -1, std::function<void()> postErrorCallback = nullptr)
@@ -66,7 +67,7 @@ int main(int argc, const char* argv[])
         std::cout << std::endl;
 
         VirtualMachine VM;
-        VM.init();
+        VM.init(virtualMachineConfiguration);
         ScopedCallback vmFinish([&VM] { VM.finish(); });
 
         Chunk code("LOADER");
@@ -92,7 +93,7 @@ int main(int argc, const char* argv[])
         if (0)
     {
         VirtualMachine VM;
-        VM.init();
+        VM.init(virtualMachineConfiguration);
         ScopedCallback vmFinish([&VM] { VM.finish(); });
 
         // const char codeStr[] = "(-1 + 2) - 4 * 3 / ( -5 - 6 + 35)";
@@ -130,6 +131,7 @@ int main(int argc, const char* argv[])
 #endif // #if USING(EXTENDED_ERROR_REPORT)
                 code,
                 disassemble,
+                step_debugging,
                 repl,
                 compile,
                 run,
@@ -150,6 +152,7 @@ int main(int argc, const char* argv[])
             ADD_PARAM_WITH_PARAMS(extended_errors, "Show extended error reporting", "<0 / 1>"),
 #endif // #if USING(EXTENDED_ERROR_REPORT)
             ADD_PARAM(disassemble, "Show disassembled code"),
+            ADD_PARAM(step_debugging, "Step-by-step execution"),
             ADD_PARAM(repl, "Enters interactive mode(i.e. REPL)"),
             ADD_PARAM(compile, "Compiles into bytecode and outputs the result to console or the output_file defined"),
             ADD_PARAM_WITH_PARAMS(output, "Allows defining the output file for -compile", "<output_file>"),
@@ -199,7 +202,6 @@ int main(int argc, const char* argv[])
             bool          hasToShowHelp     = false;
             const char*   srcCodeOrFile     = nullptr;
             bool          isCodeOrFile      = false;
-            bool          disassemble       = false;
             ExecutionMode mode              = ExecutionMode::Interpret;
             const char*   compileOutputPath = nullptr;
         } config;
@@ -260,6 +262,7 @@ int main(int argc, const char* argv[])
                             case Param::Type::compile: config.mode = ExecutionMode::Compile; break;
                             case Param::Type::run: config.mode = ExecutionMode::Run; break;
                             case Param::Type::disassemble: compilerConfiguration.disassemble = true; break;
+                            case Param::Type::step_debugging: virtualMachineConfiguration.stepByStep = true; break;
                             default: validParam = false; break;
                         }
                     }
@@ -289,7 +292,7 @@ int main(int argc, const char* argv[])
         else if (config.mode == ExecutionMode::REPL)
         {
             VirtualMachine VM;
-            VM.init();
+            VM.init(virtualMachineConfiguration);
             ScopedCallback vmFinish([&VM] { VM.finish(); });
 
 #if USING(DEBUG_BUILD)
@@ -362,7 +365,7 @@ int main(int argc, const char* argv[])
             else
             {
                 VirtualMachine VM;
-                VM.init();
+                VM.init(virtualMachineConfiguration);
                 ScopedCallback vmFinish([&VM] { VM.finish(); });
 
                 if (config.mode == ExecutionMode::Run)
