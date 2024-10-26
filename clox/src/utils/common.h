@@ -98,14 +98,16 @@ void Log(LogLevel level, const char* fmt, Args... args)
 }
 }  // namespace Logger
 
-[[maybe_unused]] static std::string buildMessage(const char* fmt, ...)
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+[[maybe_unused]] static std::string format(const char* format, ...)
 {
+    char    message[256];
     va_list args;
-    va_start(args, fmt);
-    char buff[1000];
-    vsnprintf(buff, 1000, fmt, args);
+    va_start(args, format);
+    vsnprintf(message, sizeof(message), format, args);
     va_end(args);
-    return std::string(buff);
+    return message;
 }
 
 #define LOG_BASE(level, fmt, ...)               \
@@ -121,18 +123,6 @@ void Log(LogLevel level, const char* fmt, Args... args)
 
 #define DEBUGPRINT(fmt, ...) LOG_BASE(LogLevel::Debug, "DEBUG(line_%d): " #fmt, __LINE__, ##__VA_ARGS__)
 #define DEBUGPRINT_EX(fmt, ...) LOG_BASE(LogLevel::Debug, "[%s] " fmt, __FUNCTION__, ##__VA_ARGS__)
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-[[maybe_unused]] static std::string format(const char* format, ...)
-{
-    char    message[256];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(message, sizeof(message), format, args);
-    va_end(args);
-    return message;
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 

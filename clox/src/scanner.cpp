@@ -94,7 +94,7 @@ Scanner::TokenResult_t Scanner::scanToken()
             break;
     }
 
-    return makeResultError<TokenResult_t>(buildMessage("Unexpected character: '%c'", c));
+    return makeResultError<TokenResult_t>(format("Unexpected character: '%c'", c));
 }
 
 Token Scanner::makeToken(TokenType type, int ltrim, int rtrim) const

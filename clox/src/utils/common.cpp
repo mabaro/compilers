@@ -134,7 +134,7 @@ void run()
 
     const char* message = "Unit tests finished";
     const char* result  = success ? "Succeeded" : "Failed";
-    auto        msg     = buildMessage("[LINE %d] %s. Result: %s\n", 3, message, result);
+    auto        msg     = format("[LINE %d] %s. Result: %s\n", 3, message, result);
     printf("%s\n", msg.c_str());
 }
 }  // namespace common

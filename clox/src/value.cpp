@@ -327,7 +327,7 @@ Result<Value> operator+(const Object &a, const Object &b)
         break;
         default: FAIL();
     }
-    return Error_t(buildMessage("Undefined operation for objects of types: %s and %s", Object::getTypeName(a.type),
+    return Error_t(format("Undefined operation for objects of types: %s and %s", Object::getTypeName(a.type),
                                 Object::getTypeName(b.type)));
 }
 

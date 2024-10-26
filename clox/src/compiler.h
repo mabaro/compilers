@@ -454,7 +454,7 @@ struct Compiler
         ASSERT(constantId < UINT8_MAX);
         if (constantId > UINT8_MAX)
         {
-            error(buildMessage("Max constants per chunk exceeded: %s", UINT8_MAX).c_str());
+            error(format("Max constants per chunk exceeded: %s", UINT8_MAX).c_str());
         }
 #if USING(DEBUG_TRACE_EXECUTION)
         if (_configuration.debugPrintConstants)
