@@ -55,9 +55,9 @@ struct Chunk
 
     const char* getSourcePath() const { return _sourcepath.c_str(); }
 
-    uint8_t*       getCodeMut() { return _code.data(); }
-    const uint8_t* getCode() const { return _code.data(); }
-    codepos_t      getCodeSize() const { return _code.size(); }
+    opcode_t*       getCodeMut() { return _code.data(); }
+    const opcode_t* getCode() const { return _code.data(); }
+    codepos_t      getCodeSize() const { return static_cast<codepos_t>(_code.size()); }
 
     size_t getLine(codepos_t codePos) const
     {
@@ -128,7 +128,7 @@ struct Chunk
 
    protected:
     std::string           _sourcepath;
-    std::vector<uint8_t>  _code;
+    std::vector<opcode_t>  _code;
     std::vector<uint16_t> _lines;
     ValueArray            _constants;
 };

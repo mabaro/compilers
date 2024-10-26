@@ -363,11 +363,11 @@ struct VirtualMachine
                     _environments.pop_back();
                     break;
                 }
-                case OpCode::Undefined: FAIL(); break;
+                case OpCode::Undefined:
+                    FAIL();
+                    return makeResultError<result_t>(ErrorCode::RuntimeError, format("Undefined OpCode: %d", instruction));
             }
         }
-
-        return makeResult<result_t>(InterpretResult::Error);
 #undef READ_U8
 #undef READ_U16
 #undef READ_CONSTANT
@@ -561,11 +561,11 @@ struct VirtualMachine
         vsnprintf(message, sizeof(message), format, args);
         va_end(args);
 
-        const Chunk   *chunk       = this->_chunk;
-        const uint16_t instruction = static_cast<uint16_t>(this->_ip - chunk->getCode() - 1);
-        const uint16_t line        = chunk->getLine(instruction);
-        char           outputMessage[512];
-        snprintf(outputMessage, sizeof(outputMessage), "[%s:%d] Runtime error: %s\n", chunk->getSourcePath(), line,
+        const Chunk *chunk       = this->_chunk;
+        const auto   instruction = static_cast<codepos_t>(this->_ip - chunk->getCode() - 1);
+        const size_t line        = chunk->getLine(instruction);
+        char         outputMessage[512];
+        snprintf(outputMessage, sizeof(outputMessage), "[%s:%zu] Runtime error: %s\n", chunk->getSourcePath(), line,
                  message);
         FAIL_MSG(outputMessage);
         stackReset();
