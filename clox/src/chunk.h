@@ -88,11 +88,11 @@ struct Chunk
         _code.push_back(byte);
         if (_lines.size() > line)
         {
-            _lines.back() = _code.size();
+            _lines.back() = static_cast<uint16_t>(_code.size());
         }
         else
         {
-            _lines.push_back(_code.size());
+            _lines.push_back(static_cast<uint16_t>(_code.size()));
         }
     }
     int addConstant(const Value& value)

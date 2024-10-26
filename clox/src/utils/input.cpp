@@ -15,7 +15,7 @@ char read_char()
     const char c = getchar();
     system("stty cooked");
 #elif defined(WINDOWS_OS)
-    const char c = getch();
+    const char c = static_cast<char>(_getch());
 #endif
     return c;
 }
