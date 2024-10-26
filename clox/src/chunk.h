@@ -57,7 +57,7 @@ struct Chunk
 
     uint8_t*       getCodeMut() { return _code.data(); }
     const uint8_t* getCode() const { return _code.data(); }
-    size_t         getCodeSize() const { return _code.size(); }
+    codepos_t      getCodeSize() const { return _code.size(); }
 
     size_t getLine(codepos_t codePos) const
     {

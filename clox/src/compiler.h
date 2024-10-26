@@ -473,8 +473,8 @@ struct Compiler
         constexpr size_t jumpBytes = sizeof(jump_t);
         emitBytes(op);
         Chunk *chunk = currentChunk();
-        ASSERT(chunk->getCodeSize() - jumpOffset < limits::kMaxJumpLength);
         const codepos_t codeOffset = chunk->getCodeSize();
+        ASSERT(static_cast<size_t>(chunk->getCodeSize() - jumpOffset) < limits::kMaxJumpLength);
 
         const jump_t jump = jumpOffset - codeOffset - jumpBytes;
 
@@ -494,7 +494,7 @@ struct Compiler
     {
         constexpr size_t jumpBytes = sizeof(jump_t);
         Chunk           *chunk     = currentChunk();
-        ASSERT(chunk->getCodeSize() - codePos < limits::kMaxJumpLength);
+        ASSERT(static_cast<size_t>(chunk->getCodeSize() - codePos) < limits::kMaxJumpLength);
         const jump_t jumpLen = chunk->getCodeSize() - codePos - jumpBytes;
 
         uint8_t *code     = chunk->getCodeMut();
