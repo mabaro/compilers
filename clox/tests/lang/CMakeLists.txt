@@ -54,32 +54,23 @@ set_tests_properties(lang_flow_do_while PROPERTIES PASS_REGULAR_EXPRESSION "true
 
 # #######################################################################################
 # # error tests
-function(add_to_list LIST ARG)
-    string(REPLACE ";" "#" FIXED_ARG "${ARG}")
-    string(REPLACE " " "##" FIXED_ARG "${FIXED_ARG}")
-    list(APPEND ${LIST} ${FIXED_ARG})
-    set(${LIST} "${${LIST}}" PARENT_SCOPE)
-endfunction()
 
-add_to_list(TEST_ERROR_SRC "asdf")
-add_to_list(TEST_ERROR_OUTPUT "(ASSERT|Error).*Expected ';' after expression")
+add_to_list_encoded(TEST_ERROR_SRC "asdf")
+add_to_list_encoded(TEST_ERROR_OUTPUT "(ASSERT|Error).*Expected ';' after expression")
 
-add_to_list(TEST_ERROR_SRC "print a;")
-add_to_list(TEST_ERROR_OUTPUT "(ASSERT|Error).*read undeclared variable")
+add_to_list_encoded(TEST_ERROR_SRC "print a;")
+add_to_list_encoded(TEST_ERROR_OUTPUT "(ASSERT|Error).*read undeclared variable")
 
-add_to_list(TEST_ERROR_SRC "var a; print a;")
-add_to_list(TEST_ERROR_OUTPUT "(ASSERT|Error).*read undefined variable")
+add_to_list_encoded(TEST_ERROR_SRC "var a; print a;")
+add_to_list_encoded(TEST_ERROR_OUTPUT "(ASSERT|Error).*read undefined variable")
 
 set(TEST_VAR_I 0)
 
 foreach(arg IN ZIP_LISTS TEST_ERROR_SRC TEST_ERROR_OUTPUT)
     set(test_name lang_error_${TEST_VAR_I})
-    string(REPLACE "##" " "  LOCAL_SRC "${arg_0}")
-    string(REPLACE "#" ";" LOCAL_SRC "${LOCAL_SRC}")
-    string(REPLACE "##" " "  LOCAL_OUT "${arg_1}")
-    string(REPLACE "#" ";" LOCAL_OUT "${LOCAL_OUT}")
+    decode_for_list(arg_0)
+    decode_for_list(arg_1)
     add_test(NAME ${test_name} COMMAND clox -code "${LOCAL_SRC}")
-    message("${test_name}: ${LOCAL_SRC} -> ${LOCAL_OUT}")
     set_tests_properties(${test_name} PROPERTIES PASS_REGULAR_EXPRESSION "${LOCAL_OUT}")
     MATH(EXPR TEST_VAR_I "${TEST_VAR_I}+1")
 endforeach()

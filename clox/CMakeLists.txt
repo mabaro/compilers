@@ -86,5 +86,6 @@ target_link_options(clox_pe PRIVATE ${pe_linker_options})
 enable_testing()
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+    include(cmake/ListHelpers.cmake)
     add_subdirectory(tests)
 endif()
