@@ -4,9 +4,15 @@
 #if USING(DEBUG_PRINT_CODE)
 namespace debug_print
 {
-static int sDebugPrintLevel = 0;
-int        GetLevel() { return sDebugPrintLevel; }
-void       SetLevel(int level) { sDebugPrintLevel = level; }
+static uint8_t sDebugPrintLevel = 255;
+
+int GetLevel() { return sDebugPrintLevel; }
+
+void SetLevel(int level)
+{
+    ASSERT(level < MAX_U8_COUNT);
+    sDebugPrintLevel = static_cast<uint8_t>(level);
+}
 }  // namespace debug_print
 #endif  // #if USING(DEBUG_PRINT_CODE)
 
@@ -17,7 +23,9 @@ namespace detail
 {
 static LogLevel sLogLevel = LogLevel::All;
 }  // namespace detail
-void     SetLogLevel(LogLevel level) { detail::sLogLevel = level; }
+
+void SetLogLevel(LogLevel level) { detail::sLogLevel = level; }
+
 LogLevel GetLogLevel() { return detail::sLogLevel; }
 }  // namespace Logger
 
@@ -35,8 +43,7 @@ Result<CharBufferUPtr> readFile(const char* path, bool binaryMode)
     fopen_s(&file, path, binaryMode ? "rb" : "r");
     if (file == nullptr)
     {
-        return makeResultError<result_t>(result_t::error_t::code_t::Undefined,
-                                         format("Couldn't open file '%s'", path));
+        return makeResultError<result_t>(result_t::error_t::code_t::Undefined, format("Couldn't open file '%s'", path));
     }
     ScopedCallback closeFile([&file] { fclose(file); });
 
@@ -87,6 +94,7 @@ struct Dummy
     int  a = -1;
     bool b = false;
 };
+
 static bool test_result()
 {
     int         a   = 0;
@@ -106,6 +114,7 @@ static bool test_result()
 
     return true;
 }
+
 static bool test_optional()
 {
     {
@@ -126,6 +135,7 @@ static bool test_optional()
     }
     return true;
 }
+
 void run()
 {
     bool success = true;

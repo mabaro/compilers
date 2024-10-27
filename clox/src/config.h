@@ -57,6 +57,8 @@ static_assert(!USING(PE_BUILD) || !USING(DEBUG_BUILD));
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+#define MAX_U8_COUNT (1L << 8)
+
 #define MACHINE_BITS 8
 #define MAX_OPCODE_BITS MACHINE_BITS
-#define MAX_OPCODE_VALUE ((1ll << MAX_OPCODE_BITS) - 1)
+#define MAX_OPCODE_VALUE ((1L << MAX_OPCODE_BITS) - 1)
