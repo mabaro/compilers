@@ -4,19 +4,6 @@
 
 #include "utils/serde.h"
 
-
-struct Version
-{
-    uint8_t major;
-    uint8_t minor;
-    bool    operator==(const Version& other) const { return major == other.major && minor == other.minor; }
-    bool    operator<=(const Version& other) const
-    {
-        return major < other.major || (major == other.major && minor <= other.minor);
-    }
-};
-static const Version VERSION{0, 0};
-
 static const char* MAGIC_ID = "CODE42";
 static const char* CODE_SEG = ".CODE";
 static const char* DATA_SEG = ".DATA";

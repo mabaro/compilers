@@ -34,10 +34,24 @@
 #define DEBUG_BUILD IN_USE
 #endif  // #if DEBUG
 
+
+#ifdef TOOL_BUILD
+#undef TOOL_BUILD
+#define TOOL_BUILD IN_USE
+#else // #ifdef TOOL_BUILD
+#define TOOL_BUILD NOT_IN_USE
+#endif // #else // #ifdef TOOL_BUILD
+
 ////////////////////////////////////////////////////////////////////////////////
 // PE build is intended for injecting bytecode into a template VM binary
 #ifdef PE_BUILD
-////////////////////////////////////////////////////////////////////////////////
+static_assert(!USING(TOOL_BUILD));
+#if USING(DEBUG_BUILD)
+#warning Build is in debug mode for generating a PE_BUILD!!!
+#warning Build is in debug mode for generating a PE_BUILD!!!
+#warning Build is in debug mode for generating a PE_BUILD!!!
+#endif // #if USING(DEBUG_BUILD)
+
 #undef PE_BUILD
 #define PE_BUILD IN_USE
 // #pragma optimize("gsy",on)
@@ -53,10 +67,19 @@
 #undef PE_BUILD
 #define PE_BUILD NOT_IN_USE
 #endif  // #else//#endif //#ifdef PE_BUILD
-static_assert(!USING(PE_BUILD) || !USING(DEBUG_BUILD));
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef VM_BUILD
+static_assert(!USING(TOOL_BUILD) && !USING(PE_BUILD));
+#undef VM_BUILD
+#define VM_BUILD IN_USE
+#else // #ifdef VM_BUILD
+#define VM_BUILD NOT_IN_USE
+#endif // #else // #ifdef VM_BUILD
+
+
+////////////////////////////////////////////////////////////////////////////////
 #define MACHINE_BITS 8
 #define MAX_OPCODE_BITS MACHINE_BITS
 #define MAX_OPCODE_VALUE ((1ll << MAX_OPCODE_BITS) - 1)

@@ -13,6 +13,27 @@
 #include "config.h"
 #include "utils/assert.h"
 
+struct Version
+{
+    uint8_t     major;
+    uint8_t     minor;
+    uint8_t     build;
+    const char* tag = "";
+
+    bool operator==(const Version& other) const { return major == other.major && minor == other.minor; }
+
+    bool operator<=(const Version& other) const
+    {
+        return major < other.major || (major == other.major && minor <= other.minor);
+    }
+};
+[[maybe_unused]] static std::ostream& operator<<(std::ostream& os, const Version& v)
+{
+    os << (int)v.major << "." << (int)v.minor << v.tag << (int)v.build;
+    return os;
+}
+static const Version VERSION{0, 0, 1, "alpha"};
+
 // compiler types
 using jump_t    = int16_t;
 using codepos_t = uint16_t;
@@ -27,8 +48,8 @@ constexpr size_t kMaxJumpLength = (1L << 16) - 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEBUG_PRINT_CODE IN_USE       // USING(DEBUG_BUILD)
-#define DEBUG_TRACE_EXECUTION IN_USE  // USING(DEBUG_BUILD)
+#define DEBUG_PRINT_CODE !USING(VM_BUILD)       // USING(DEBUG_BUILD)
+#define DEBUG_TRACE_EXECUTION !USING(VM_BUILD)  // USING(DEBUG_BUILD)
 #define EXTENDED_ERROR_REPORT IN_USE
 
 #if USING(DEBUG_PRINT_CODE)
@@ -62,6 +83,7 @@ enum class LogLevel
 
     All = 0xFF
 };
+
 namespace Logger
 {
 void     SetLogLevel(LogLevel level);
@@ -129,8 +151,11 @@ void Log(LogLevel level, const char* fmt, Args... args)
 struct ScopedCallback
 {
     using callback_t = std::function<void()>;
+
     ScopedCallback(callback_t callback) : callbackFunc(callback) {}
+
     ~ScopedCallback() { callbackFunc(); }
+
     callback_t callbackFunc = nullptr;
 };
 
@@ -142,26 +167,35 @@ enum class ErrorCode
 {
     Undefined = 0
 };
+
 template <typename ErrCodeT = ErrorCode>
 struct Error
 {
     using code_t = ErrCodeT;
 
     Error() {}
+
     explicit Error(const char* msg) : _message(msg) {}
+
     explicit Error(const std::string& msg) : _message(msg) {}
+
     explicit Error(code_t e) : _code(e) {}
+
     Error(code_t e, const std::string& msg) : _message(msg), _code(e) {}
+
     Error(code_t e, const char* msg) : _message(msg), _code(e) {}
 
     Error(const Error& e) : _message(e._message), _code(e._code) {}
+
     Error(Error&& e) : _message(std::move(e._message)), _code(e._code) {}
+
     Error& operator=(const Error& e)
     {
         _code    = e;
         _message = e.msg;
         return *this;
     }
+
     Error& operator=(Error&& e)
     {
         _code    = std::move(e);
@@ -171,13 +205,15 @@ struct Error
 
     bool operator==(const Error& e) const { return e._code == _code && !e._message.compare(_message); }
 
-    code_t             code() const { return _code; }
+    code_t code() const { return _code; }
+
     const std::string& message() const { return _message; }
 
    protected:
     const std::string _message = "Undefined";
     const code_t      _code    = code_t::Undefined;
 };
+
 using Error_t = Error<ErrorCode>;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -185,28 +221,36 @@ using Error_t = Error<ErrorCode>;
 struct none_type
 {
 };
+
 constexpr none_type none_t = none_type{};
 
 template <typename T>
 struct Optional
 {
     Optional() {}
+
     Optional(none_type) {}
+
     Optional(const T& t) : _value(new T(t)) {}
+
     Optional(T&& t) : _value(new T(std::move(t))) {}
+
     Optional(const Optional& o) : _value(o._value ? new T(*o._value) : nullptr) { ASSERT(!hasValue() || _value); }
+
     Optional& operator=(const Optional& o)
     {
         reset();
         _value = o._value ? new T(*o._value) : nullptr;
         return *this;
     }
+
     Optional& operator=(Optional&& o)
     {
         reset();
         std::swap(_value, o._value);
         return *this;
     }
+
     ~Optional() { reset(); }
 
     const T& value() const
@@ -214,15 +258,19 @@ struct Optional
         ASSERT(hasValue());
         return *_value;
     }
-    T&   value() { return *_value; }
+
+    T& value() { return *_value; }
+
     bool hasValue() const { return _value != nullptr; }
-    T    extract()
+
+    T extract()
     {
         ASSERT(hasValue());
         T temp = std::move(*_value);
         reset();
         return temp;
     }
+
     void reset()
     {
         delete _value;
@@ -242,15 +290,22 @@ struct Result
     using error_t = ErrorT;
 
     Result(const T& t) : _value(t) {}
+
     Result(T&& t) : _value(std::move(t)) {}
+
     Result(const ErrorT& e) : _error(e) {}
+
     Result(typename ErrorT::code_t e) : _error(error_t(e)) {}
+
     Result(const Result& r) : _value(r._value), _error(r._error) {}
+
     Result(Result&& r) : _value(std::move(r._value)), _error(std::move(r._error)) {}
+
     Result& operator=(const Result&) = delete;
     Result& operator=(Result&&)      = delete;
 
-    bool   isOk() const { return !_error.hasValue() && _value.hasValue(); }
+    bool isOk() const { return !_error.hasValue() && _value.hasValue(); }
+
     ErrorT error() const
     {
         ASSERT(!isOk());
@@ -263,6 +318,7 @@ struct Result
         ASSERT(_value.hasValue());
         return _value.value();
     }
+
     T& value()
     {
         ASSERT(_value.hasValue());
@@ -289,15 +345,20 @@ struct Result<void, ErrorT>
     using error_code_t = typename ErrorT::code_t;
 
     Result() {}
+
     Result(error_t e) : _error(e) {}
+
     Result(error_code_t e) : _error(error_t(e)) {}
 
     Result(const Result& r) : _error(r._error) {}
+
     Result(Result&& r) : _error(std::move(r._error)) {}
+
     Result& operator=(const Result&) = delete;
     Result& operator=(Result&&)      = delete;
 
-    bool           isOk() const { return !_error.hasValue(); }
+    bool isOk() const { return !_error.hasValue(); }
+
     const error_t& error() const
     {
         ASSERT(_error.hasValue());
@@ -314,8 +375,10 @@ template <typename T, typename E = Error<>>
 struct ResultHelper
 {
     static Result<T, E> make(const T& t) { return Result<T, E>(t); }
+
     static Result<T, E> make(T&& t) { return Result<T, E>(std::forward<T>(t)); }
 };
+
 template <typename E>
 struct ResultHelper<void, E>
 {
@@ -328,6 +391,7 @@ static Result<T, E> makeResult(T t)
 {
     return detail::ResultHelper<T, E>::make(t);
 }
+
 template <typename T>
 static Result<T, Error<>> makeResult(T t)
 {
@@ -339,6 +403,7 @@ static R makeResult(typename R::value_t t)
 {
     return detail::ResultHelper<typename R::value_t, typename R::error_t>::make(std::forward<typename R::value_t>(t));
 }
+
 template <typename R>
 static R makeResult()
 {
@@ -350,31 +415,37 @@ static ResultT makeResultError()
 {
     return ResultT(typename ResultT::error_t());
 }
+
 template <typename ResultT>
 static ResultT makeResultError(typename ResultT::error_t::code_t e, const char* msg)
 {
     return ResultT(typename ResultT::error_t(e, msg));
 }
+
 template <typename ResultT>
 static ResultT makeResultError(typename ResultT::error_t::code_t e, const std::string& msg)
 {
     return ResultT(typename ResultT::error_t(e, msg));
 }
+
 template <typename ResultT>
 static ResultT makeResultError(typename ResultT::error_t e)
 {
     return ResultT(e);
 }
+
 template <typename ResultT>
 static ResultT makeResultError(const char* msg)
 {
     return ResultT(typename ResultT::error_t(msg));
 }
+
 template <typename ResultT>
 static ResultT makeResultError(const std::string& msg)
 {
     return ResultT(typename ResultT::error_t(msg));
 }
+
 template <typename ResultT>
 static ResultT makeResultError(std::string&& msg)
 {
@@ -388,11 +459,16 @@ struct RandomAccessContainer
 {
     using value_t = T;
 
-    void     resize(size_t size) { _values.resize(size); }
-    bool     empty() const { return _values.empty(); }
-    size_t   size() const { return _values.size(); }
+    void resize(size_t size) { _values.resize(size); }
+
+    bool empty() const { return _values.empty(); }
+
+    size_t size() const { return _values.size(); }
+
     const T* data() const { return _values.data(); }
+
     const T* getValues() const { return _values.data(); }
+
     const T& getValue(size_t index) const
     {
         ASSERT(index < _values.size());
@@ -400,9 +476,12 @@ struct RandomAccessContainer
     }
 
     const T* cbegin() const { return _values.data(); }
+
     const T* cend() const { return _values.data() + _values.size(); }
-    T*       begin() { return _values.data(); }
-    T*       end() { return _values.data() + _values.size(); }
+
+    T* begin() { return _values.data(); }
+
+    T* end() { return _values.data() + _values.size(); }
 
     const T& operator[](size_t index) const { return getValue(index); }
 
@@ -429,6 +508,7 @@ bool is_sorted(const T* begin, const T* end)
     }
     return true;
 }
+
 template <typename T>
 bool is_sorted_if(const T* begin, const T* end, std::function<bool(const T& a, const T& b)> compareOp)
 {
