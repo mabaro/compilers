@@ -39,11 +39,13 @@ struct VirtualMachine
     {
         bool stepByStep = false;
     };
+
     Configuration _configuration;
 
     ///////////////////////////////////////////////////////////////////////////////////
 
     VirtualMachine() {}
+
     ~VirtualMachine() {}
 
     VirtualMachine(const VirtualMachine &)            = delete;
@@ -51,7 +53,8 @@ struct VirtualMachine
     VirtualMachine &operator=(const VirtualMachine &) = delete;
     VirtualMachine &operator=(VirtualMachine &&)      = delete;
 
-    void                 setConfiguration(const Configuration &config) { _configuration = config; }
+    void setConfiguration(const Configuration &config) { _configuration = config; }
+
     const Configuration &getConfiguration() const { return _configuration; }
 
     result_t init(const Configuration &configuration)
@@ -65,7 +68,9 @@ struct VirtualMachine
 
         return makeResult<result_t>(InterpretResult::Ok);
     }
-    void     init() { init(_configuration); }
+
+    void init() { init(_configuration); }
+
     result_t finish()
     {
         ASSERT(_environments.size() <= 1);
@@ -111,17 +116,13 @@ struct VirtualMachine
                     printf("\n");
                     sWasPrint = false;
                 }
-                printf("          ");
-                printStack();
-                printf("          ");
-                printVariables();
-                printf("          ");
-                _chunk->printConstants();
+                const char *padding = "          ";
+                printStack(padding);
+                printVariables(padding);
+                _chunk->printConstants(padding);
                 OpCode instruction = OpCode::Undefined;
-#if !USING(VM_BUILD)
                 disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable,
                                        &scopeCount, &instruction);
-#endif // #if !USING(VM_BUILD)
                 if (instruction == OpCode::Print)
                 {
                     sWasPrint = true;
@@ -129,6 +130,7 @@ struct VirtualMachine
                 }
                 if (stepDebugging)
                 {
+                    // todo : time machine (prev/next IP)
                     // static std::vector<codepos_t> sTimeMachine;
                     while (true)
                     {
@@ -265,21 +267,6 @@ struct VirtualMachine
                     *value              = stackPop();  // null or expression :)
                     break;
                 }
-                case OpCode::GlobalVarGet:
-                {
-                    const char *varName = READ_STRING();
-                    Value      *value   = findVariable(varName);
-                    if (value == nullptr)
-                    {
-                        return runtimeError("Trying to read undeclared variable '%s'.", varName);
-                    }
-                    else if (value->is(Value::Type::Null))
-                    {
-                        return runtimeError("Trying to read undefined variable '%s'.", varName);
-                    }
-                    stackPush(*value);
-                    break;
-                }
                 case OpCode::GlobalVarSet:
                 {
                     const char *varName = READ_STRING();
@@ -296,6 +283,33 @@ struct VirtualMachine
                         }
                     }
                     *value = peek(0);
+                    break;
+                }
+                case OpCode::GlobalVarGet:
+                {
+                    const char *varName = READ_STRING();
+                    Value      *value   = findVariable(varName);
+                    if (value == nullptr)
+                    {
+                        return runtimeError("Trying to read undeclared variable '%s'.", varName);
+                    }
+                    else if (value->is(Value::Type::Null))
+                    {
+                        return runtimeError("Trying to read undefined variable '%s'.", varName);
+                    }
+                    stackPush(*value);
+                    break;
+                }
+                case OpCode::LocalVarSet:
+                {
+                    const uint8_t slot = READ_U8();
+                    _stack[slot]       = peek(0);
+                    break;
+                }
+                case OpCode::LocalVarGet:
+                {
+                    const uint8_t slot = READ_U8();
+                    stackPush(_stack[slot]);
                     break;
                 }
                 case OpCode::Assignment:
@@ -367,7 +381,8 @@ struct VirtualMachine
                 }
                 case OpCode::Undefined:
                     FAIL();
-                    return makeResultError<result_t>(ErrorCode::RuntimeError, format("Undefined OpCode: %d", instruction));
+                    return makeResultError<result_t>(ErrorCode::RuntimeError,
+                                                     format("Undefined OpCode: %d", instruction));
             }
         }
 #undef READ_U8
@@ -425,6 +440,11 @@ struct VirtualMachine
 
     result_t repl(Optional<Compiler::Configuration> optConfiguration = none_t)
     {
+        Compiler::Configuration compilerConfig =
+            optConfiguration.hasValue() ? optConfiguration.value() : _compiler.getConfiguration();
+        compilerConfig.isREPL = true;
+        _compiler.setConfiguration(compilerConfig);
+
         char line[1024];
         for (;;)
         {
@@ -580,34 +600,45 @@ struct VirtualMachine
     Value                  *_stackTop = &_stack[0];
 
     void stackReset() { _stackTop = &_stack[0]; }
+
     void stackPush(const Value &value)
     {
         *_stackTop = value;
         ++_stackTop;
     }
+
     void stackPush(Value &&value)
     {
         *_stackTop = std::move(value);
         ++_stackTop;
     }
+
     Value &stackPop()
     {
         --_stackTop;
         return *_stackTop;
     }
+
     Value &stackPeek(size_t offset)
     {
         ASSERT(offset < stackSize());
         return *(_stackTop - offset);
     }
+
     size_t stackSize() const
     {
         ASSERT(_stackTop >= _stack);
         return static_cast<size_t>(_stackTop - _stack);
     }
 #if DEBUG_TRACE_EXECUTION
-    void printStack() const
+    void printStack(const char *padding = "") const
     {
+        if (_stack == _stackTop)
+        {
+            return;
+        }
+
+        printf("%s", padding);
         printf("Stack");
         for (const Value *slot = _stack; slot < _stackTop; ++slot)
         {
@@ -618,11 +649,15 @@ struct VirtualMachine
         printf("\n");
     }
 
-    void printVariables() const
+    void printVariables(const char *padding = "") const
     {
         ASSERT(_currrentEnvironment);
-        printf("Variables ");
-        _currrentEnvironment->print();
+        if (_currrentEnvironment->getVariableCount() > 0)
+        {
+            printf("%s", padding);
+            printf("Variables ");
+            _currrentEnvironment->print();
+        }
     }
 #endif  // #if DEBUG_TRACE_EXECUTION
 
@@ -642,16 +677,19 @@ struct VirtualMachine
 
         return _currrentEnvironment->addVariable(name);
     }
+
     bool removeVariable(const char *name)
     {
         ASSERT(_currrentEnvironment);
         return _currrentEnvironment->removeVariable(name);
     }
+
     Value *findVariable(const char *name)
     {
         ASSERT(_currrentEnvironment);
         return _currrentEnvironment->findVariable(name);
     }
+
     std::vector<std::unique_ptr<Environment>> _environments;
     Environment                              *_currrentEnvironment = nullptr;
 

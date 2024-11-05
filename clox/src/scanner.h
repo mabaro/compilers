@@ -75,6 +75,8 @@ struct Token
     uint32_t    length = 0;
     const char* start  = nullptr;
     TokenType   type   = TokenType::Eof;
+
+    static bool equalString(const Token& a, const Token& b);
 };
 
 struct Scanner

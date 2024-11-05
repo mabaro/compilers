@@ -11,9 +11,17 @@
     {                                                        \
         printf("[%s] " X "\n", __FUNCTION__, ##__VA_ARGS__); \
     }
-#define CMP_DEBUGPRINT_PARSE(LEVEL)                                                               \
-    CMP_DEBUGPRINT(LEVEL, "CUR[%.*s] NXT[%.*s]", _parser.previous.length, _parser.previous.start, \
-                   _parser.current.length, _parser.current.start)
+#define CMP_DEBUGPRINT_PARSE(LEVEL)                                                                                   \
+    do                                                                                                                \
+    {                                                                                                                 \
+        const int  lineLen       = (int)(strchr(_scanner._linePtr, '\n') - _scanner._linePtr - 1);                    \
+        const char paddingBuff[] = "                                                                               "; \
+        const int  padding       = 40 - (int)strlen(__FUNCTION__) - _parser.previous.length - _parser.current.length; \
+        CMP_DEBUGPRINT(LEVEL, "PRV[%.*s] CUR[%.*s] %.*s LINE[%.*s]", _parser.previous.length, _parser.previous.start, \
+                       _parser.current.length, _parser.current.start, padding >= 0 ? padding : 0, paddingBuff,                           \
+                       lineLen >= 0 ? lineLen : 0, _scanner._linePtr)                                                 \
+        break;                                                                                                        \
+    } while (1)
 #else  // #if USING(DEBUG_PRINT_CODE)
 #define CMP_DEBUGPRINT(...)
 #define CMP_DEBUGPRINT_PARSE(...)
@@ -42,7 +50,7 @@ struct Parser
     bool                hadError  = false;
 };
 
-enum class Precedence
+enum class Precedence : uint8_t
 {
     NONE,
     ASSIGNMENT,  // =
@@ -77,6 +85,7 @@ struct Compiler
 
     struct Configuration
     {
+        bool isREPL                = false;
         bool allowDynamicVariables = false;  // no need to declare with <var>
         bool defaultConstVariables = false;  // <mut> allows modifying variables
         bool disassemble           = false;
@@ -128,6 +137,7 @@ struct Compiler
 
     void    parsePrecedence(Precedence precedence);
     uint8_t parseVariable(const char *errorMessage);
+    void    declareVariable();
     void    defineVariable(uint8_t id);
     uint8_t identifierConstant(const Token &token);
     void    beginScope();
@@ -153,6 +163,11 @@ struct Compiler
         emitBytes(byte);
         emitBytes(args...);
     }
+
+   protected:  // local variables
+    void addLocalVariable(const Token &name);
+    void initializeLocalVariable();
+    int  resolveLocalVariable(const Token &name);
 
    protected:
     Parser::ErrorInfo errorAtCurrent(const char *errorMsg) { return errorAt(_parser.current, errorMsg); }
@@ -181,6 +196,11 @@ struct Compiler
     void advance();
 
    protected:
+    Chunk *currentChunk() { return _compilingChunk.get(); }
+
+    std::unique_ptr<Chunk> extractChunk() { return std::move(_compilingChunk); }
+
+   protected:
     Configuration _configuration;
 
     Scanner  _scanner;
@@ -189,11 +209,20 @@ struct Compiler
 
     std::unique_ptr<Chunk> _compilingChunk = nullptr;
 
-    Chunk *currentChunk() { return _compilingChunk.get(); }
-
-    std::unique_ptr<Chunk> extractChunk() { return std::move(_compilingChunk); }
-
     ParseRule _parseRules[(size_t)TokenType::COUNT];
 
-    std::unordered_map<std::string, uint16_t> _variables;
+    struct LocalState
+    {
+        struct Local
+        {
+            Token name;
+            int   declarationDepth = 0;
+        };
+
+        Local locals[MAX_U8_COUNT];
+        int   localCount = 0;
+        int   scopeDepth = 0;
+    };
+
+    LocalState _localState;
 };

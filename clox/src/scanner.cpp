@@ -2,6 +2,14 @@
 
 #include <sstream>
 
+bool Token::equalString(const Token& a, const Token& b)
+{
+    return a.length == b.length && (0 == memcmp(a.start, b.start, a.length));
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
 Scanner::result_t Scanner::init(const char* source)
 {
     ASSERT_MSG(_line == uint32_t(-1), "Need to call finish() before init()");
@@ -262,7 +270,7 @@ TokenType Scanner::identifierType()
             ADD_KEYWORD(while, While),
             };
 #undef ADD_KEYWORD
-        ASSERT(utils::is_sorted_if<Keyword>(&keywords[0], &keywords[0] + ARRAY_SIZE(keywords),
+        ASSERT(utils::is_sorted_if<Keyword>(&keywords[0], &keywords[0] + ARRAY_COUNT(keywords),
                                             [](const Keyword& a, const Keyword& b)
                                             { return memcmp(a.str, b.str, a.len) >= 0; }));
         const char*  currentTokenStr = this->_start;

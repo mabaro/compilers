@@ -9,6 +9,14 @@ codepos_t simpleInstruction(const char* name, codepos_t offset)
     printf("%s\n", name);
     return offset + 1;
 }
+codepos_t byteInstruction(const char* name, const Chunk& chunk, codepos_t offset)
+{
+    const uint8_t* code          = chunk.getCode();
+    const uint8_t  slot = code[offset + 1];
+    printf("%-16s [%04d]='\n", name, slot);
+
+    return offset + 2;
+}
 codepos_t constantInstruction(const char* name, const Chunk& chunk, codepos_t offset)
 {
     const uint8_t* code          = chunk.getCode();
@@ -86,8 +94,10 @@ codepos_t disassembleInstruction(const Chunk& chunk, codepos_t offset, bool line
         case OpCode::Pop: return simpleInstruction("OP_POP", offset);
         case OpCode::Constant: return constantInstruction("OP_CONSTANT", chunk, offset);
         case OpCode::GlobalVarDef: return constantInstruction("OP_GLOBAL_VAR_DEFINE", chunk, offset);
+        case OpCode::GlobalVarSet: return constantInstruction("OP_LOCAL_VAR_SET", chunk, offset);
         case OpCode::GlobalVarGet: return constantInstruction("OP_GLOBAL_VAR_GET", chunk, offset);
-        case OpCode::GlobalVarSet: return constantInstruction("OP_GLOBAL_VAR_SET", chunk, offset);
+        case OpCode::LocalVarSet: return byteInstruction("OP_LOCAL_VAR_SET", chunk, offset);
+        case OpCode::LocalVarGet: return byteInstruction("OP_LOCAL_VAR_GET", chunk, offset);
         case OpCode::Jump: return jumpInstruction("OP_JUMP", chunk, offset);
         case OpCode::JumpIfFalse: return jumpInstruction("OP_JUMP_IF_FALSE", chunk, offset);
         case OpCode::JumpIfTrue: return jumpInstruction("OP_JUMP_IF_TRUE", chunk, offset);

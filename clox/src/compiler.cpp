@@ -16,6 +16,7 @@ Compiler::result_t Compiler::compile(const char *source, const char *sourcePath,
     _parser.optError.reset();
     _parser.panicMode = false;
     _parser.hadError  = false;
+    memset(&_localState, sizeof(_localState), 0);
 
     advance();
     while (!isAtEnd())
@@ -81,6 +82,10 @@ void Compiler::statement()
     {
         dowhileStatement();
     }
+    else if (match(TokenType::Comment))
+    {
+        // nothing to do
+    }
     else
     {
         expressionStatement();
@@ -91,7 +96,7 @@ void Compiler::printStatement()
 {
     expression();
     consume(TokenType::Semicolon, "Expect ';' after value");
-    CMP_DEBUGPRINT_PARSE(3);
+    CMP_DEBUGPRINT_PARSE(1);
     emitBytes(OpCode::Print);
 }
 
@@ -102,8 +107,9 @@ void Compiler::blockStatement()
     {
         declaration();
     }
+
     consume(TokenType::RightBrace, "Expect '}' after value");
-    CMP_DEBUGPRINT_PARSE(3);
+    CMP_DEBUGPRINT_PARSE(2);
     endScope();
 }
 
@@ -179,48 +185,60 @@ void Compiler::expressionStatement()
 
 void Compiler::expression()
 {
-    CMP_DEBUGPRINT_PARSE(3);
+    CMP_DEBUGPRINT_PARSE(1);
     _lastExpressionLine = _parser.current.line;
     parsePrecedence(Precedence::ASSIGNMENT);
 }
 
 void Compiler::skip()
 {
-    CMP_DEBUGPRINT_PARSE(3);
+    CMP_DEBUGPRINT_PARSE(1);
     // nothing to do here
 }
 
 void Compiler::grouping()
 {
-    CMP_DEBUGPRINT_PARSE(3);
+    CMP_DEBUGPRINT_PARSE(2);
     expression();
     consume(TokenType::RightParen, "Expected ')' after expression.");
 }
 
 void Compiler::variable(bool canAssign)
 {
-    CMP_DEBUGPRINT_PARSE(3);
+    CMP_DEBUGPRINT_PARSE(1);
     namedVariable(_parser.previous, canAssign);
 }
 
 void Compiler::namedVariable(const Token &name, bool canAssign)
 {
-    CMP_DEBUGPRINT_PARSE(3);
-    const uint8_t varId = identifierConstant(name);
+    ASSERT(name.type == TokenType::Identifier);
+    CMP_DEBUGPRINT_PARSE(2);
+
+    int    varId     = resolveLocalVariable(name);
+    OpCode setOpCode = OpCode::LocalVarSet;
+    OpCode getOpCode = OpCode::LocalVarGet;
+    if (varId == -1)
+    {
+        varId     = identifierConstant(name);
+        setOpCode = OpCode::GlobalVarSet;
+        getOpCode = OpCode::GlobalVarGet;
+    }
+
+    // todo: check for undefined/undeclared variables here
     if (canAssign && match(TokenType::Equal))
     {
         expression();
-        emitBytes(OpCode::GlobalVarSet, varId);
+        emitBytes(setOpCode, static_cast<uint8_t>(varId));
     }
     else
     {
-        emitBytes(OpCode::GlobalVarGet, varId);
+        emitBytes(getOpCode, static_cast<uint8_t>(varId));
     }
 }
 
 void Compiler::literal()
 {
-    CMP_DEBUGPRINT_PARSE(3);
+    CMP_DEBUGPRINT_PARSE(1);
 
     switch (_parser.previous.type)
     {
@@ -233,9 +251,9 @@ void Compiler::literal()
 
 void Compiler::number()
 {
-    CMP_DEBUGPRINT_PARSE(3);
+    CMP_DEBUGPRINT_PARSE(1);
 
-    Value value = Value::Create(strtod(_parser.previous.start, nullptr));
+    const Value value = Value::Create(strtod(_parser.previous.start, nullptr));
     emitConstant(value);
 }
 
@@ -243,7 +261,7 @@ void Compiler::string() { emitConstant(Value::CreateByCopy(_parser.previous.star
 
 void Compiler::unary()
 {
-    CMP_DEBUGPRINT_PARSE(3);
+    CMP_DEBUGPRINT_PARSE(1);
     const TokenType operatorType = _parser.previous.type;
 
     // parse expression
@@ -262,13 +280,13 @@ void Compiler::unary()
 
 void Compiler::binary()
 {
-    CMP_DEBUGPRINT_PARSE(3);
+    CMP_DEBUGPRINT_PARSE(1);
 
     const TokenType operatorType = _parser.previous.type;
     const ParseRule parseRule    = getParseRule(operatorType);
     // left-associative: 1+2+3+4 = ((1 + 2) + 3) + 4
     // right-associative: a=b=c=d -> a = (b = (c = d))
-    parsePrecedence(Precedence((int)parseRule.precedence + 1));
+    parsePrecedence(Precedence(static_cast<uint8_t>(parseRule.precedence) + 1));
 
     switch (operatorType)
     {
@@ -292,7 +310,7 @@ void Compiler::binary()
 
 void Compiler::variableDeclaration()
 {
-    CMP_DEBUGPRINT_PARSE(2);
+    CMP_DEBUGPRINT_PARSE(1);
 
     const uint8_t varId = parseVariable("Expected variable name.");
     if (match(TokenType::Equal))
@@ -337,10 +355,54 @@ void Compiler::parsePrecedence(Precedence precedence)
 uint8_t Compiler::parseVariable(const char *errorMessage)
 {
     consume(TokenType::Identifier, errorMessage);
+
+    declareVariable();
+    if (_localState.scopeDepth > 0)  // locals use no IDs
+    {
+        return 0;
+    }
+
     return identifierConstant(_parser.previous);
 }
 
-void Compiler::defineVariable(uint8_t id) { emitBytes(OpCode::GlobalVarDef, id); }
+void Compiler::declareVariable()
+{
+    if (_localState.scopeDepth == 0)  // global vars
+    {
+        // todo: check for duplicated variables
+        return;
+    }
+
+    // todo: check for shadowed variables here
+
+    const Token &name = _parser.previous;
+
+    const int currentScopeDepth = _localState.scopeDepth;
+    for (int i = _localState.localCount - 1; i >= 0; --i)
+    {
+        const LocalState::Local &local = _localState.locals[i];
+        if (local.declarationDepth != -1 && local.declarationDepth < currentScopeDepth)
+        {
+            break;
+        }
+        if (Token::equalString(name, local.name))
+        {
+            error("There is a variable with the same name in this scope.");
+            return;
+        }
+    }
+    addLocalVariable(name);
+}
+
+void Compiler::defineVariable(uint8_t id)
+{
+    if (_localState.scopeDepth > 0)
+    {
+        initializeLocalVariable();
+        return;
+    }
+    emitBytes(OpCode::GlobalVarDef, id);
+}
 
 uint8_t Compiler::identifierConstant(const Token &token)
 {
@@ -350,12 +412,22 @@ uint8_t Compiler::identifierConstant(const Token &token)
 
 void Compiler::beginScope()
 {
+    ++_localState.scopeDepth;
     emitBytes(OpCode::ScopeBegin);
 }
 
 void Compiler::endScope()
 {
     emitBytes(OpCode::ScopeEnd);
+    --_localState.scopeDepth;
+
+    const int currentScopeDepth = _localState.scopeDepth;
+    while (_localState.localCount > 0 &&
+           _localState.locals[_localState.localCount - 1].declarationDepth > currentScopeDepth)
+    {
+        emitBytes(OpCode::Pop);
+        --_localState.localCount;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -456,7 +528,55 @@ void Compiler::emitBytes(OpCode code)
     emitBytes((uint8_t)code);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// local variables
+
+void Compiler::addLocalVariable(const Token &name)
+{
+    CMP_DEBUGPRINT(1, "addLocalVariable: %.*s", name.length, name.start);
+
+    if (_localState.localCount == ARRAY_COUNT(_localState.locals))
+    {
+        error("Too many local variables in function.");
+        return;
+    }
+    ASSERT(_localState.localCount < ARRAY_COUNT(_localState.locals));
+    LocalState::Local *local = &_localState.locals[_localState.localCount++];
+    local->name              = name;
+    local->declarationDepth  = -1;  // uninitialized
+}
+
+void Compiler::initializeLocalVariable()
+{
+    CMP_DEBUGPRINT(1, "initializeLocalVariable(%d): %.*s at scopeDepth: %d", _localState.localCount - 1,
+                   _localState.locals[_localState.localCount - 1].name.length,
+                   _localState.locals[_localState.localCount - 1].name.start, _localState.scopeDepth);
+    _localState.locals[_localState.localCount - 1].declarationDepth = _localState.scopeDepth;
+}
+
+int Compiler::resolveLocalVariable(const Token &name)
+{
+    CMP_DEBUGPRINT(1, "resolveLocalVariable: %.*s", name.length, name.start);
+
+    for (int i = _localState.localCount - 1; i >= 0; --i)
+    {
+        LocalState::Local &local = _localState.locals[i];
+        if (Token::equalString(name, local.name))
+        {
+            if (local.declarationDepth == -1)
+            {
+                error("Can't read a local variable before it is fully initialized.");
+            }
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 /////////////////////////////////////////////////////////////////////////////////
+// error handling
 /////////////////////////////////////////////////////////////////////////////////
 
 Parser::ErrorInfo Compiler::errorAt(const Token &token, const char *errorMsg)
@@ -674,6 +794,8 @@ void Compiler::advance()
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// serialization
 ////////////////////////////////////////////////////////////////////////////////
 
 Compiler::result_t Compiler::compileFromSource(const char                       *sourceCode,
