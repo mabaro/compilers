@@ -5,13 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(Windows) Launch",
+            "name": "(msvc) Launch",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/Debug/clox.exe",
+            "program": "${command:cmake.launchTargetPath}",
             "args": [
                 "-disassemble",
-                "${workspaceFolder}/tests/scope.clox",
+                "${workspaceFolder}/tests/lang/variables.clox",
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
@@ -19,22 +19,9 @@
             // "console": "externalTerminal",
             "console": "integratedTerminal",
         }
-        , {
-            "name": "(msvc) Launch",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            // "args": ["${workspaceFolder}/tests/test.clox"],
-            // "args": ["-compile", "-output", "marcos.cloxbin", "-code", "print 1+1;" ],
-            // "args": [ "-run", "marcos.cloxbin" ],
-            "args": [ "-code", "var a=1; var b=2; if (a>0) print(\">\"); else print(\"<\");" ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/bin",
-            "environment": [],
-            "console": "externalTerminal",
-        },
+        ,
         {
-            "name": "(ctest) Launch",
+            "name": "(msvc ctest) Launch",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${cmake.testProgram}",
@@ -65,7 +52,7 @@
             ]
         },
         {
-            "name": "(ctest) Launch",
+            "name": "(gdb ctest) Launch",
             "type": "cppdbg",
             "request": "launch",
             "cwd": "${cmake.testWorkingDirectory}",
