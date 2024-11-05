@@ -9,11 +9,8 @@ set(cloxvm_compile_options "")
 set(cloxvm_linker_options "")
 
 if(MSVC)
-    string(APPEND cloxvm_compile_options "/W4" "$<$<CONFIG:RELEASE>: /O2>")
     # list(APPEND cloxvm_compile_options "/NODEFAULT")
 else()
-    # string(APPEND cloxvm_compile_options "/W4" "$<$<CONFIG:RELEASE>: -O3>")
-
     # set(cloxvm_linker_options ${cloxvm_linker_options} -nodefaultlibs)
     # set(cloxvm_linker_options ${cloxvm_linker_options} -nolibc)
     # set(cloxvm_linker_options ${cloxvm_linker_options} -nostdlib)

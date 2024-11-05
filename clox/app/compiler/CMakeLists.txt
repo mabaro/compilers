@@ -7,9 +7,11 @@ set(cloxc_compile_options "")
 set(cloxc_linker_options "")
 
 if(MSVC)
-    string(APPEND cloxc_compile_options "/W4" "$<$<CONFIG:RELEASE>: /O2>")
+    # list(APPEND cloxc_compile_options /W4)
+    # list(APPEND cloxc_compile_options $<$<CONFIG:RELEASE>: /O2>)
 else()
-    # string(APPEND cloxc_compile_options "/W4" "$<$<CONFIG:RELEASE>: -O3>")
+    # list(APPEND cloxc_compile_options /W4)
+    # list(APPEND cloxc_compile_options $<$<CONFIG:RELEASE>: /O2>)
 endif()
 
 target_compile_options(cloxc PRIVATE ${cloxc_compile_options})

@@ -8,8 +8,10 @@ set(pe_compile_options "")
 set(pe_linker_options "")
 
 if(MSVC)
-    string(APPEND pe_compile_options "/W4" "$<$<CONFIG:RELEASE>: /O2>")
-    # list(APPEND pe_compile_options "/NODEFAULT")
+    list(APPEND pe_compile_options "/W4")
+    list(APPEND pe_compile_options "$<$<CONFIG:RELEASE>: /O2>")
+
+# list(APPEND pe_compile_options "/NODEFAULT")
 else()
     # string(APPEND pe_compile_options "/W4" "$<$<CONFIG:RELEASE>: -O3>")
 
@@ -19,14 +21,12 @@ else()
     # set(pe_linker_options ${pe_linker_options} -nostartfiles)
     # set(pe_linker_options ${pe_linker_options} --entry=main)
 
-
     # set(pe_linker_options ${pe_linker_options} -static-libgcc )
-    # set(pe_linker_options ${pe_linker_options} -lstdc++) 
-
+    # set(pe_linker_options ${pe_linker_options} -lstdc++)
     if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-        # add_compile_options("-stdlib=libc++")
+    # add_compile_options("-stdlib=libc++")
     else()
-       set(pe_linker_options ${pe_linker_options} -lgcc) # required for platform fixes, even when no stdlib is wanted
+        set(pe_linker_options ${pe_linker_options} -lgcc) # required for platform fixes, even when no stdlib is wanted
     endif()
 endif()
 
