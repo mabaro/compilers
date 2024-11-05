@@ -2,8 +2,8 @@
 #include <iostream>
 #include <sstream>
 
-#include "utils/common.h"
 #include "utils/byte_buffer.h"
+#include "utils/common.h"
 #include "vm.h"
 
 #ifdef _DEBUG
@@ -23,8 +23,8 @@ int main(int argc, const char* argv[])
     printf("<<<<<< Unit tests\n");
 #endif  // #if 0
 
-    Compiler                compiler;
-    Compiler::Configuration compilerConfiguration;
+    Compiler                      compiler;
+    Compiler::Configuration       compilerConfiguration;
     VirtualMachine::Configuration virtualMachineConfiguration;
 
     auto errorReportFunc =
@@ -39,56 +39,6 @@ int main(int argc, const char* argv[])
         return resultCode;
     };
 
-#if USING(PE_BUILD)
-    if (1)
-    {
-        const char codeStr[] = {// -> CODE
-                                'C',  'O',  'D',  'E',  '4',  '2',  0x00, 0x00, '.',  'D',  'A',  'T',  'A',
-                                0x01, 0x04, 0x00, 0x31, 'h',  'e',  'l',  'l',  'o',  ' ',
-                                'w',  'o',  'r',  'l',  'd',  '!',  '.',  'C',  'O',  'D',  'E',  0x04, 0x00,
-                                0x01, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                0x0D, 0x0E, 0x0A, 0x0D, 0x0B, 0x0E, 0x0E, 0x0F};
-
-        bool wasCar=false;
-        for (uint8_t a : codeStr)
-        {
-            const bool isCar = a >= '0' && a <= 'z';
-            if (isCar)
-            {
-                std::cout << a;
-            } else {
-                if (wasCar) std::cout << ',';
-                // std::cout << std::hex << (int)a << ',';
-                std::cout << (int)a << ',';
-            }
-            wasCar = isCar;
-        }
-        std::cout << std::endl;
-
-        VirtualMachine VM;
-        VM.init(virtualMachineConfiguration);
-        ScopedCallback vmFinish([&VM] { VM.finish(); });
-
-        Chunk code("LOADER");
-        const volatile char* codeBegin = codeStr;
-        const volatile size_t codeLen = sizeof(codeStr);
-        ByteStream   istr((const uint8_t*)codeBegin, codeLen);
-        auto       deserializeResult = code.deserialize(istr);
-        ASSERT(deserializeResult.isOk());
-        if (argc > 1 && (nullptr != strstr(argv[1], "disassemble")))
-        {
-            disassemble(code, "VM");
-        }
-
-        auto result = VM.runFromByteCode(code);
-        if (!result.isOk())
-        {
-            return errorReportFunc(result.error().message().c_str());
-        }
-    }
-    else
-#endif  // #if USING(PE_BUILD)
 #if USING(DEBUG_BUILD)
         if (0)
     {
@@ -128,7 +78,7 @@ int main(int argc, const char* argv[])
                 default_const_variables,
 #if USING(EXTENDED_ERROR_REPORT)
                 extended_errors,
-#endif // #if USING(EXTENDED_ERROR_REPORT)
+#endif  // #if USING(EXTENDED_ERROR_REPORT)
                 code,
                 disassemble,
                 step_debugging,
@@ -140,6 +90,7 @@ int main(int argc, const char* argv[])
             Type        type;
             const char* params = nullptr;
         };
+
 #define ADD_PARAM(TYPE, DESC) {#TYPE, DESC, Param::Type::TYPE}
 #define ADD_PARAM_WITH_PARAMS(TYPE, DESC, PARAMS) {#TYPE, DESC, Param::Type::TYPE, PARAMS}
         const Param params[] = {
@@ -150,7 +101,7 @@ int main(int argc, const char* argv[])
                       "Variables are const by default, requiring <mut> modifier to be writable"),
 #if USING(EXTENDED_ERROR_REPORT)
             ADD_PARAM_WITH_PARAMS(extended_errors, "Show extended error reporting", "<0 / 1>"),
-#endif // #if USING(EXTENDED_ERROR_REPORT)
+#endif  // #if USING(EXTENDED_ERROR_REPORT)
             ADD_PARAM(disassemble, "Show disassembled code"),
             ADD_PARAM(step_debugging, "Step-by-step execution"),
             ADD_PARAM(repl, "Enters interactive mode(i.e. REPL)"),
@@ -198,6 +149,7 @@ int main(int argc, const char* argv[])
             File,
             Console
         };
+
         struct
         {
             bool          hasToShowHelp     = false;
@@ -257,7 +209,7 @@ int main(int argc, const char* argv[])
                                     compilerConfiguration.extendedErrorReport = **(++argvPtr) == '1';
                                 }
                                 break;
-#endif // #if USING(EXTENDED_ERROR_REPORT)
+#endif  // #if USING(EXTENDED_ERROR_REPORT)
                             case Param::Type::repl: config.mode = ExecutionMode::REPL; break;
                             case Param::Type::help: config.hasToShowHelp = true; break;
                             case Param::Type::compile: config.mode = ExecutionMode::Compile; break;
@@ -277,10 +229,10 @@ int main(int argc, const char* argv[])
             {
                 if (config.srcCodeOrFile != nullptr)
                 {
-                    return errorReportWithHelpFunc(
-                        format("Parameter '%s' is unexpected, <%s> is already defined: '%s'", curArg,
-                               config.isCodeOrFile ? "source_code" : "source_path", config.srcCodeOrFile)
-                            .c_str());
+                    return errorReportWithHelpFunc(format("Parameter '%s' is unexpected, <%s> is already defined: '%s'",
+                                                          curArg, config.isCodeOrFile ? "source_code" : "source_path",
+                                                          config.srcCodeOrFile)
+                                                       .c_str());
                 }
                 config.srcCodeOrFile = *argvPtr;
             }
@@ -347,8 +299,7 @@ int main(int argc, const char* argv[])
                     auto serializeResult = compiledChunk->serialize(ofs);
                     if (!serializeResult.isOk())
                     {
-                        return errorReportFunc(format("Failed serializing to file '%s': %s",
-                                                      config.compileOutputPath,
+                        return errorReportFunc(format("Failed serializing to file '%s': %s", config.compileOutputPath,
                                                       serializeResult.error().message().c_str())
                                                    .c_str());
                     }

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <functional>
+#include <iostream>
 #include <memory>  // unique_ptr
 #include <string>
 #include <type_traits>
@@ -15,10 +16,10 @@
 
 struct Version
 {
-    uint8_t     major;
-    uint8_t     minor;
-    uint8_t     build;
-    const char* tag = "";
+    uint8_t     major = 0;
+    uint8_t     minor = 0;
+    uint8_t     build = 0;
+    char        tag   = '-';
 
     bool operator==(const Version& other) const { return major == other.major && minor == other.minor; }
 
@@ -27,12 +28,14 @@ struct Version
         return major < other.major || (major == other.major && minor <= other.minor);
     }
 };
+
 [[maybe_unused]] static std::ostream& operator<<(std::ostream& os, const Version& v)
 {
     os << (int)v.major << "." << (int)v.minor << v.tag << (int)v.build;
     return os;
 }
-static const Version VERSION{0, 0, 1, "alpha"};
+
+static const Version VERSION{0, 0, 1, 'a'};
 
 // compiler types
 using jump_t    = int16_t;
@@ -44,11 +47,11 @@ namespace limits
 constexpr size_t kMaxJumpLength = (1L << 16) - 1;
 }
 
-#define ARRAY_SIZE(X) (sizeof(X) / sizeof(X[0]))
+#define ARRAY_COUNT(X) (sizeof(X) / sizeof(X[0]))
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEBUG_PRINT_CODE !USING(VM_BUILD)       // USING(DEBUG_BUILD)
+#define DEBUG_PRINT_CODE !USING(VM_BUILD) && USING(DEBUG_BUILD)
 #define DEBUG_TRACE_EXECUTION !USING(VM_BUILD)  // USING(DEBUG_BUILD)
 #define EXTENDED_ERROR_REPORT IN_USE
 
