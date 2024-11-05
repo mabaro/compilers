@@ -1,33 +1,15 @@
 add_executable(cloxc main.cpp)
 target_link_libraries(cloxc clox_lib)
 target_compile_features(cloxc PRIVATE cxx_std_20)
+target_compile_definitions(cloxc PRIVATE TOOL_BUILD)
 
 set(cloxc_compile_options "")
 set(cloxc_linker_options "")
 
 if(MSVC)
-    string(APPEND cloxc_compile_options "/DTOOL_BUILD")
     string(APPEND cloxc_compile_options "/W4" "$<$<CONFIG:RELEASE>: /O2>")
-    # list(APPEND cloxc_compile_options "/NODEFAULT")
 else()
-    string(APPEND cloxc_compile_options "-DTOOL_BUILD")
     # string(APPEND cloxc_compile_options "/W4" "$<$<CONFIG:RELEASE>: -O3>")
-
-    # set(cloxc_linker_options ${cloxc_linker_options} -nodefaultlibs)
-    # set(cloxc_linker_options ${cloxc_linker_options} -nolibc)
-    # set(cloxc_linker_options ${cloxc_linker_options} -nostdlib)
-    # set(cloxc_linker_options ${cloxc_linker_options} -nostartfiles)
-    # set(cloxc_linker_options ${cloxc_linker_options} --entry=main)
-
-
-    # set(cloxc_linker_options ${cloxc_linker_options} -static-libgcc )
-    # set(cloxc_linker_options ${cloxc_linker_options} -lstdc++) 
-
-    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-        # add_compile_options("-stdlib=libc++")
-    else()
-       set(cloxc_linker_options ${cloxc_linker_options} -lgcc) # required for platform fixes, even when no stdlib is wanted
-    endif()
 endif()
 
 target_compile_options(cloxc PRIVATE ${cloxc_compile_options})

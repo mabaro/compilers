@@ -2,16 +2,15 @@
 add_executable(clox_pe main.cpp)
 target_link_libraries(clox_pe clox_lib)
 target_compile_features(clox_pe PRIVATE cxx_std_20)
+target_compile_definitions(clox_pe PRIVATE PE_BUILD)
 
 set(pe_compile_options "")
 set(pe_linker_options "")
 
 if(MSVC)
-    string(APPEND pe_compile_options "/DPE_BUILD")
     string(APPEND pe_compile_options "/W4" "$<$<CONFIG:RELEASE>: /O2>")
     # list(APPEND pe_compile_options "/NODEFAULT")
 else()
-    string(APPEND pe_compile_options "-DPE_BUILD")
     # string(APPEND pe_compile_options "/W4" "$<$<CONFIG:RELEASE>: -O3>")
 
     # set(pe_linker_options ${pe_linker_options} -nodefaultlibs)

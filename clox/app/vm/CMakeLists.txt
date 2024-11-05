@@ -3,16 +3,15 @@
 add_executable(cloxvm main.cpp)
 target_link_libraries(cloxvm cloxvm_lib)
 target_compile_features(cloxvm PRIVATE cxx_std_20)
+target_compile_definitions(cloxvm PRIVATE VM_BUILD)
 
 set(cloxvm_compile_options "")
 set(cloxvm_linker_options "")
 
 if(MSVC)
-    string(APPEND cloxvm_compile_options "/DVM_BUILD")
     string(APPEND cloxvm_compile_options "/W4" "$<$<CONFIG:RELEASE>: /O2>")
     # list(APPEND cloxvm_compile_options "/NODEFAULT")
 else()
-    string(APPEND cloxvm_compile_options "-DVM_BUILD")
     # string(APPEND cloxvm_compile_options "/W4" "$<$<CONFIG:RELEASE>: -O3>")
 
     # set(cloxvm_linker_options ${cloxvm_linker_options} -nodefaultlibs)

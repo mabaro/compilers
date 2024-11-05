@@ -47,9 +47,9 @@
 #ifdef PE_BUILD
 static_assert(!USING(TOOL_BUILD));
 #if USING(DEBUG_BUILD)
-#warning Build is in debug mode for generating a PE_BUILD!!!
-#warning Build is in debug mode for generating a PE_BUILD!!!
-#warning Build is in debug mode for generating a PE_BUILD!!!
+#pragma message("WARNING!! Build is in debug mode for generating a PE_BUILD!!!")
+#pragma message("WARNING!! Build is in debug mode for generating a PE_BUILD!!!")
+#pragma message("WARNING!! Build is in debug mode for generating a PE_BUILD!!!")
 #endif // #if USING(DEBUG_BUILD)
 
 #undef PE_BUILD
