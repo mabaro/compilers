@@ -118,8 +118,10 @@ struct VirtualMachine
                 printf("          ");
                 _chunk->printConstants();
                 OpCode instruction = OpCode::Undefined;
+#if !USING(VM_BUILD)
                 disassembleInstruction(*_chunk, static_cast<uint16_t>(_ip - _chunk->getCode()), linesAvailable,
                                        &scopeCount, &instruction);
+#endif // #if !USING(VM_BUILD)
                 if (instruction == OpCode::Print)
                 {
                     sWasPrint = true;

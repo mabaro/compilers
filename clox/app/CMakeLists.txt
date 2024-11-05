@@ -1,0 +1,3 @@
+add_subdirectory(compiler)
+add_subdirectory(portable_executable)
+add_subdirectory(vm)

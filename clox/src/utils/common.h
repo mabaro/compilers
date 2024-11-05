@@ -13,6 +13,27 @@
 #include "config.h"
 #include "utils/assert.h"
 
+struct Version
+{
+    uint8_t     major;
+    uint8_t     minor;
+    uint8_t     build;
+    const char* tag = "";
+
+    bool operator==(const Version& other) const { return major == other.major && minor == other.minor; }
+
+    bool operator<=(const Version& other) const
+    {
+        return major < other.major || (major == other.major && minor <= other.minor);
+    }
+};
+[[maybe_unused]] static std::ostream& operator<<(std::ostream& os, const Version& v)
+{
+    os << (int)v.major << "." << (int)v.minor << v.tag << (int)v.build;
+    return os;
+}
+static const Version VERSION{0, 0, 1, "alpha"};
+
 // compiler types
 using jump_t    = int16_t;
 using codepos_t = uint16_t;
@@ -27,8 +48,8 @@ constexpr size_t kMaxJumpLength = (1L << 16) - 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DEBUG_PRINT_CODE IN_USE       // USING(DEBUG_BUILD)
-#define DEBUG_TRACE_EXECUTION IN_USE  // USING(DEBUG_BUILD)
+#define DEBUG_PRINT_CODE !USING(VM_BUILD)       // USING(DEBUG_BUILD)
+#define DEBUG_TRACE_EXECUTION !USING(VM_BUILD)  // USING(DEBUG_BUILD)
 #define EXTENDED_ERROR_REPORT IN_USE
 
 #if USING(DEBUG_PRINT_CODE)

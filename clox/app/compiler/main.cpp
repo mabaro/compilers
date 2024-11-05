@@ -162,6 +162,7 @@ int main(int argc, const char* argv[])
 #undef ADD_PARAM
         auto showHelpFunc = [&](std::ostream& ostr)
         {
+            ostr << "CLOX-variant tools (compiler / interpreter / REPL / VM) version " << VERSION << std::endl;
             ostr << format("Usage: %s [arguments] [filepath]\n", argv[0]);
             size_t longerArg = 0;
             for (const Param& param : params)
