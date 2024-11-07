@@ -32,8 +32,7 @@ int main(int argc, const char* argv[])
             0x04, 0x00, 0x01, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0D, 0x0E, 0x0A, 0x0D, 0x0B, 0x0E, 0x0E, 0x0F};
 
-        auto isCarFunc = [](char a) { return (a >= '0' && a <= 'z' || a == ' ' || a == '.'); };
-        bool wasCar    = isCarFunc(codeStr[0]);
+        auto isCarFunc = [](char a) { return (a >= '0' && a <= 'z') || a == ' ' || a == '.'; };
         for (uint8_t a : codeStr)
         {
             const bool isCar = isCarFunc(a);
@@ -45,7 +44,6 @@ int main(int argc, const char* argv[])
             {
                 std::cout << (int)a;
             }
-            wasCar = isCar;
         }
         std::cout << std::endl;
 

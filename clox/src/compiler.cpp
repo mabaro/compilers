@@ -16,7 +16,7 @@ Compiler::result_t Compiler::compile(const char *source, const char *sourcePath,
     _parser.optError.reset();
     _parser.panicMode = false;
     _parser.hadError  = false;
-    memset(&_localState, sizeof(_localState), 0);
+    _localState = LocalState{};
 
     advance();
     while (!isAtEnd())
