@@ -18,7 +18,7 @@
         const char paddingBuff[] = "                                                                               "; \
         const int  padding       = 40 - (int)strlen(__FUNCTION__) - _parser.previous.length - _parser.current.length; \
         CMP_DEBUGPRINT(LEVEL, "PRV[%.*s] CUR[%.*s] %.*s LINE[%.*s]", _parser.previous.length, _parser.previous.start, \
-                       _parser.current.length, _parser.current.start, padding >= 0 ? padding : 0, paddingBuff,                           \
+                       _parser.current.length, _parser.current.start, padding >= 0 ? padding : 0, paddingBuff,        \
                        lineLen >= 0 ? lineLen : 0, _scanner._linePtr)                                                 \
         break;                                                                                                        \
     } while (1)
@@ -224,5 +224,44 @@ struct Compiler
         int   localCount = 0;
         int   scopeDepth = 0;
     };
+
     LocalState _localState;
+
+    struct LoopContext
+    {
+        struct Data
+        {
+            codepos_t              continueJumpTo = codepos_t(-1);
+            std::vector<codepos_t> breakJumpsToPatch;
+        };
+
+        void loopStart(codepos_t loopStart) { _loops.push_back({loopStart}); }
+
+        void addBreak(codepos_t jumpPos)
+        {
+            ASSERT(isInLoop());
+            _loops.back().breakJumpsToPatch.push_back(jumpPos);
+        }
+
+        codepos_t getContinueJumpPos() const
+        {
+            ASSERT(isInLoop());
+            return _loops.back().continueJumpTo;
+        }
+
+        void loopEnd(std::function<void(codepos_t jump)> patchJumpFunc)
+        {
+            for (codepos_t jumpOffset : _loops.back().breakJumpsToPatch)
+            {
+                patchJumpFunc(jumpOffset);
+            }
+            _loops.pop_back();
+        }
+
+        bool isInLoop() const { return !_loops.empty() && _loops.back().continueJumpTo != codepos_t(-1); }
+
+        std::vector<Data> _loops;
+    };
+
+    LoopContext _loopContext;
 };

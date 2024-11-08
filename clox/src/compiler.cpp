@@ -86,6 +86,32 @@ void Compiler::statement()
     {
         forStatement();
     }
+    else if (match(TokenType::Break))
+    {
+        if (_loopContext.isInLoop())
+        {
+            emitBytes(OpCode::ScopeEnd);
+            const codepos_t jump = emitJump(OpCode::Jump);
+            _loopContext.addBreak(jump);
+        }
+        else
+        {
+            error("'break' can only be used inside loops.");
+        }
+    }
+    else if (match(TokenType::Continue))
+    {
+        if (_loopContext.isInLoop())
+        {
+            emitBytes(OpCode::ScopeEnd);
+            const codepos_t continuePos = _loopContext.getContinueJumpPos();
+            emitJump(OpCode::Jump, continuePos);
+        }
+        else
+        {
+            error("'continue' can only be used inside loops.");
+        }
+    }
     else if (match(TokenType::Comment))
     {
         // nothing to do
@@ -104,7 +130,7 @@ void Compiler::printStatement()
 {
     expression();
     consume(TokenType::Semicolon, "Expect ';' after value");
-    CMP_DEBUGPRINT_PARSE(1);
+    CMP_DEBUGPRINT_PARSE(3);
     emitBytes(OpCode::Print);
 }
 
@@ -117,7 +143,7 @@ void Compiler::blockStatement()
     }
 
     consume(TokenType::RightBrace, "Expect '}' after value");
-    CMP_DEBUGPRINT_PARSE(2);
+    CMP_DEBUGPRINT_PARSE(3);
     endScope();
 }
 
@@ -146,6 +172,7 @@ void Compiler::ifStatement()
 void Compiler::whileStatement()
 {
     const codepos_t loopStart = _compilingChunk->getCodeSize();
+    _loopContext.loopStart(loopStart);
 
     consume(TokenType::LeftParen, "Expected '(' after 'while'.");
     expression();
@@ -159,6 +186,8 @@ void Compiler::whileStatement()
 
     patchJump(exitJump);
     emitBytes(OpCode::Pop);  // pop condition
+
+    _loopContext.loopEnd(std::bind(&Compiler::patchJump, this, std::placeholders::_1));
 }
 
 void Compiler::dowhileStatement()
@@ -169,8 +198,9 @@ void Compiler::dowhileStatement()
     emitBytes(OpCode::Pop);  // pop condition
 
     patchJump(doJump);
-
     statement();
+
+    _loopContext.loopStart(_compilingChunk->getCodeSize());
 
     consume(TokenType::While, "Expected 'While'");
     consume(TokenType::LeftParen, "Expected '(' after 'while'.");
@@ -180,6 +210,8 @@ void Compiler::dowhileStatement()
 
     emitJump(OpCode::JumpIfTrue, loopStart);
     emitBytes(OpCode::Pop);  // pop condition
+
+    _loopContext.loopEnd(std::bind(&Compiler::patchJump, this, std::placeholders::_1));
 }
 
 void Compiler::forStatement()
@@ -200,6 +232,7 @@ void Compiler::forStatement()
     }
     //> condition
     codepos_t loopStart = _compilingChunk->getCodeSize();
+
     if (!match(TokenType::Semicolon))
     {
         expression();
@@ -222,6 +255,8 @@ void Compiler::forStatement()
         patchJump(bodyJump);
     }
 
+    _loopContext.loopStart(loopStart);
+
     //> body
     statement();
     emitJump(OpCode::Jump, loopStart);
@@ -231,6 +266,8 @@ void Compiler::forStatement()
         patchJump(exitJump);
         emitBytes(OpCode::Pop);  // pop condition
     }
+
+    _loopContext.loopEnd(std::bind(&Compiler::patchJump, this, std::placeholders::_1));
 
     endScope();
 }
@@ -246,34 +283,34 @@ void Compiler::expressionStatement()
 
 void Compiler::expression()
 {
-    CMP_DEBUGPRINT_PARSE(1);
+    CMP_DEBUGPRINT_PARSE(3);
     _lastExpressionLine = _parser.current.line;
     parsePrecedence(Precedence::ASSIGNMENT);
 }
 
 void Compiler::skip()
 {
-    CMP_DEBUGPRINT_PARSE(1);
+    CMP_DEBUGPRINT_PARSE(3);
     // nothing to do here
 }
 
 void Compiler::grouping()
 {
-    CMP_DEBUGPRINT_PARSE(2);
+    CMP_DEBUGPRINT_PARSE(3);
     expression();
     consume(TokenType::RightParen, "Expected ')' after expression.");
 }
 
 void Compiler::variable(bool canAssign)
 {
-    CMP_DEBUGPRINT_PARSE(1);
+    CMP_DEBUGPRINT_PARSE(3);
     namedVariable(_parser.previous, canAssign);
 }
 
 void Compiler::namedVariable(const Token &name, bool canAssign)
 {
     ASSERT(name.type == TokenType::Identifier);
-    CMP_DEBUGPRINT_PARSE(2);
+    CMP_DEBUGPRINT_PARSE(3);
 
     int    varId     = resolveLocalVariable(name);
     OpCode setOpCode = OpCode::LocalVarSet;
@@ -299,7 +336,7 @@ void Compiler::namedVariable(const Token &name, bool canAssign)
 
 void Compiler::literal()
 {
-    CMP_DEBUGPRINT_PARSE(1);
+    CMP_DEBUGPRINT_PARSE(3);
 
     switch (_parser.previous.type)
     {
@@ -312,7 +349,7 @@ void Compiler::literal()
 
 void Compiler::number()
 {
-    CMP_DEBUGPRINT_PARSE(1);
+    CMP_DEBUGPRINT_PARSE(3);
 
     const Value value = Value::Create(strtod(_parser.previous.start, nullptr));
     emitConstant(value);
@@ -322,7 +359,7 @@ void Compiler::string() { emitConstant(Value::CreateByCopy(_parser.previous.star
 
 void Compiler::unary()
 {
-    CMP_DEBUGPRINT_PARSE(1);
+    CMP_DEBUGPRINT_PARSE(3);
     const TokenType operatorType = _parser.previous.type;
 
     // parse expression
@@ -341,7 +378,7 @@ void Compiler::unary()
 
 void Compiler::binary()
 {
-    CMP_DEBUGPRINT_PARSE(1);
+    CMP_DEBUGPRINT_PARSE(3);
 
     const TokenType operatorType = _parser.previous.type;
     const ParseRule parseRule    = getParseRule(operatorType);
@@ -371,7 +408,7 @@ void Compiler::binary()
 
 void Compiler::variableDeclaration()
 {
-    CMP_DEBUGPRINT_PARSE(1);
+    CMP_DEBUGPRINT_PARSE(3);
 
     const uint8_t varId = parseVariable("Expected variable name.");
     if (match(TokenType::Equal))
@@ -467,7 +504,7 @@ void Compiler::defineVariable(uint8_t id)
 
 uint8_t Compiler::identifierConstant(const Token &token)
 {
-    CMP_DEBUGPRINT_PARSE(2);
+    CMP_DEBUGPRINT_PARSE(3);
     return makeConstant(Value::CreateByCopy(token.start, token.length));
 }
 
@@ -480,6 +517,7 @@ void Compiler::beginScope()
 void Compiler::endScope()
 {
     emitBytes(OpCode::ScopeEnd);
+    ASSERT(_localState.scopeDepth > 0);
     --_localState.scopeDepth;
 
     const int currentScopeDepth = _localState.scopeDepth;
@@ -554,16 +592,16 @@ uint16_t Compiler::emitJump(OpCode op)
     return codeOffset;
 }
 
-void Compiler::patchJump(codepos_t codePos)
+void Compiler::patchJump(codepos_t jumpPos)
 {
     constexpr size_t jumpBytes = sizeof(jump_t);
     Chunk           *chunk     = currentChunk();
-    ASSERT(static_cast<size_t>(chunk->getCodeSize() - codePos) < limits::kMaxJumpLength);
-    const jump_t jumpLen = chunk->getCodeSize() - codePos - jumpBytes;
+    ASSERT(static_cast<size_t>(chunk->getCodeSize() - jumpPos) < limits::kMaxJumpLength);
+    const jump_t jumpLen = chunk->getCodeSize() - jumpPos - jumpBytes;
 
     uint8_t *code     = chunk->getCodeMut();
-    code[codePos]     = static_cast<uint8_t>((jumpLen >> 8) & 0xff);
-    code[codePos + 1] = static_cast<uint8_t>(jumpLen & 0xff);
+    code[jumpPos]     = static_cast<uint8_t>((jumpLen >> 8) & 0xff);
+    code[jumpPos + 1] = static_cast<uint8_t>(jumpLen & 0xff);
 }
 
 void Compiler::emitBytes(uint8_t byte)
@@ -585,7 +623,7 @@ void Compiler::emitBytes(uint16_t word)
 
 void Compiler::emitBytes(OpCode code)
 {
-    CMP_DEBUGPRINT(1, "emitOp: %s", named_enum::name(code));
+    CMP_DEBUGPRINT(1, "[%d]emitOpCode: %s", _compilingChunk->getCodeSize(), named_enum::name(code));
     emitBytes((uint8_t)code);
 }
 
@@ -595,7 +633,7 @@ void Compiler::emitBytes(OpCode code)
 
 void Compiler::addLocalVariable(const Token &name)
 {
-    CMP_DEBUGPRINT(1, "addLocalVariable: %.*s", name.length, name.start);
+    CMP_DEBUGPRINT(2, "addLocalVariable: %.*s", name.length, name.start);
 
     if (_localState.localCount == ARRAY_COUNT(_localState.locals))
     {
@@ -610,7 +648,7 @@ void Compiler::addLocalVariable(const Token &name)
 
 void Compiler::initializeLocalVariable()
 {
-    CMP_DEBUGPRINT(1, "initializeLocalVariable(%d): %.*s at scopeDepth: %d", _localState.localCount - 1,
+    CMP_DEBUGPRINT(2, "initializeLocalVariable(%d): %.*s at scopeDepth: %d", _localState.localCount - 1,
                    _localState.locals[_localState.localCount - 1].name.length,
                    _localState.locals[_localState.localCount - 1].name.start, _localState.scopeDepth);
     _localState.locals[_localState.localCount - 1].declarationDepth = _localState.scopeDepth;
@@ -618,7 +656,7 @@ void Compiler::initializeLocalVariable()
 
 int Compiler::resolveLocalVariable(const Token &name)
 {
-    CMP_DEBUGPRINT(1, "resolveLocalVariable: %.*s", name.length, name.start);
+    CMP_DEBUGPRINT(2, "resolveLocalVariable: %.*s", name.length, name.start);
 
     for (int i = _localState.localCount - 1; i >= 0; --i)
     {

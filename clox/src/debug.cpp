@@ -55,7 +55,12 @@ codepos_t disassembleInstruction(const Chunk& chunk, codepos_t offset, bool line
     printf("%04d ", offset);
     if (instruction == OpCode::ScopeEnd)
     {
-        --(*scopeCount);
+        if (*scopeCount > 0)
+        {
+            --(*scopeCount);
+        // } else { // this should be a OpCode::Break
+        //     printf("Unpaired Op::EndScope\n");
+        }
     }
 
     for (int i = *scopeCount; i > 0; --i)

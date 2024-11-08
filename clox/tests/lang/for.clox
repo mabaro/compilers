@@ -1,13 +1,14 @@
 var b=0;
-var count=2;
-for( var a=0; a <= count; a = a+1)
+var count=3;
+var a=0;
+for( ;;)
 {
-    b = a;
-/*
+    if (a == count)
+        break;
+    a = a+1;
+    
     if (b == 2)
         continue;
-    if (b > 1)
-        break;
-*/
+    b = a;
 };
-print b == count;
+print b == 2 && a == count;

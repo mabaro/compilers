@@ -58,8 +58,10 @@ add_test(NAME lang_flow_for2 COMMAND cloxc  -code "var b=0; var a=0; for(; a <= 
 set_tests_properties(lang_flow_for2 PROPERTIES PASS_REGULAR_EXPRESSION "true")
 add_test(NAME lang_flow_for3 COMMAND cloxc  -code "var b=0; var a=0; for(; a <= 5; ){ b = a; a = a + 1; }; print b == 5;")
 set_tests_properties(lang_flow_for3 PROPERTIES PASS_REGULAR_EXPRESSION "true")
-# add_test(NAME lang_flow_for4 COMMAND cloxc  -code "var b=0; var a=0; for(;; ){ b = a; a = a + 1; if (a>5) break; }; print b == 5;")
-# set_tests_properties(lang_flow_for4 PROPERTIES PASS_REGULAR_EXPRESSION "true")
+add_test(NAME lang_flow_for4 COMMAND cloxc  -code "var b=0; var a=0; for(;;){ b = a; a = a + 1; if (a>5) break; }; print b == 5;")
+set_tests_properties(lang_flow_for4 PROPERTIES PASS_REGULAR_EXPRESSION "true")
+add_test(NAME lang_flow_for_continue COMMAND cloxc  -code "var b=0; var a=0; for(;;a = a + 1){ if (a>5) break; if (a>3) continue; b =a;}; print b == 3;")
+set_tests_properties(lang_flow_for_continue PROPERTIES PASS_REGULAR_EXPRESSION "true")
 
 # #######################################################################################
 # # error tests
