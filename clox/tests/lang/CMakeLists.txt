@@ -92,6 +92,7 @@ set(PREFIX lang_file_)
 set(TESTS_LIST
     arith
     scope
+    for
     do_while
     while
 )

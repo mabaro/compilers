@@ -18,5 +18,18 @@ while(a<5)
     }
 }
 
-print acc==5*5*5;
+var result = acc==5*5*5;
+
+var b=0;
+a=0;
+while(result)
+{
+    a = a + 1;
+    if (a==5) break;
+    if (a>2) continue;
+    b=a;
+}
+result = result && (b==2 && a==5);
+
+print result;
 print "\n";

@@ -17,5 +17,19 @@ do{
     }while(a1<5);
 }while(a<5);
 
-print (accum==5*5*5);
+var result = accum==5*5*5;
+
+var b=0;
+a=0;
+do
+{
+    a = a + 1;
+    if (a==5) break;
+    if (a>2) continue;
+    b=a;
+} while(result);
+
+result = result && (b==2 && a==5);
+
+print result;
 print "\n";
