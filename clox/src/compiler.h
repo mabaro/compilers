@@ -153,7 +153,8 @@ struct Compiler
     void     emitReturn();
     uint16_t emitJump(OpCode op, codepos_t jumpOffset);
     uint16_t emitJump(OpCode op);
-    void     patchJump(codepos_t codePos);
+    void     patchJump(codepos_t jumpPos);
+    void     patchJumpEx(codepos_t jumpPos, codepos_t jumpTargetPos);
     void     emitBytes(uint8_t byte);
     void     emitBytes(uint16_t word);
     void     emitBytes(OpCode code);
@@ -231,34 +232,48 @@ struct Compiler
     {
         struct Data
         {
-            codepos_t              continueJumpTo = codepos_t(-1);
+            codepos_t breakJump;
+            codepos_t continueJump;
             std::vector<codepos_t> breakJumpsToPatch;
+            std::vector<codepos_t> continueJumpsToPatch;
         };
 
-        void loopStart(codepos_t loopStart) { _loops.push_back({loopStart}); }
+        void loopStart(codepos_t loopStart)
+        {
+            _loops.push_back({});
+            _loops.back().continueJump = loopStart;
+        }
+        void setLoopStart(codepos_t loopStart) { _loops.back().continueJump = loopStart; }
+
+        void setLoopEnd(codepos_t loopEnd) { _loops.back().breakJump = loopEnd; }
 
         void addBreak(codepos_t jumpPos)
         {
             ASSERT(isInLoop());
             _loops.back().breakJumpsToPatch.push_back(jumpPos);
         }
-
-        codepos_t getContinueJumpPos() const
+        void addContinue(codepos_t jumpPos)
         {
             ASSERT(isInLoop());
-            return _loops.back().continueJumpTo;
+            _loops.back().continueJumpsToPatch.push_back(jumpPos);
         }
 
-        void loopEnd(std::function<void(codepos_t jump)> patchJumpFunc)
+        void loopEnd(std::function<void(codepos_t jumpFrom, codepos_t jumpTo)> patchJumpFunc)
         {
+            const codepos_t breakJump = _loops.back().breakJump;
             for (codepos_t jumpOffset : _loops.back().breakJumpsToPatch)
             {
-                patchJumpFunc(jumpOffset);
+                patchJumpFunc(jumpOffset, breakJump);
+            }
+            const codepos_t continueJump = _loops.back().continueJump;
+            for (codepos_t jumpOffset : _loops.back().continueJumpsToPatch)
+            {
+                patchJumpFunc(jumpOffset, continueJump);
             }
             _loops.pop_back();
         }
 
-        bool isInLoop() const { return !_loops.empty() && _loops.back().continueJumpTo != codepos_t(-1); }
+        bool isInLoop() const { return !_loops.empty(); }
 
         std::vector<Data> _loops;
     };

@@ -104,8 +104,8 @@ void Compiler::statement()
         if (_loopContext.isInLoop())
         {
             emitBytes(OpCode::ScopeEnd);
-            const codepos_t continuePos = _loopContext.getContinueJumpPos();
-            emitJump(OpCode::Jump, continuePos);
+            const codepos_t jump = emitJump(OpCode::Jump);
+            _loopContext.addContinue(jump);
         }
         else
         {
@@ -187,11 +187,14 @@ void Compiler::whileStatement()
     patchJump(exitJump);
     emitBytes(OpCode::Pop);  // pop condition
 
-    _loopContext.loopEnd(std::bind(&Compiler::patchJump, this, std::placeholders::_1));
+    _loopContext.setLoopEnd(_compilingChunk->getCodeSize());
+    _loopContext.loopEnd(std::bind(&Compiler::patchJumpEx, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void Compiler::dowhileStatement()
 {
+    _loopContext.loopStart(codepos_t(-1));
+
     const codepos_t doJump = emitJump(OpCode::Jump);
 
     const codepos_t loopStart = _compilingChunk->getCodeSize();
@@ -199,8 +202,7 @@ void Compiler::dowhileStatement()
 
     patchJump(doJump);
     statement();
-
-    _loopContext.loopStart(_compilingChunk->getCodeSize());
+    _loopContext.setLoopStart(_compilingChunk->getCodeSize());
 
     consume(TokenType::While, "Expected 'While'");
     consume(TokenType::LeftParen, "Expected '(' after 'while'.");
@@ -211,7 +213,8 @@ void Compiler::dowhileStatement()
     emitJump(OpCode::JumpIfTrue, loopStart);
     emitBytes(OpCode::Pop);  // pop condition
 
-    _loopContext.loopEnd(std::bind(&Compiler::patchJump, this, std::placeholders::_1));
+    _loopContext.setLoopEnd(_compilingChunk->getCodeSize());
+    _loopContext.loopEnd(std::bind(&Compiler::patchJumpEx, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void Compiler::forStatement()
@@ -267,6 +270,7 @@ void Compiler::forStatement()
         emitBytes(OpCode::Pop);  // pop condition
     }
 
+    _loopContext.setLoopEnd(_compilingChunk->getCodeSize());
     _loopContext.loopEnd(std::bind(&Compiler::patchJump, this, std::placeholders::_1));
 
     endScope();
@@ -594,10 +598,15 @@ uint16_t Compiler::emitJump(OpCode op)
 
 void Compiler::patchJump(codepos_t jumpPos)
 {
+    patchJumpEx(jumpPos, currentChunk()->getCodeSize());
+}
+
+void Compiler::patchJumpEx(codepos_t jumpPos, codepos_t jumpTargetPos)
+{
     constexpr size_t jumpBytes = sizeof(jump_t);
     Chunk           *chunk     = currentChunk();
-    ASSERT(static_cast<size_t>(chunk->getCodeSize() - jumpPos) < limits::kMaxJumpLength);
-    const jump_t jumpLen = chunk->getCodeSize() - jumpPos - jumpBytes;
+    ASSERT(static_cast<size_t>(jumpTargetPos - jumpPos) < limits::kMaxJumpLength);
+    const jump_t jumpLen = jumpTargetPos - jumpPos - jumpBytes;
 
     uint8_t *code     = chunk->getCodeMut();
     code[jumpPos]     = static_cast<uint8_t>((jumpLen >> 8) & 0xff);
