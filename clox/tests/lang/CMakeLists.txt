@@ -52,6 +52,15 @@ set_tests_properties(lang_flow_while PROPERTIES PASS_REGULAR_EXPRESSION "5")
 add_test(NAME lang_flow_do_while COMMAND cloxc  -code "var a=0; do { a=a+1; }while(a<5); print a==5;")
 set_tests_properties(lang_flow_do_while PROPERTIES PASS_REGULAR_EXPRESSION "true")
 
+add_test(NAME lang_flow_for COMMAND cloxc  -code "var b=0; for(var a=0; a <= 5; a = a+1){ b = a; }; print b == 5;")
+set_tests_properties(lang_flow_for PROPERTIES PASS_REGULAR_EXPRESSION "true")
+add_test(NAME lang_flow_for2 COMMAND cloxc  -code "var b=0; var a=0; for(; a <= 5; a = a+1){ b = a; }; print b == 5;")
+set_tests_properties(lang_flow_for2 PROPERTIES PASS_REGULAR_EXPRESSION "true")
+add_test(NAME lang_flow_for3 COMMAND cloxc  -code "var b=0; var a=0; for(; a <= 5; ){ b = a; a = a + 1; }; print b == 5;")
+set_tests_properties(lang_flow_for3 PROPERTIES PASS_REGULAR_EXPRESSION "true")
+# add_test(NAME lang_flow_for4 COMMAND cloxc  -code "var b=0; var a=0; for(;; ){ b = a; a = a + 1; if (a>5) break; }; print b == 5;")
+# set_tests_properties(lang_flow_for4 PROPERTIES PASS_REGULAR_EXPRESSION "true")
+
 # #######################################################################################
 # # error tests
 

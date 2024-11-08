@@ -117,6 +117,7 @@ struct Compiler
     void ifStatement();
     void whileStatement();
     void dowhileStatement();
+    void forStatement();
     void expressionStatement();
 
     /////////////////////////////////////////////////////////////////////////////////
@@ -223,6 +224,5 @@ struct Compiler
         int   localCount = 0;
         int   scopeDepth = 0;
     };
-
     LocalState _localState;
 };

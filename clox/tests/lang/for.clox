@@ -1,0 +1,13 @@
+var b=0;
+var count=2;
+for( var a=0; a <= count; a = a+1)
+{
+    b = a;
+/*
+    if (b == 2)
+        continue;
+    if (b > 1)
+        break;
+*/
+};
+print b == count;

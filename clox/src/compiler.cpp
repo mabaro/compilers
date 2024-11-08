@@ -16,7 +16,7 @@ Compiler::result_t Compiler::compile(const char *source, const char *sourcePath,
     _parser.optError.reset();
     _parser.panicMode = false;
     _parser.hadError  = false;
-    _localState = LocalState{};
+    _localState       = LocalState{};
 
     advance();
     while (!isAtEnd())
@@ -82,7 +82,15 @@ void Compiler::statement()
     {
         dowhileStatement();
     }
+    else if (match(TokenType::For))
+    {
+        forStatement();
+    }
     else if (match(TokenType::Comment))
+    {
+        // nothing to do
+    }
+    else if (match(TokenType::Semicolon))
     {
         // nothing to do
     }
@@ -172,6 +180,59 @@ void Compiler::dowhileStatement()
 
     emitJump(OpCode::JumpIfTrue, loopStart);
     emitBytes(OpCode::Pop);  // pop condition
+}
+
+void Compiler::forStatement()
+{
+    beginScope();
+
+    codepos_t exitJump = codepos_t(-1);
+
+    consume(TokenType::LeftParen, "Expected '(' after 'for'.");
+    //> initialization
+    if (match(TokenType::Var))
+    {
+        variableDeclaration();
+    }
+    else if (!match(TokenType::Semicolon))
+    {
+        expressionStatement();
+    }
+    //> condition
+    codepos_t loopStart = _compilingChunk->getCodeSize();
+    if (!match(TokenType::Semicolon))
+    {
+        expression();
+        consume(TokenType::Semicolon, "Expected ';' after loop condition.");
+
+        exitJump = emitJump(OpCode::JumpIfFalse);
+        emitBytes(OpCode::Pop);  // pop condition
+    }
+    //> increment
+    if (!match(TokenType::RightParen))
+    {
+        const codepos_t bodyJump = emitJump(OpCode::Jump);
+        const codepos_t incrementStart = _compilingChunk->getCodeSize();
+        expression();
+        emitBytes(OpCode::Pop);  // pop condition
+        consume(TokenType::RightParen, "Expected ')' after expression.");
+
+        emitJump(OpCode::Jump, loopStart);
+        loopStart = incrementStart;
+        patchJump(bodyJump);
+    }
+
+    //> body
+    statement();
+    emitJump(OpCode::Jump, loopStart);
+
+    if (exitJump != codepos_t(-1))
+    {
+        patchJump(exitJump);
+        emitBytes(OpCode::Pop);  // pop condition
+    }
+
+    endScope();
 }
 
 void Compiler::expressionStatement()
@@ -541,7 +602,7 @@ void Compiler::addLocalVariable(const Token &name)
         error("Too many local variables in function.");
         return;
     }
-    ASSERT(_localState.localCount < ARRAY_COUNT(_localState.locals));
+    ASSERT(static_cast<uint32_t>(_localState.localCount) < ARRAY_COUNT(_localState.locals));
     LocalState::Local *local = &_localState.locals[_localState.localCount++];
     local->name              = name;
     local->declarationDepth  = -1;  // uninitialized
