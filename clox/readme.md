@@ -62,11 +62,7 @@ operator   -> "==" | "!+" | "<" | "<=" | ">" | ">="
 
 WIP
 <details>
-- break
-  - save list of break jumps to patch at the end of loop generation
-- continue
-  - jump to loop start, local scope context 
 
-https://craftinginterpreters.com/jumping-back-and-forth.html
+https://craftinginterpreters.com/calls-and-functions.html
 
 </details>
