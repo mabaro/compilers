@@ -34,4 +34,4 @@ target_compile_options(clox_pe PRIVATE ${pe_compile_options})
 target_link_options(clox_pe PRIVATE ${pe_linker_options})
 
 add_test(NAME app_clox_pe COMMAND clox_pe)
-set_tests_properties(app_clox_pe PROPERTIES PASS_REGULAR_EXPRESSION "hello world")
+set_tests_properties(app_clox_pe PROPERTIES PASS_REGULAR_EXPRESSION ".*CODE42.*\nHello world")

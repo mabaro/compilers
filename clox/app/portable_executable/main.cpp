@@ -27,10 +27,11 @@ int main(int argc, const char* argv[])
     {
         const char codeStr[] = {
             // -> CODE
-            'C',  'O',  'D',  'E',  '4',  '2',  0x00, 0x00, 0x01, 'a',  '.',  'D',  'A',  'T',  'A',  0x01, 0x04, 0x00,
-            0x31, 'h',  'e',  'l',  'l',  'o',  ' ',  'w',  'o',  'r',  'l',  'd',  '!',  '.',  'C',  'O',  'D',  'E',
-            0x04, 0x00, 0x01, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0D, 0x0E, 0x0A, 0x0D, 0x0B, 0x0E, 0x0E, 0x0F};
+            0x19, 0x53, 0x4f, 0x55, 0x52, 0x43, 0x45, 0x00, 0x5f, 0x43, 0x4f, 0x44, 0x45, 0x34,
+            0x32, 0x5f, 0x00, 0x00, 0x01, 0x61, 0x2e, 0x44, 0x41, 0x54, 0x41, 0x01, 0x04, 0x00,
+            0x3d, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x21, 0x20,
+            0x3a, 0x29, 0x2e, 0x43, 0x4f, 0x44, 0x45, 0x04, 0x00, 0x01, 0x00, 0x0f, 0x00,
+        };
 
         auto isCarFunc = [](char a) { return (a >= '0' && a <= 'z') || a == ' ' || a == '.'; };
         for (uint8_t a : codeStr)
@@ -51,18 +52,18 @@ int main(int argc, const char* argv[])
         VM.init(virtualMachineConfiguration);
         ScopedCallback vmFinish([&VM] { VM.finish(); });
 
-        Chunk                 code("LOADER");
+        ObjectFunction*       function  = ObjectFunction::Create("LOADER");
         const volatile char*  codeBegin = codeStr;
         const volatile size_t codeLen   = sizeof(codeStr);
         ByteStream            istr((const uint8_t*)codeBegin, codeLen);
-        auto                  deserializeResult = code.deserialize(istr);
+        auto                  deserializeResult = function->deserialize(istr);
         ASSERT(deserializeResult.isOk());
         if (argc > 1 && (nullptr != strstr(argv[1], "disassemble")))
         {
-            disassemble(code, "VM");
+            disassemble(function->chunk, "VM");
         }
 
-        auto result = VM.runFromByteCode(code);
+        auto result = VM.runFromByteCode(function->chunk);
         if (!result.isOk())
         {
             return errorReportFunc(result.error().message().c_str());

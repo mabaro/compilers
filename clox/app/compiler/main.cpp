@@ -1,7 +1,9 @@
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
+#include "header.h"
 #include "utils/byte_buffer.h"
 #include "utils/common.h"
 #include "vm.h"
@@ -40,7 +42,7 @@ int main(int argc, const char* argv[])
     };
 
 #if USING(DEBUG_BUILD)
-        if (0)
+    if (0)
     {
         VirtualMachine VM;
         VM.init(virtualMachineConfiguration);
@@ -159,8 +161,9 @@ int main(int argc, const char* argv[])
             const char*   compileOutputPath = nullptr;
         } config;
 
-        auto isArgFunc = [](const char* arg) { return (arg[0] == '-'); };
-        for (const char** argvPtr = &argv[1]; argvPtr != &argv[argc]; ++argvPtr)
+        auto        isArgFunc = [](const char* arg) { return (arg[0] == '-'); };
+        const char* lastArg   = argv[argc - 1];
+        for (const char** argvPtr = &argv[1]; *argvPtr != argv[argc]; ++argvPtr)
         {
             const char* curArg = *argvPtr;
             if (isArgFunc(curArg))
@@ -177,6 +180,11 @@ int main(int argc, const char* argv[])
                             case Param::Type::code:
                             {
                                 config.isCodeOrFile = true;
+                                if (*argvPtr == lastArg)
+                                {
+                                    return errorReportWithHelpFunc(
+                                        format("Mising parameter for %s <code_string>", curArg).c_str());
+                                }
                                 if (!isArgFunc(*(argvPtr + 1)))
                                 {
                                     config.srcCodeOrFile = *(++argvPtr);
@@ -213,7 +221,10 @@ int main(int argc, const char* argv[])
                             case Param::Type::repl: config.mode = ExecutionMode::REPL; break;
                             case Param::Type::help: config.hasToShowHelp = true; break;
                             case Param::Type::compile: config.mode = ExecutionMode::Compile; break;
-                            case Param::Type::run: config.mode = ExecutionMode::Run; break;
+                            case Param::Type::run:
+                                config.mode         = ExecutionMode::Run;
+                                config.isCodeOrFile = false;
+                                break;
                             case Param::Type::disassemble: compilerConfiguration.disassemble = true; break;
                             case Param::Type::step_debugging: virtualMachineConfiguration.stepByStep = true; break;
                             default: validParam = false; break;
@@ -322,40 +333,29 @@ int main(int argc, const char* argv[])
 
                 if (config.mode == ExecutionMode::Run)
                 {
-                    Chunk code(config.isCodeOrFile ? "CODE" : config.srcCodeOrFile);
-                    if (config.isCodeOrFile)
+                    ASSERT(config.isCodeOrFile == false);
+
+                    ObjectFunction* function = nullptr;
+                    function                 = ObjectFunction::Create(config.srcCodeOrFile);
+                    std::ifstream ifs(config.srcCodeOrFile, std::ifstream::binary);
+                    if (!ifs.is_open() || !ifs.good())
                     {
-                        std::istringstream is(config.srcCodeOrFile);
-                        auto               loadResult = code.deserialize(is);
-                        if (!loadResult.isOk())
-                        {
-                            return errorReportFunc(
-                                format("Failed loading bytecode: %s", loadResult.error().message().c_str()).c_str());
-                        }
+                        return errorReportFunc(
+                            format("Failed to open file '%s' for reading", config.srcCodeOrFile).c_str());
                     }
-                    else
+                    auto deserializeResult = function->deserialize(ifs);
+                    if (!deserializeResult.isOk())
                     {
-                        std::ifstream ifs(config.srcCodeOrFile, std::ifstream::binary);
-                        if (!ifs.is_open() || !ifs.good())
-                        {
-                            return errorReportFunc(
-                                format("Failed to open file '%s' for reading", config.compileOutputPath).c_str());
-                        }
-                        auto deserializeResult = code.deserialize(ifs);
-                        if (!deserializeResult.isOk())
-                        {
-                            return errorReportFunc(
-                                format("Failed loading bytecode: %s", deserializeResult.error().message().c_str())
-                                    .c_str());
-                        }
+                        return errorReportFunc(
+                            format("Failed loading bytecode: %s", deserializeResult.error().message().c_str()).c_str());
                     }
 
                     if (compilerConfiguration.disassemble)
                     {
-                        disassemble(code, config.srcCodeOrFile);
+                        disassemble(function->chunk, config.srcCodeOrFile);
                     }
 
-                    auto result = VM.runFromByteCode(code);
+                    auto result = VM.runFromByteCode(function->chunk);
                     if (!result.isOk())
                     {
                         resultCode = -1;

@@ -2,8 +2,9 @@
 #include <iostream>
 #include <sstream>
 
-#include "utils/common.h"
+#include "header.h"
 #include "utils/byte_buffer.h"
+#include "utils/common.h"
 #include "vm.h"
 
 int main(int argc, const char* argv[])
@@ -132,14 +133,14 @@ int main(int argc, const char* argv[])
             VM.init(virtualMachineConfiguration);
             ScopedCallback vmFinish([&VM] { VM.finish(); });
 
-            Chunk code(config.filepath);
+            ObjectFunction* function = ObjectFunction::Create(config.filepath);
             {
                 std::ifstream ifs(config.filepath, std::ifstream::binary);
                 if (!ifs.is_open() || !ifs.good())
                 {
                     return errorReportFunc(format("Failed to open file '%s' for reading", config.filepath).c_str());
                 }
-                auto deserializeResult = code.deserialize(ifs);
+                auto deserializeResult = function->deserialize(ifs);
                 if (!deserializeResult.isOk())
                 {
                     return errorReportFunc(
@@ -147,7 +148,7 @@ int main(int argc, const char* argv[])
                 }
             }
 
-            auto result = VM.runFromByteCode(code);
+            auto result = VM.runFromByteCode(function->chunk);
             if (!result.isOk())
             {
                 resultCode = -1;
