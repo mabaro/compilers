@@ -8,6 +8,7 @@ https://craftinginterpreters.com/a-virtual-machine.html
 #include <memory>
 
 #include "chunk.h"
+#include "object.h"
 #include "compiler.h"
 #include "debug.h"
 #include "environment.h"
@@ -200,38 +201,21 @@ struct VirtualMachine
                 {
                     const Value b = stackPop();
                     const Value a = stackPop();
-                    if (a.type == Value::Type::Object || b.type == Value::Type::Object)
+                    Value newValue = a + b;
+                    if (newValue.type != Value::Type::Undefined)
                     {
-                        const Object *aObj = a.type == Value::Type::Object ? a.as.object : nullptr;
-                        const Object *bObj = b.type == Value::Type::Object ? b.as.object : nullptr;
-                        if (aObj && bObj)
-                        {
-                            Result<Value> result = *aObj + *bObj;
-                            if (result.isOk())
-                            {
-                                stackPush(result.extract());
-                            }
-                            else
-                            {
-                                return runtimeError("Cannot add types %s + %s: %s",
-                                                    aObj ? Object::getTypeName(aObj->type) : Value::getTypeName(a.type),
-                                                    bObj ? Object::getTypeName(bObj->type) : Value::getTypeName(b.type),
-                                                    result.error().message().c_str());
-                            }
-                        }
-                        else
-                        {
-                            return runtimeError("Cannot add different types: %s + %s",
-                                                aObj ? Object::getTypeName(aObj->type) : Value::getTypeName(a.type),
-                                                bObj ? Object::getTypeName(bObj->type) : Value::getTypeName(b.type));
-                        }
+                        stackPush(newValue);
                     }
                     else
                     {
-                        stackPush(a + b);
+                        FAIL_MSG("Invalid operands for 'Add'");
+                        return runtimeError("Cannot add types %s + %s",
+                            a.type != Value::Type::Object ? a.getTypeName(a.type) : a.as.object->getTypeName(a.as.object->type),
+                            b.type != Value::Type::Object ? b.getTypeName(b.type) : b.as.object->getTypeName(b.as.object->type));
                     }
                 }
                 break;
+
                 case OpCode::Divide: BINARY_OP(/); break;
                 case OpCode::Multiply: BINARY_OP(*); break;
                 case OpCode::Subtract: BINARY_OP(-); break;

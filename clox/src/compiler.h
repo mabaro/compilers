@@ -3,6 +3,7 @@
 #include "chunk.h"
 #include "scanner.h"
 #include "utils/common.h"
+#include <functional>
 
 #if USING(DEBUG_PRINT_CODE)
 #include "debug.h"
@@ -27,9 +28,6 @@
 #define CMP_DEBUGPRINT_PARSE(...)
 #endif  // #else // #if USING(DEBUG_PRINT_CODE)
 
-#include <functional>
-#include <unordered_map>
-#include <vector>
 
 struct Parser
 {

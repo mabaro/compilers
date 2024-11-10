@@ -26,12 +26,15 @@ set(SOURCES
     src/utils/common.cpp
     src/utils/input.h
     src/utils/input.cpp
+    src/utils/memory.h
     src/chunk.h
     src/chunk.cpp
     src/compiler.h
     src/compiler.cpp
     src/debug.h
     src/debug.cpp
+    src/object.h
+    src/object.cpp
     src/scanner.h
     src/scanner.cpp
     src/value.h
@@ -50,6 +53,8 @@ set(SOURCES
     src/utils/common.cpp
     src/chunk.h
     src/chunk.cpp
+    src/object.h
+    src/object.cpp
     src/value.h
     src/value.cpp
     src/vm.h
