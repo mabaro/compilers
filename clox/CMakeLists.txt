@@ -18,49 +18,44 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/") # .exe and .dll
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib") # .so and .dylib
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib") # .lib and .a
 
-#
-set(SOURCES
+set(SOURCES_COMMON
     src/utils/assert.h
     src/utils/assert.cpp
+    src/utils/byte_buffer.h
     src/utils/common.h
     src/utils/common.cpp
-    src/utils/input.h
-    src/utils/input.cpp
     src/utils/memory.h
+    src/utils/serde.h
     src/chunk.h
     src/chunk.cpp
+    src/object.h
+    src/object.cpp
+    src/value.h
+    src/value.cpp
+    src/vm.h
+    src/vm.cpp
+)
+
+#
+set(SOURCES_LIB
+    ${SOURCES_COMMON}
+    src/utils/input.h
+    src/utils/input.cpp
     src/compiler.h
     src/compiler.cpp
     src/debug.h
     src/debug.cpp
-    src/object.h
-    src/object.cpp
     src/scanner.h
     src/scanner.cpp
-    src/value.h
-    src/value.cpp
-    src/vm.h
-    src/vm.cpp
 )
-add_library(clox_lib STATIC ${SOURCES})
+add_library(clox_lib STATIC ${SOURCES_LIB})
 target_include_directories(clox_lib PUBLIC src thirdparty)
 target_compile_features(clox_lib PRIVATE cxx_std_20)
 
-set(SOURCES
-    src/utils/assert.h
-    src/utils/assert.cpp
-    src/utils/common.h
-    src/utils/common.cpp
-    src/chunk.h
-    src/chunk.cpp
-    src/object.h
-    src/object.cpp
-    src/value.h
-    src/value.cpp
-    src/vm.h
-    src/vm.cpp
+set(SOURCES_VM
+    ${SOURCES_COMMON}
 )
-add_library(cloxvm_lib STATIC ${SOURCES})
+add_library(cloxvm_lib STATIC ${SOURCES_VM})
 target_include_directories(cloxvm_lib PUBLIC src thirdparty)
 target_compile_features(cloxvm_lib PRIVATE cxx_std_20)
 

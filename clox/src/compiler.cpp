@@ -11,7 +11,9 @@ Compiler::result_t Compiler::compile(const char *source, const char *sourcePath,
     populateParseRules();
     _scanner.init(source);
     ScopedCallback onExit([&] { _scanner.finish(); });
-    _compilingChunk = std::make_unique<Chunk>(sourcePath);
+
+    _function = ObjectFunction::Create(sourcePath);
+    _functionType = FunctionType::Script;
 
     _parser.optError.reset();
     _parser.panicMode = false;
@@ -37,7 +39,7 @@ Compiler::result_t Compiler::compile(const char *source, const char *sourcePath,
         }
         return makeResultError<result_t>(result_t::error_t::code_t::Undefined, "Compilation failed.");
     }
-    return extractChunk();
+    return _function;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +173,7 @@ void Compiler::ifStatement()
 
 void Compiler::whileStatement()
 {
-    const codepos_t loopStart = _compilingChunk->getCodeSize();
+    const codepos_t loopStart = currentChunk().getCodeSize();
     _loopContext.loopStart(loopStart);
 
     consume(TokenType::LeftParen, "Expected '(' after 'while'.");
@@ -187,7 +189,7 @@ void Compiler::whileStatement()
     patchJump(exitJump);
     emitBytes(OpCode::Pop);  // pop condition
 
-    _loopContext.setLoopEnd(_compilingChunk->getCodeSize());
+    _loopContext.setLoopEnd(currentChunk().getCodeSize());
     _loopContext.loopEnd(std::bind(&Compiler::patchJumpEx, this, std::placeholders::_1, std::placeholders::_2));
 }
 
@@ -197,12 +199,12 @@ void Compiler::dowhileStatement()
 
     const codepos_t doJump = emitJump(OpCode::Jump);
 
-    const codepos_t loopStart = _compilingChunk->getCodeSize();
+    const codepos_t loopStart = currentChunk().getCodeSize();
     emitBytes(OpCode::Pop);  // pop condition
 
     patchJump(doJump);
     statement();
-    _loopContext.setLoopStart(_compilingChunk->getCodeSize());
+    _loopContext.setLoopStart(currentChunk().getCodeSize());
 
     consume(TokenType::While, "Expected 'While'");
     consume(TokenType::LeftParen, "Expected '(' after 'while'.");
@@ -213,7 +215,7 @@ void Compiler::dowhileStatement()
     emitJump(OpCode::JumpIfTrue, loopStart);
     emitBytes(OpCode::Pop);  // pop condition
 
-    _loopContext.setLoopEnd(_compilingChunk->getCodeSize());
+    _loopContext.setLoopEnd(currentChunk().getCodeSize());
     _loopContext.loopEnd(std::bind(&Compiler::patchJumpEx, this, std::placeholders::_1, std::placeholders::_2));
 }
 
@@ -234,7 +236,7 @@ void Compiler::forStatement()
         expressionStatement();
     }
     //> condition
-    codepos_t loopStart = _compilingChunk->getCodeSize();
+    codepos_t loopStart = currentChunk().getCodeSize();
 
     if (!match(TokenType::Semicolon))
     {
@@ -248,7 +250,7 @@ void Compiler::forStatement()
     if (!match(TokenType::RightParen))
     {
         const codepos_t bodyJump = emitJump(OpCode::Jump);
-        const codepos_t incrementStart = _compilingChunk->getCodeSize();
+        const codepos_t incrementStart = currentChunk().getCodeSize();
         expression();
         emitBytes(OpCode::Pop);  // pop condition
         consume(TokenType::RightParen, "Expected ')' after expression.");
@@ -270,7 +272,7 @@ void Compiler::forStatement()
         emitBytes(OpCode::Pop);  // pop condition
     }
 
-    _loopContext.setLoopEnd(_compilingChunk->getCodeSize());
+    _loopContext.setLoopEnd(currentChunk().getCodeSize());
     _loopContext.loopEnd(std::bind(&Compiler::patchJump, this, std::placeholders::_1));
 
     endScope();
@@ -542,16 +544,15 @@ void Compiler::finishCompilation()
 #if USING(DEBUG_PRINT_CODE)
     if (_configuration.disassemble && !_parser.hadError)
     {
-        ASSERT(currentChunk());
-        disassemble(*currentChunk(), "code");
+        ASSERT(_function);
+        disassemble(currentChunk(), "code");
     }
 #endif  // #if USING(DEBUG_PRINT_CODE)
 }
 
 uint8_t Compiler::makeConstant(const Value &value)
 {
-    ASSERT(currentChunk());
-    Chunk &chunk = *currentChunk();
+    Chunk &chunk = currentChunk();
 
     const int constantId = chunk.addConstant(value);
     ASSERT(constantId < UINT8_MAX);
@@ -576,9 +577,9 @@ uint16_t Compiler::emitJump(OpCode op, codepos_t jumpOffset)
 {
     constexpr size_t jumpBytes = sizeof(jump_t);
     emitBytes(op);
-    Chunk          *chunk      = currentChunk();
-    const codepos_t codeOffset = chunk->getCodeSize();
-    ASSERT(static_cast<size_t>(chunk->getCodeSize() - jumpOffset) < limits::kMaxJumpLength);
+    Chunk          &chunk      = currentChunk();
+    const codepos_t codeOffset = chunk.getCodeSize();
+    ASSERT(static_cast<size_t>(chunk.getCodeSize() - jumpOffset) < limits::kMaxJumpLength);
 
     const jump_t jump = jumpOffset - codeOffset - jumpBytes;
 
@@ -589,7 +590,7 @@ uint16_t Compiler::emitJump(OpCode op, codepos_t jumpOffset)
 uint16_t Compiler::emitJump(OpCode op)
 {
     emitBytes(op);
-    const codepos_t codeOffset = currentChunk()->getCodeSize();
+    const codepos_t codeOffset = currentChunk().getCodeSize();
     // placeholder
     emitBytes((uint8_t)0xff);
     emitBytes((uint8_t)0xff);
@@ -598,41 +599,39 @@ uint16_t Compiler::emitJump(OpCode op)
 
 void Compiler::patchJump(codepos_t jumpPos)
 {
-    patchJumpEx(jumpPos, currentChunk()->getCodeSize());
+    patchJumpEx(jumpPos, currentChunk().getCodeSize());
 }
 
 void Compiler::patchJumpEx(codepos_t jumpPos, codepos_t jumpTargetPos)
 {
     constexpr size_t jumpBytes = sizeof(jump_t);
-    Chunk           *chunk     = currentChunk();
+    Chunk           &chunk     = currentChunk();
     ASSERT(static_cast<size_t>(jumpTargetPos - jumpPos) < limits::kMaxJumpLength);
     const jump_t jumpLen = jumpTargetPos - jumpPos - jumpBytes;
 
-    uint8_t *code     = chunk->getCodeMut();
+    uint8_t *code     = chunk.getCodeMut();
     code[jumpPos]     = static_cast<uint8_t>((jumpLen >> 8) & 0xff);
     code[jumpPos + 1] = static_cast<uint8_t>(jumpLen & 0xff);
 }
 
 void Compiler::emitBytes(uint8_t byte)
 {
-    Chunk *chunk = currentChunk();
-    ASSERT(chunk);
-    chunk->write(byte, static_cast<uint16_t>(_lastExpressionLine));
+    Chunk &chunk = currentChunk();
+    chunk.write(byte, static_cast<uint16_t>(_lastExpressionLine));
 }
 
 void Compiler::emitBytes(uint16_t word)
 {
-    Chunk *chunk = currentChunk();
-    ASSERT(chunk);
+    Chunk &chunk = currentChunk();
     uint8_t byte = static_cast<uint8_t>((word >> 8) & 0xFF);
-    chunk->write(byte, _lastExpressionLine);
+    chunk.write(byte, _lastExpressionLine);
     byte = static_cast<uint8_t>(word & 0xFF);
-    chunk->write(byte, _lastExpressionLine);
+    chunk.write(byte, _lastExpressionLine);
 }
 
 void Compiler::emitBytes(OpCode code)
 {
-    CMP_DEBUGPRINT(1, "[%d]emitOpCode: %s", _compilingChunk->getCodeSize(), named_enum::name(code));
+    CMP_DEBUGPRINT(1, "[%d]emitOpCode: %s", currentChunk().getCodeSize(), named_enum::name(code));
     emitBytes((uint8_t)code);
 }
 

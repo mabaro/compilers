@@ -383,9 +383,9 @@ struct VirtualMachine
         {
             return makeResultError<result_t>(ErrorCode::CompileError, result.error().message());
         }
-        const Chunk *currentChunk = result.value().get();
-        _chunk                    = currentChunk;
-        _ip                       = currentChunk->getCode();
+        const ObjectFunction *function = result.value();
+        _chunk                    = &function->chunk;
+        _ip                       = function->chunk.getCode();
 
         result_t runResult = run();
 

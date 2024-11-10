@@ -7,11 +7,6 @@
 struct ObjectString;
 struct ObjectFunction;
 
-struct ObjectFunction
-{
-    Chunk* chunk;
-};
-
 struct Object
 {
 #if USING(DEBUG_BUILD)
@@ -40,7 +35,8 @@ struct Object
     template <typename ObjectT>
     static ObjectT *allocate(size_t flexibleSize = 0)
     {
-        static_assert(std::is_same_v<ObjectT, ObjectString>, "ObjectT not supported");
+        static_assert(std::is_same_v<ObjectT, ObjectString> || std::is_same_v<ObjectT, ObjectFunction>,
+                      "ObjectT not supported");
 
         ObjectT *newObject = nullptr;
         if (std::is_same_v<ObjectString, ObjectT>)
@@ -108,19 +104,38 @@ struct Object
     static Object *s_allocatedList;
 };
 
+void printObject(const Object &object);
+
 ///////////////////////////////////////////////////////////////////////////////////////
 
 struct ObjectString : public Object
 {
-    size_t length = 0;
-    char  *chars  = nullptr;
+    char* chars = nullptr;
+    uint32_t length = 0;
 
     Result<void> serialize(std::ostream &o_stream) const;
-    Result<void> deserialize(std::istream &i_stream);
+    static Result<ObjectString*> deserialize(std::istream &i_stream);
 
-    static ObjectString *CreateEmpty();
+    static ObjectString *Create();
     static ObjectString *CreateConcat(const char *str1, size_t len1, const char *str2, size_t len2);
     static ObjectString *CreateByCopy(const char *str, size_t length);
 
     static bool compare(const ObjectString &a, const ObjectString &b);
+};
+
+struct ObjectFunction : public Object
+{
+    Chunk chunk;
+    ObjectString* name = nullptr;
+    uint8_t arity = uint8_t(-1);
+
+    ObjectFunction(const ObjectFunction&) = delete;
+    ObjectFunction operator=(ObjectFunction&) = delete;
+    ObjectFunction(const ObjectFunction&&) = delete;
+    ObjectFunction operator=(ObjectFunction&&) = delete;
+
+    Result<void> serialize(std::ostream& o_stream) const;
+    Result<void> deserialize(std::istream& i_stream);
+
+    static ObjectFunction* Create(const char* name = "unnamed");
 };

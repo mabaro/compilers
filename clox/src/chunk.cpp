@@ -1,10 +1,8 @@
 #include "chunk.h"
-
+#include "header.h"
+#include "utils/serde.h"
 #include <cstring>
 
-#include "utils/serde.h"
-
-static const char* MAGIC_ID = "CODE42";
 static const char* CODE_SEG = ".CODE";
 static const char* DATA_SEG = ".DATA";
 
@@ -12,8 +10,12 @@ Result<void> Chunk::serialize(std::ostream& o_stream) const
 {
     ASSERT_MSG(serde::isLittleEndian(), "not supported, need reverting bytes");
 
-    serde::SerializeN(o_stream, MAGIC_ID, strlen(MAGIC_ID));
-    serde::Serialize(o_stream, VERSION);
+    auto headerResult = writeHeader(o_stream);
+    if (!headerResult.isOk())
+    {
+        return headerResult.error();
+    }
+
     serde::SerializeN(o_stream, DATA_SEG, strlen(DATA_SEG));
 
     serde::SerializeAs<serde::constants_len_t>(o_stream, _constants.size());
@@ -36,19 +38,10 @@ Result<void> Chunk::deserialize(std::istream& i_stream)
     len_t len   = 0;
     char  tempStr[32];
 
-    serde::DeserializeN(i_stream, &tempStr[0], strlen(MAGIC_ID));
-    if (0 != strncmp(MAGIC_ID, tempStr, strlen(MAGIC_ID)))
+    auto headerResult = readHeader(i_stream);
+    if (!headerResult.isOk())
     {
-        FAIL();
-        return Result<void>::error_t(format("Invalid MagicID: %s != %s\n", tempStr, MAGIC_ID));
-    }
-
-    std::remove_const<decltype(VERSION)>::type version;
-    serde::Deserialize(i_stream, version);
-    if (VERSION != version)
-    {
-        FAIL();
-        return Result<void>::error_t(format("Invalid version %d.%d != %d.%d expected\n", version, VERSION));
+        return headerResult.error();
     }
 
     serde::DeserializeN(i_stream, tempStr, strlen(DATA_SEG));

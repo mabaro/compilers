@@ -306,18 +306,7 @@ void printValue(const Value &value)
         case Value::Type::Null: printf("%s", "null"); break;
         case Value::Type::Number: printf("%.2f", value.as.number); break;
         case Value::Type::Integer: printf("%d", value.as.integer); break;
-        case Value::Type::Object:
-            switch (value.as.object->type)
-            {
-                case Object::Type::String:
-                {
-                    auto strObj = *value.as.object->asString();
-                    printf("%.*s", (int)strObj.length, strObj.chars);
-                    break;
-                }
-                default: FAIL_MSG("UNDEFINED OBJECT TYPE(%d)", value.as.object->type);
-            }
-            break;
+        case Value::Type::Object: printObject(*value.as.object); break;
         default: printf("UNDEF"); break;
     }
 }

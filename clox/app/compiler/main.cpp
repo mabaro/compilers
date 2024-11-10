@@ -266,7 +266,7 @@ int main(int argc, const char* argv[])
             }
             if (config.mode == ExecutionMode::Compile)
             {
-                std::unique_ptr<Chunk> compiledChunk = nullptr;
+                ObjectFunction* function = nullptr;
                 if (config.isCodeOrFile)
                 {
                     auto result = compiler.compileFromSource(config.srcCodeOrFile, compilerConfiguration);
@@ -274,7 +274,7 @@ int main(int argc, const char* argv[])
                     {
                         return errorReportFunc(result.error().message().c_str());
                     }
-                    compiledChunk = result.extract();
+                    function = result.extract();
                 }
                 else
                 {
@@ -283,9 +283,9 @@ int main(int argc, const char* argv[])
                     {
                         return errorReportFunc(result.error().message().c_str());
                     }
-                    compiledChunk = result.extract();
+                    function = result.extract();
                 }
-                ASSERT(compiledChunk != nullptr);
+                ASSERT(function != nullptr);
 
                 if (config.compileOutputPath != nullptr)
                 {
@@ -296,7 +296,7 @@ int main(int argc, const char* argv[])
                         return errorReportFunc(
                             format("Failed to open file '%s' for writing", config.compileOutputPath).c_str());
                     }
-                    auto serializeResult = compiledChunk->serialize(ofs);
+                    auto serializeResult = function->serialize(ofs);
                     if (!serializeResult.isOk())
                     {
                         return errorReportFunc(format("Failed serializing to file '%s': %s", config.compileOutputPath,
@@ -306,7 +306,7 @@ int main(int argc, const char* argv[])
                 }
                 else
                 {
-                    auto serializeResult = compiledChunk->serialize(std::cout);
+                    auto serializeResult = function->serialize(std::cout);
                     if (!serializeResult.isOk())
                     {
                         return errorReportFunc(

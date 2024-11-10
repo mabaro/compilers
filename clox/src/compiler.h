@@ -2,6 +2,7 @@
 
 #include "chunk.h"
 #include "scanner.h"
+#include "object.h"
 #include "utils/common.h"
 #include <functional>
 
@@ -28,6 +29,7 @@
 #define CMP_DEBUGPRINT_PARSE(...)
 #endif  // #else // #if USING(DEBUG_PRINT_CODE)
 
+struct ObjectFunction;
 
 struct Parser
 {
@@ -79,7 +81,7 @@ struct Compiler
         Undefined
     };
     using error_t  = Error<ErrorCode>;
-    using result_t = Result<std::unique_ptr<Chunk>, error_t>;
+    using result_t = Result<ObjectFunction*, error_t>;
 
     struct Configuration
     {
@@ -196,9 +198,11 @@ struct Compiler
     void advance();
 
    protected:
-    Chunk *currentChunk() { return _compilingChunk.get(); }
-
-    std::unique_ptr<Chunk> extractChunk() { return std::move(_compilingChunk); }
+    inline Chunk &currentChunk()
+    {
+        ASSERT(_function);
+        return _function->chunk;
+    }
 
    protected:
     Configuration _configuration;
@@ -207,7 +211,13 @@ struct Compiler
     Parser   _parser;
     uint32_t _lastExpressionLine = uint32_t(-1);
 
-    std::unique_ptr<Chunk> _compilingChunk = nullptr;
+    ObjectFunction* _function = nullptr;
+    enum class FunctionType : uint8_t {
+        Function,
+        Script, // main entry
+        COUNT = uint8_t(-1)
+    };
+    FunctionType _functionType = FunctionType::COUNT;
 
     ParseRule _parseRules[(size_t)TokenType::COUNT];
 

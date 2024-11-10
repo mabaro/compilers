@@ -1,7 +1,9 @@
 #include "object.h"
+
+#include <cstring>
+
 #include "utils/memory.h"
 #include "utils/serde.h"
-#include <cstring>
 
 Object *Object::s_allocatedList = nullptr;
 
@@ -33,9 +35,18 @@ Result<Object *> Object::deserialize(std::istream &i_stream)
     {
         case Type::String:
         {
-            ObjectString *newString = ObjectString::CreateEmpty();
-            newString->deserialize(i_stream);
-            return newString;
+            auto result = ObjectString::deserialize(i_stream);
+            if (result.isOk())
+            {
+                return result.extract();
+            }
+            return result.error();
+        }
+        case Type::Function:
+        {
+            ObjectFunction *newFunction = ObjectFunction::Create();
+            newFunction->deserialize(i_stream);
+            return newFunction;
         }
         default: FAIL();
     }
@@ -48,13 +59,21 @@ void Object::FreeObject(Object *obj)
     {
         case Type::String:
         {
-            ObjectString *strObj = obj->asString();
-            DEALLOCATE(ObjectString, strObj);
+            ObjectString *str = obj->asString();
+            DEALLOCATE(ObjectString, str);
+            break;
+        }
+        case Type::Function:
+        {
+            ObjectFunction *func = obj->asFunction();
+            func->chunk.~Chunk();
+            DEALLOCATE(ObjectFunction, func);
             break;
         }
         default: FAIL_MSG("Unsupported type: %d", obj->type);
     }
 }
+
 void Object::FreeObjects()
 {
     Object *object = s_allocatedList;
@@ -66,46 +85,68 @@ void Object::FreeObjects()
     }
 }
 
-Object* Object::operator+(const Object& other) const
+Object *Object::operator+(const Object &other) const
 {
     switch (type)
     {
-    case Object::Type::String:
-    {  // concatenate
-        if (other.type == Object::Type::String)
-        {
-            const ObjectString* aStr = asString();
-            const ObjectString* bStr = other.asString();
-            if (aStr && bStr)
+        case Object::Type::String:
+        {  // concatenate
+            if (other.type == Object::Type::String)
             {
-                return ObjectString::CreateConcat(aStr->chars, aStr->length, bStr->chars, bStr->length);
+                const ObjectString *aStr = asString();
+                const ObjectString *bStr = other.asString();
+                if (aStr && bStr)
+                {
+                    return ObjectString::CreateConcat(aStr->chars, aStr->length, bStr->chars, bStr->length);
+                }
             }
         }
-    }
-    break;
-    default: FAIL();
+        break;
+        default: FAIL();
     }
     FAIL_MSG("Undefined '%s' for objects of types: %s and %s", __FUNCTION__, Object::getTypeName(type),
              Object::getTypeName(other.type));
     return nullptr;
 }
 
-bool Object::compare(const Object* a, const Object* b)
+bool Object::compare(const Object *a, const Object *b)
 {
     ASSERT(a != nullptr && b != nullptr);
     ASSERT(b->type == a->type);
 
     switch (a->type)
     {
-    case Object::Type::String:
-    {
-        const ObjectString* aStr = a->asString();
-        const ObjectString* bStr = b->asString();
-        return ObjectString::compare(*aStr, *bStr);
-    }
-    default: FAIL();
+        case Object::Type::String:
+        {
+            const ObjectString *aStr = a->asString();
+            const ObjectString *bStr = b->asString();
+            return ObjectString::compare(*aStr, *bStr);
+        }
+        default: FAIL();
     }
     return false;
+}
+
+void printObject(const Object &object)
+{
+    switch (object.type)
+    {
+        case Object::Type::String:
+        {
+            const auto &strObj = *object.asString();
+            printf("%.*s", (int)strObj.length, strObj.chars);
+            break;
+        }
+        case Object::Type::Function:
+        {
+            const auto &func = *object.asFunction();
+            printf("<fn ");
+            printObject(*func.name);
+            printf(">");
+            break;
+        }
+        default: FAIL_MSG("UNDEFINED OBJECT TYPE(%d)", object.type);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,39 +172,49 @@ Result<void> ObjectString::serialize(std::ostream &o_stream) const
     serde::SerializeN(o_stream, this->chars, this->length);
     return Result<void>();
 }
-Result<void> ObjectString::deserialize(std::istream &i_stream)
+
+Result<ObjectString *> ObjectString::deserialize(std::istream &i_stream)
 {
-    this->length = 0;
+    uint32_t length = 0;
 
     uint8_t byte;
     serde::Deserialize(i_stream, byte);
-    this->length = byte;
+    length = byte;
 
     if ((byte & 0x03) == 2)
     {
-        this->length = byte;
+        length = byte;
         serde::Deserialize(i_stream, byte);
-        this->length = (byte << 8) | this->length;
+        length = (byte << 8) | length;
     }
     else if ((byte & 0x03) == 0)
     {
-        this->length = byte;
+        length = byte;
         serde::Deserialize(i_stream, byte);
-        this->length = (byte << 8) | this->length;
+        length = (byte << 8) | length;
         serde::Deserialize(i_stream, byte);
-        this->length = (byte << 16) | this->length;
+        length = (byte << 16) | length;
         serde::Deserialize(i_stream, byte);
-        this->length = (byte << 24) | this->length;
+        length = (byte << 24) | length;
     }
-    this->length >>= 2;
+    length >>= 2;
 
-    this->chars = ALLOCATE_N(char, this->length + 1);
-    serde::DeserializeN(i_stream, this->chars, this->length);
-    this->chars[this->length] = '\0';
-    return Result<void>();
+    constexpr size_t kSmallStringSize = 256;
+    if (length < kSmallStringSize)
+    {
+        char tempStr[kSmallStringSize];
+        serde::DeserializeN(i_stream, tempStr, length);
+        return CreateByCopy(tempStr, length);
+    }
+    else
+    {
+        std::vector<char> tempStr(length);
+        serde::DeserializeN(i_stream, tempStr.data(), length);
+        return CreateByCopy(tempStr.data(), length);
+    }
 }
 
-ObjectString *ObjectString::CreateEmpty()
+ObjectString *ObjectString::Create()
 {
     ObjectString *newStringObj = Object::allocate<ObjectString>();
     newStringObj->chars        = nullptr;
@@ -178,7 +229,8 @@ ObjectString *ObjectString::CreateConcat(const char *str1, size_t len1, const ch
     newStringObj->chars        = ((char *)newStringObj) + sizeof(ObjectString);
     memcpy(newStringObj->chars, str1, len1);
     memcpy(newStringObj->chars + len1, str2, len2);
-    newStringObj->length           = newLength;
+    newStringObj->length           = static_cast<uint8_t>(newLength);
+    newStringObj->length           = static_cast<decltype(length)>(newLength);
     newStringObj->chars[newLength] = '\0';
     return newStringObj;
 }
@@ -187,7 +239,7 @@ ObjectString *ObjectString::CreateByCopy(const char *str, size_t length)
 {
     ObjectString *newStringObj = Object::allocate<ObjectString>(length + 1);
     newStringObj->chars        = ((char *)newStringObj) + sizeof(ObjectString);
-    newStringObj->length       = length;
+    newStringObj->length       = static_cast<uint8_t>(length);
     memcpy(newStringObj->chars, str, length);
     newStringObj->chars[length] = '\0';
     return newStringObj;
@@ -196,4 +248,35 @@ ObjectString *ObjectString::CreateByCopy(const char *str, size_t length)
 bool ObjectString::compare(const ObjectString &a, const ObjectString &b)
 {
     return a.length == b.length && (0 == memcmp(a.chars, b.chars, a.length));
+}
+
+Result<void> ObjectFunction::serialize(std::ostream &o_stream) const
+{
+    this->name->serialize(o_stream);
+    serde::SerializeAs<uint8_t>(o_stream, this->arity);
+    this->chunk.serialize(o_stream);
+    return Result<void>();
+}
+
+Result<void> ObjectFunction::deserialize(std::istream &i_stream)
+{
+    auto stringRes = ObjectString::deserialize(i_stream);
+    if (!stringRes.isOk())
+    {
+        return stringRes.error();
+    }
+    this->name = stringRes.extract();
+    serde::DeserializeAs<uint8_t>(i_stream, this->arity);
+    this->chunk.deserialize(i_stream);
+
+    return Result<void>();
+}
+
+ObjectFunction *ObjectFunction::Create(const char *name)
+{
+    ObjectFunction *function = Object::allocate<ObjectFunction>();
+    function->arity          = 0;
+    function->name           = ObjectString::CreateByCopy(name, strlen(name));
+    new ((Chunk *)&function->chunk) Chunk(name);
+    return function;
 }
