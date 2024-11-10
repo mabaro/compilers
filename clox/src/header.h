@@ -2,6 +2,7 @@
 
 #include "utils/common.h"
 #include "utils/serde.h"
+#include <cstring>
 
 /*
 -disassemble  test.cloxbin -run
