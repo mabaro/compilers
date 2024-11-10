@@ -1,19 +1,20 @@
 #include "input.h"
+
 #include "config.h"
 
 #if defined(LINUX_OS)
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #elif defined(WINDOWS_OS)
-#include <conio.h> //getch()
+#include <conio.h>  //getch()
 #endif
 
 char read_char()
 {
 #if defined(LINUX_OS)
-    system("stty raw");
+    [[maybe_unused]] system("stty raw");
     const char c = getchar();
-    system("stty cooked");
+    [[maybe_unused]] system("stty cooked");
 #elif defined(WINDOWS_OS)
     const char c = static_cast<char>(_getch());
 #endif
