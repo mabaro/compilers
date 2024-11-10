@@ -1,6 +1,7 @@
 #include "value.h"
 #include "object.h"
 #include "utils/serde.h"
+#include <cstring>
 
 Result<void> Value::serialize(std::ostream &o_stream) const
 {

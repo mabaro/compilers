@@ -130,7 +130,7 @@ struct Chunk
             return;
         }
 
-        printf(padding);
+        printf("%s", padding);
         printf("Constants: ");
         for (size_t i = 0; i < getConstants().size(); ++i)
         {
