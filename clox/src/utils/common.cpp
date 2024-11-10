@@ -4,7 +4,11 @@
 #if USING(DEBUG_PRINT_CODE)
 namespace debug_print
 {
+#if USING(DEBUG_BUILD)
 static uint8_t sDebugPrintLevel = 255;
+#else // #if USING(DEBUG_BUILD)
+static uint8_t sDebugPrintLevel = 0;
+#endif // #if USING(DEBUG_BUILD)
 
 int GetLevel() { return sDebugPrintLevel; }
 

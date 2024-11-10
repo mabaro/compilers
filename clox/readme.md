@@ -63,6 +63,6 @@ operator   -> "==" | "!+" | "<" | "<=" | ">" | ">="
 WIP
 <details>
 
-https://craftinginterpreters.com/jumping-back-and-forth.html
+https://craftinginterpreters.com/calls-and-functions.html
 
 </details>

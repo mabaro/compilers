@@ -32,7 +32,11 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "args": [ "-code", "var a=1; var b=2; if (a>0) print(\\\">\\\"); else print(\\\"<\\\");" ],
+            "args": [
+                "-repl"
+                // "-disassemble",
+                // "${workspaceFolder}/tests/lang/for.clox",
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/bin",
             "environment": [],

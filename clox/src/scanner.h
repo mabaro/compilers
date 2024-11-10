@@ -57,6 +57,8 @@ enum class TokenType
     Do,
     While,
     For,
+    Break,
+    Continue,
 
     Func,
 

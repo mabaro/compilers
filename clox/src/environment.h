@@ -5,6 +5,10 @@
 
 struct Environment
 {
+    Environment(Environment *parentEnvironment = nullptr) { Init(parentEnvironment); }
+
+    ~Environment() { Reset(); }
+
     bool Init(Environment *parentEnvironment)
     {
         ASSERT(_dict.empty());

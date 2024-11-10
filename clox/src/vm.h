@@ -65,7 +65,6 @@ struct VirtualMachine
         ASSERT(_environments.empty());
         _environments.push_back(std::make_unique<Environment>());
         _currrentEnvironment = _environments.back().get();
-        _environments.back()->Init(nullptr);
 
         return makeResult<result_t>(InterpretResult::Ok);
     }
@@ -75,10 +74,6 @@ struct VirtualMachine
     result_t finish()
     {
         ASSERT(_environments.size() <= 1);
-        for (auto &env : _environments)
-        {
-            env->Reset();
-        }
         _environments.clear();
 
         Object::FreeObjects();
@@ -118,6 +113,7 @@ struct VirtualMachine
                     sWasPrint = false;
                 }
                 const char *padding = "          ";
+                // printf("%s#Env: %d\n", padding, (int)_environments.size());
                 printStack(padding);
                 printVariables(padding);
                 _chunk->printConstants(padding);
@@ -351,15 +347,13 @@ struct VirtualMachine
                 case OpCode::ScopeBegin:
                 {
                     Environment *curEnv = _environments.back().get();
-                    _environments.push_back(std::make_unique<Environment>());
-                    _environments.back()->Init(curEnv);
+                    _environments.push_back(std::make_unique<Environment>(curEnv));
                     _currrentEnvironment = _environments.back().get();
                     break;
                 }
                 case OpCode::ScopeEnd:
                 {
                     _currrentEnvironment = _environments.back()->_parentEnvironment;
-                    _environments.back()->Reset();
                     _environments.pop_back();
                     break;
                 }
@@ -434,7 +428,7 @@ struct VirtualMachine
         {
             printf("> ");
 
-            if (!fgets(line, sizeof(line), stdin))
+            if (nullptr == fgets(line, sizeof(line), stdin))
             {
                 printf("\n");
                 break;
@@ -450,6 +444,7 @@ struct VirtualMachine
 #if DEBUG_TRACE_EXECUTION
                     printf("\tPrintConstants\n");
                     printf("\tPrintVariables\n");
+                    printf("\tDisassemble\n");
 #endif  // #if DEBUG_TRACE_EXECUTION
 #if USING(DEBUG_BUILD)
                     printf("\tdebugbreak <enable/disable>\n");
@@ -461,8 +456,9 @@ struct VirtualMachine
                     printf("--------------------------------\n");
                     continue;
                 }
-                else if (nullptr != strstr(line, "quit") || nullptr != strstr(line, "Quit"))
+                else if (line[1] == 'q' || line[1] == 'Q')
                 {
+                    // nullptr != strstr(line, "quit") || nullptr != strstr(line, "Quit"))
                     printf("--------------------------------\n");
                     printf("Exiting...\n");
                     printf("--------------------------------\n");
@@ -500,6 +496,19 @@ struct VirtualMachine
                 {
                     printf("[CMD] Variables:\n");
                     this->printVariables();
+                    continue;
+                }
+                else if (nullptr != strstr(line, "disassemble") || nullptr != strstr(line, "Disassemble"))
+                {
+                    Compiler::Configuration config    = _compiler.getConfiguration();
+                    char                   *secondArg = strstr(line, " ");
+                    if (secondArg != nullptr)
+                    {
+                        const bool enable  = secondArg[1] == '1';
+                        config.disassemble = enable;
+                        _compiler.setConfiguration(config);
+                    }
+                    printf("[CMD] Disassemble is '%s'\n", config.disassemble ? "enabled" : "disabled");
                     continue;
                 }
 #endif  // #if DEBUG_TRACE_EXECUTION
@@ -540,7 +549,10 @@ struct VirtualMachine
 #endif  // #if USING(DEBUG_PRINT_CODE)
             }
 
-            result_t result = interpret(line, "REPL");
+            const size_t lineSize = strlen(line);
+            line[lineSize]        = ';';
+            line[lineSize + 1]    = '\0';
+            result_t result       = interpret(line, "REPL");
             if (!result.isOk())
             {
                 LOG_ERROR("[INTERPRETER] %s\n", result.error().message().c_str());
