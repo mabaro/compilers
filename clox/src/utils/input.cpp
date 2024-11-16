@@ -12,9 +12,9 @@
 char read_char()
 {
 #if defined(LINUX_OS)
-    [[maybe_unused]] system("stty raw");
+    [[maybe_unused]] int result = system("stty raw");
     const char c = getchar();
-    [[maybe_unused]] system("stty cooked");
+    result =  system("stty cooked");
 #elif defined(WINDOWS_OS)
     const char c = static_cast<char>(_getch());
 #endif
